@@ -17,6 +17,7 @@ import { sanitizeString, sanitizeEmail, stripHtml } from "@career-builder/securi
 import { validateUpload, UPLOAD_PRESETS, isPathSafe } from "@career-builder/security/file-upload";
 import { validateUrl } from "@career-builder/security/url";
 import { getRateLimiter, getClientIp } from "@career-builder/security/rate-limit";
+import { emailService } from "@career-builder/email";
 
 export async function POST(request: Request) {
   try {
@@ -154,6 +155,53 @@ export async function POST(request: Request) {
     if (!result.success) {
       return NextResponse.json(result, { status: 400 });
     }
+
+    // ── Send email notifications (fire-and-forget — don't block response) ──
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
+    const adminUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.ADMIN_API_URL || "http://localhost:3001";
+    const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME || "Our Company";
+
+    // Fetch job details for the email (best-effort)
+    const jobProvider = getJobProvider();
+    let jobTitle = "the position";
+    let jobDepartment = "";
+    let jobLocation = "";
+    try {
+      const jobDetail = await jobProvider.getById(sanitizeString(parsed.data.jobId, 100));
+      if (jobDetail?.job) {
+        jobTitle = jobDetail.job.title;
+        jobDepartment = jobDetail.job.department;
+        jobLocation = jobDetail.job.location;
+      }
+    } catch { /* best-effort */ }
+
+    // Fire both emails concurrently — don't await (non-blocking)
+    Promise.allSettled([
+      emailService.sendApplicationConfirmation({
+        candidateFirstName: sanitizeString(parsed.data.firstName, 100),
+        candidateLastName: sanitizeString(parsed.data.lastName, 100),
+        candidateEmail: email,
+        jobTitle,
+        companyName,
+        applicationId: result.applicationId || "",
+        siteUrl,
+      }),
+      emailService.sendApplicationNotification({
+        candidateFirstName: sanitizeString(parsed.data.firstName, 100),
+        candidateLastName: sanitizeString(parsed.data.lastName, 100),
+        candidateEmail: email,
+        candidatePhone: sanitizeString(parsed.data.phone || "", 30),
+        candidateLinkedin: parsed.data.linkedinUrl?.trim() || "",
+        jobTitle,
+        jobDepartment,
+        jobLocation,
+        companyName,
+        applicationId: result.applicationId || "",
+        resumeUrl: savedResumeUrl,
+        coverLetter: parsed.data.coverLetter ? stripHtml(parsed.data.coverLetter) : "",
+        adminUrl,
+      }),
+    ]).catch((err) => console.error("[apply] Email send error:", err));
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

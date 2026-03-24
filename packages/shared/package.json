@@ -9,5 +9,8 @@
     "./env": "./env.ts",
     "./api-response": "./api-response.ts",
     "./tenant-resolver": "./tenant-resolver.ts"
+  },
+  "dependencies": {
+    "resend": "^6.9.4"
   }
 }

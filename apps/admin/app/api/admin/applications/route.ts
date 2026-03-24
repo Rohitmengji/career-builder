@@ -11,6 +11,7 @@ import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/l
 import { applicationRepo } from "@career-builder/database";
 import { updateApplicationSchema, paginationSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString, sanitizeEmail } from "@career-builder/security/sanitize";
+import { emailService } from "@career-builder/email";
 
 /** GET /api/admin/applications — list applications */
 export async function GET(req: Request) {
@@ -107,6 +108,20 @@ export async function PATCH(req: Request) {
       "application_status_change",
       `${existing.firstName} ${existing.lastName}: ${existing.status} → ${status}`,
     );
+
+    // Send status update email to candidate (fire-and-forget)
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:3000";
+    const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME || "Our Company";
+    emailService.sendStatusUpdate({
+      candidateFirstName: existing.firstName,
+      candidateEmail: existing.email,
+      jobTitle: existing.job?.title || "the position",
+      newStatus: status,
+      companyName,
+      siteUrl,
+      message: notes ? sanitizeString(notes, 2000) : undefined,
+    }).catch((err) => console.error("[applications] Status email failed:", err));
+
     return NextResponse.json({ application: updated });
   }
 

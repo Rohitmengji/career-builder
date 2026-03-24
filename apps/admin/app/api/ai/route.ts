@@ -16,6 +16,7 @@ import { validateAiOutput, validatePageOutput, validateJobOutput, parseAiJson } 
 import { blockSchemas } from "@/lib/blockSchemas";
 import { subscriptionRepo, prisma } from "@career-builder/database";
 import { JOB_AI_CREDITS_PER_WEEK } from "@/lib/stripe/config";
+import { getFallbackBlocks } from "@/lib/ai/fallback";
 
 /* ================================================================== */
 /*  Per-action rate limiter                                            */
@@ -451,18 +452,30 @@ export async function POST(req: NextRequest) {
     } else if (body.action === "generate-page") {
       const validation = validatePageOutput(parsed);
       if (!validation.valid || validation.blocks.length === 0) {
-        return NextResponse.json({
-          success: false,
-          error: `Page generation failed: ${validation.errors.join(", ")}`,
-        } satisfies AiResponse);
+        // ── Fallback: use template blocks instead of failing ──
+        console.warn("[AI] Page generation validation failed — using template fallback. Errors:", validation.errors);
+        const fallbackBlocks = getFallbackBlocks(body.context, body.tone);
+        if (fallbackBlocks.length > 0) {
+          response = {
+            success: true,
+            blocks: fallbackBlocks,
+            blockType: "page",
+            explanation: "Generated from template (AI output didn't pass validation). You can regenerate or edit manually.",
+          };
+        } else {
+          return NextResponse.json({
+            success: false,
+            error: `Page generation failed: ${validation.errors.join(", ")}`,
+          } satisfies AiResponse);
+        }
+      } else {
+        response = {
+          success: true,
+          blocks: validation.blocks,
+          blockType: "page",
+          explanation: buildExplanation(body, validation.warnings),
+        };
       }
-
-      response = {
-        success: true,
-        blocks: validation.blocks,
-        blockType: "page",
-        explanation: buildExplanation(body, validation.warnings),
-      };
     } else {
       const validation = validateAiOutput(body.blockType, parsed);
       if (validation.errors.length > 0) {
@@ -499,6 +512,20 @@ export async function POST(req: NextRequest) {
 
     const rawMsg = err.message || String(err);
     console.error("[AI] Error:", rawMsg);
+
+    // ── Fallback for generate-page: return template blocks even when OpenAI is down ──
+    if (body.action === "generate-page") {
+      const fallbackBlocks = getFallbackBlocks(body.context, body.tone);
+      if (fallbackBlocks.length > 0) {
+        console.log("[AI] Returning template fallback after provider failure");
+        return NextResponse.json({
+          success: true,
+          blocks: fallbackBlocks,
+          blockType: "page",
+          explanation: "Generated from template (AI was unavailable). You can regenerate or edit manually.",
+        } satisfies AiResponse);
+      }
+    }
 
     // User-friendly error messages with the actual error in dev
     const isDev = process.env.NODE_ENV !== "production";

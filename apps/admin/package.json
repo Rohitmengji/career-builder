@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@career-builder/database": "*",
+    "@career-builder/email": "*",
     "@career-builder/observability": "*",
     "@career-builder/security": "*",
     "@career-builder/shared": "*",
