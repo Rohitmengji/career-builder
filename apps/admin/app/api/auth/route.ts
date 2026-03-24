@@ -63,7 +63,18 @@ export const POST = withRequestLogging(async (req: Request) => {
     return NextResponse.json({ error: "Invalid email format" }, { status: 401 });
   }
 
-  const user = await findUserByEmail(email);
+  let user;
+  try {
+    user = await findUserByEmail(email);
+  } catch (dbErr: any) {
+    console.error("[auth] Database error during login:", dbErr.message, dbErr.stack);
+    const isDev = process.env.NODE_ENV !== "production";
+    return NextResponse.json(
+      { error: isDev ? `Database error: ${dbErr.message}` : "Internal server error" },
+      { status: 500 },
+    );
+  }
+
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash, user.id))) {
     recordFailedAttempt(ip);
     recordLoginFailure();
@@ -73,7 +84,11 @@ export const POST = withRequestLogging(async (req: Request) => {
   }
 
   clearAttempts(ip);
-  await updateLastLogin(user.id);
+  try {
+    await updateLastLogin(user.id);
+  } catch {
+    // non-fatal — don't block login if this fails
+  }
   await setSession(user);
   metrics.increment(METRIC.LOGINS_TOTAL, { tenantId: user.tenantId });
   log.info("login_success", { userId: user.id, tenantId: user.tenantId });

@@ -24,6 +24,13 @@ export async function GET() {
   const status = dbHealth.healthy ? "ok" : "degraded";
   const httpStatus = dbHealth.healthy ? 200 : 503;
 
+  // Database URL info (safe — never expose full URL, only provider type)
+  const rawDbUrl = process.env.DATABASE_URL || "";
+  const dbUrlType = rawDbUrl.startsWith("libsql://") ? "turso"
+    : rawDbUrl.startsWith("file:") ? "sqlite-file"
+    : rawDbUrl.startsWith("postgres") ? "postgresql"
+    : rawDbUrl ? "unknown" : "NOT_SET";
+
   return NextResponse.json(
     {
       status,
@@ -37,7 +44,9 @@ export async function GET() {
         healthy: dbHealth.healthy,
         latencyMs: dbHealth.latencyMs,
         provider: dbHealth.provider,
-        ...(dbHealth.error && process.env.NODE_ENV !== "production" && { error: dbHealth.error }),
+        urlType: dbUrlType,
+        isVercel: !!process.env.VERCEL,
+        ...(dbHealth.error && { error: dbHealth.error }),
       },
       services: {
         stripe: stripeConfigured ? "configured" : "not_configured",

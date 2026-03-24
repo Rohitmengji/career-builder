@@ -16,6 +16,8 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "npx tsx seed.ts",
+    "db:seed-prod": "npx tsx seed-production.ts",
+    "db:push-turso": "npx tsx push-turso.ts",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset --force",
     "postinstall": "prisma generate"
