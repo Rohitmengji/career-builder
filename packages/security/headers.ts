@@ -139,13 +139,18 @@ export function getSecurityHeaders(config: SecurityHeaderConfig = {}): Record<st
     "https://ipapi.co",
   ];
 
+  // GrapesJS telemetry (editor sends anonymous usage data)
+  const editorConnectSources = config.isAdmin
+    ? ["https://app.grapesjs.com"]
+    : [];
+
   // CSP — admin is more permissive for GrapesJS editor
   const cspConfig: CspConfig = config.isAdmin
     ? {
         allowInlineStyles: true,
         allowInlineScripts: true, // Next.js hydration bootstrap
         allowEval: true, // GrapesJS requires eval
-        connectSources: [...devConnectSources, ...envConnectSources, ...geoConnectSources],
+        connectSources: [...devConnectSources, ...envConnectSources, ...geoConnectSources, ...editorConnectSources],
         frameSources: ["https://www.youtube.com", "https://www.youtube-nocookie.com", "https://player.vimeo.com"],
         ...(config.csp || {}),
       }

@@ -3,12 +3,12 @@ import { getSecurityHeaders, toNextHeaders } from "@career-builder/security/head
 
 const secHeaders = getSecurityHeaders({ isAdmin: true });
 
-// Patch CSP to allow geo-pricing API calls (client-side IP detection)
-const GEO_CONNECT_SOURCES = "https://api.country.is https://ipwho.is https://ipapi.co";
+// Patch CSP to allow geo-pricing API calls and GrapesJS telemetry
+const EXTRA_CONNECT_SOURCES = "https://api.country.is https://ipwho.is https://ipapi.co https://app.grapesjs.com";
 if (secHeaders["Content-Security-Policy"]) {
   secHeaders["Content-Security-Policy"] = secHeaders["Content-Security-Policy"].replace(
     /connect-src ([^;]+)/,
-    `connect-src $1 ${GEO_CONNECT_SOURCES}`,
+    `connect-src $1 ${EXTRA_CONNECT_SOURCES}`,
   );
 }
 
