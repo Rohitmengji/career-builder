@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: FormEvent) => {
@@ -65,7 +66,16 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">Password</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-medium text-gray-400">Password</label>
+              <button
+                type="button"
+                onClick={() => setShowForgot(!showForgot)}
+                className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+              >
+                Forgot password?
+              </button>
+            </div>
             <input
               type="password"
               value={password}
@@ -91,6 +101,25 @@ export default function LoginPage() {
             {loading ? "Signing in…" : "Sign In →"}
           </button>
         </form>
+
+        {/* Forgot password info panel */}
+        {showForgot && (
+          <div className="mt-4 bg-gray-800 border border-gray-700 rounded-xl p-4 animate-fade-in">
+            <div className="flex items-start gap-3">
+              <span className="text-lg mt-0.5">🔑</span>
+              <div>
+                <h3 className="text-sm font-semibold text-white mb-1">Can&apos;t access your account?</h3>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Ask your <span className="text-blue-400 font-medium">admin</span> to reset your password from{" "}
+                  <span className="text-white font-medium">Settings → Users → Reset Password</span>.
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  If you are the admin, you can reset your password via the database CLI or by re-running the seed script.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <p className="text-center text-xs text-gray-600 mt-6">
           Secured access · Session expires after 7 days of inactivity

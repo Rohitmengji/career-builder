@@ -58,6 +58,11 @@ export default function SettingsPage() {
   // Audit
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
 
+  // Reset password modal
+  const [resetPasswordUser, setResetPasswordUser] = useState<{ id: string; email: string; name: string } | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
@@ -196,6 +201,37 @@ export default function SettingsPage() {
     } else {
       const data = await res.json().catch(() => ({}));
       showToast(`❌ ${data.error || "Failed to update role"}`);
+    }
+  };
+
+  /* ── Admin reset password for another user ────────────────────── */
+  const handleResetPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!resetPasswordUser) return;
+
+    if (resetPassword.length < 6) {
+      showToast("❌ Password must be at least 6 characters");
+      return;
+    }
+    if (resetPassword !== resetConfirm) {
+      showToast("❌ Passwords don't match");
+      return;
+    }
+
+    const res = await fetch("/api/users", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-csrf-token": getCsrfToken() },
+      body: JSON.stringify({ id: resetPasswordUser.id, password: resetPassword }),
+    });
+
+    if (res.ok) {
+      setResetPasswordUser(null);
+      setResetPassword("");
+      setResetConfirm("");
+      showToast(`✅ Password reset for ${resetPasswordUser.email}`);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      showToast(`❌ ${data.error || "Failed to reset password"}`);
     }
   };
 
@@ -457,12 +493,24 @@ export default function SettingsPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {u.id !== user.id && (
-                          <button
-                            onClick={() => handleDeleteUser(u.id, u.email)}
-                            className="text-xs text-red-500 hover:text-red-700 font-medium"
-                          >
-                            Delete
-                          </button>
+                          <div className="flex items-center justify-end gap-3">
+                            <button
+                              onClick={() => {
+                                setResetPasswordUser({ id: u.id, email: u.email, name: u.name });
+                                setResetPassword("");
+                                setResetConfirm("");
+                              }}
+                              className="text-xs text-blue-500 hover:text-blue-700 font-medium"
+                            >
+                              Reset Password
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(u.id, u.email)}
+                              className="text-xs text-red-500 hover:text-red-700 font-medium"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         )}
                         {u.id === user.id && (
                           <span className="text-xs text-gray-300">You</span>
@@ -480,10 +528,78 @@ export default function SettingsPage() {
             {/* Role legend */}
             <div className="mt-6 bg-gray-50 rounded-xl p-4 text-xs text-gray-500 space-y-1.5">
               <p className="font-semibold text-gray-700 mb-2">Role Permissions</p>
-              <p><span className="font-semibold text-purple-600">Admin</span> — Full access: edit pages, manage users, view audit log</p>
+              <p><span className="font-semibold text-purple-600">Admin</span> — Full access: edit pages, manage users, reset passwords, view audit log</p>
               <p><span className="font-semibold text-blue-600">Editor</span> — Edit pages, upload media, change own password</p>
               <p><span className="font-semibold text-gray-600">Viewer</span> — Preview pages only (read-only)</p>
             </div>
+
+            {/* Reset Password Modal */}
+            {resetPasswordUser && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+                onClick={(e) => { if (e.target === e.currentTarget) setResetPasswordUser(null); }}
+              >
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-fade-in">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-lg font-bold">
+                      {resetPasswordUser.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">Reset Password</h3>
+                      <p className="text-xs text-gray-500">{resetPasswordUser.email}</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleResetPassword} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">New Password</label>
+                      <input
+                        type="password"
+                        value={resetPassword}
+                        onChange={(e) => setResetPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        autoComplete="new-password"
+                        placeholder="Min 6 characters"
+                        className="w-full bg-white border border-gray-300 text-gray-900 px-3 py-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Confirm Password</label>
+                      <input
+                        type="password"
+                        value={resetConfirm}
+                        onChange={(e) => setResetConfirm(e.target.value)}
+                        required
+                        minLength={6}
+                        autoComplete="new-password"
+                        placeholder="Re-type password"
+                        className="w-full bg-white border border-gray-300 text-gray-900 px-3 py-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-400"
+                      />
+                    </div>
+                    <div className="flex gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setResetPasswordUser(null)}
+                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-lg text-sm transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
+                      >
+                        Reset Password
+                      </button>
+                    </div>
+                  </form>
+
+                  <p className="text-[10px] text-gray-400 mt-4 text-center">
+                    The user will need to sign in with the new password. Active sessions will remain until they expire.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
