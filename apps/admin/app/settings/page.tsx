@@ -245,6 +245,8 @@ export default function SettingsPage() {
 
   const isAdmin = user.role === "admin" || user.role === "super_admin";
   const isSuperAdmin = user.role === "super_admin";
+  /** Only root admin (admin@company.com) and super_admin can manage roles */
+  const canManageRoles = isSuperAdmin || user.email === "admin@company.com";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -484,9 +486,9 @@ export default function SettingsPage() {
                           /* Protected accounts: root admin + super admin — roles are immutable */
                           const isProtectedAccount = u.email === "admin@company.com" || u.email === "superadmin@company.com";
                           const isSelf = u.id === user.id;
-                          /* Only super_admin can change admin/super_admin roles. Admins can change lower roles. */
+                          /* Only root admin (admin@company.com) and super_admin can change roles */
                           const isTargetHigherRole = (u.role === "super_admin" || u.role === "admin") && user.role !== "super_admin";
-                          const isDisabled = isSelf || isProtectedAccount || isTargetHigherRole;
+                          const isDisabled = isSelf || isProtectedAccount || isTargetHigherRole || !canManageRoles;
                           return (
                             <select
                               value={u.role}
@@ -495,6 +497,7 @@ export default function SettingsPage() {
                               title={
                                 isProtectedAccount ? "Protected account — role cannot be changed" :
                                 isSelf ? "Cannot change your own role" :
+                                !canManageRoles ? "Only root admin or Super Admin can change roles" :
                                 isTargetHigherRole ? "Only Super Admin can change this role" :
                                 undefined
                               }

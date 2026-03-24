@@ -17,9 +17,19 @@ import { sanitizeEmail, sanitizeString } from "@career-builder/security/sanitize
 /** List of emails that are protected — cannot be deleted or have their role changed */
 const PROTECTED_ACCOUNTS = new Set(["admin@company.com", "superadmin@company.com"]);
 
+/** The root admin email — only this admin (and super_admin) can change roles */
+const ROOT_ADMIN_EMAIL = "admin@company.com";
+
 /** Check if a role is admin-level (admin or super_admin) */
 function isAdminRole(role: string): boolean {
   return role === "admin" || role === "super_admin";
+}
+
+/** Check if the session user is allowed to manage roles.
+ *  Only the root admin (admin@company.com) and super_admin can change other users' roles.
+ *  Other admin-level users can view users but NOT change roles. */
+function canManageRoles(sessionEmail: string, sessionRole: string): boolean {
+  return sessionRole === "super_admin" || sessionEmail === ROOT_ADMIN_EMAIL;
 }
 
 /** GET /api/users — list all users (admin/super_admin only) */
@@ -125,6 +135,15 @@ export async function PUT(req: Request) {
 
   // PROTECTION: Protected accounts' roles are immutable.
   if (parsed.data.role) {
+    // Only root admin (admin@company.com) and super_admin can change roles
+    if (!canManageRoles(session.email, session.role)) {
+      console.warn(`[users] BLOCKED: ${session.email} (${session.role}) tried to change role — only root admin or super_admin can manage roles`);
+      return NextResponse.json(
+        { error: "Only the root admin (admin@company.com) or Super Admin can change user roles." },
+        { status: 403 },
+      );
+    }
+
     const targetUser = await findUserById(id);
     if (targetUser && PROTECTED_ACCOUNTS.has(targetUser.email)) {
       console.warn(`[users] BLOCKED: ${session.email} tried to change protected account ${targetUser.email} role to ${parsed.data.role}`);
