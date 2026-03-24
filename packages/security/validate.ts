@@ -38,13 +38,13 @@ export const createUserSchema = z.object({
   email,
   name,
   password,
-  role: z.enum(["admin", "hiring_manager", "recruiter", "viewer"]),
+  role: z.enum(["super_admin", "admin", "hiring_manager", "recruiter", "viewer"]),
 }).strict();
 
 export const updateUserSchema = z.object({
   id: cuid,
   name: name.optional(),
-  role: z.enum(["admin", "hiring_manager", "recruiter", "viewer"]).optional(),
+  role: z.enum(["super_admin", "admin", "hiring_manager", "recruiter", "viewer"]).optional(),
   password: password.optional(),
   department: z.string().max(100).optional(),
 }).strict();

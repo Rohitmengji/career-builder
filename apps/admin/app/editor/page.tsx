@@ -52,7 +52,7 @@ interface SessionUser {
   id: string;
   email: string;
   name: string;
-  role: "admin" | "editor" | "viewer";
+  role: "super_admin" | "admin" | "hiring_manager" | "recruiter" | "viewer";
 }
 
 /** Read the CSRF cookie value (it's not httpOnly so JS can read it) */
@@ -824,7 +824,7 @@ export default function EditorPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] text-gray-700 font-medium truncate">{user.name}</p>
-                <p className="text-[10px] text-gray-400 truncate">{user.email} · <span className={`font-semibold ${user.role === 'admin' ? 'text-purple-500' : user.role === 'editor' ? 'text-blue-500' : 'text-gray-500'}`}>{user.role}</span></p>
+                <p className="text-[10px] text-gray-400 truncate">{user.email} · <span className={`font-semibold ${user.role === 'super_admin' ? 'text-red-500' : user.role === 'admin' ? 'text-purple-500' : user.role === 'hiring_manager' ? 'text-blue-500' : user.role === 'recruiter' ? 'text-teal-500' : 'text-gray-500'}`}>{user.role === 'super_admin' ? 'Super Admin' : user.role === 'hiring_manager' ? 'Hiring Manager' : user.role}</span></p>
               </div>
             </div>
           )}
@@ -923,7 +923,7 @@ export default function EditorPage() {
               <p>⌫ — Delete selected</p>
             </>
           )}
-          {user?.role === "admin" && (
+          {(user?.role === "admin" || user?.role === "super_admin") && (
             <p className="mt-1">
               <a href="/settings" className="text-blue-500 hover:text-blue-400 underline">⚙ Settings</a>
               {" · "}

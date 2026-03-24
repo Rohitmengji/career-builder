@@ -10,8 +10,8 @@
 /*  Enums (string unions for JSON/SQLite compatibility)                */
 /* ================================================================== */
 
-export type UserRole = "admin" | "hiring_manager" | "recruiter" | "viewer";
-export const USER_ROLES: UserRole[] = ["admin", "hiring_manager", "recruiter", "viewer"];
+export type UserRole = "super_admin" | "admin" | "hiring_manager" | "recruiter" | "viewer";
+export const USER_ROLES: UserRole[] = ["super_admin", "admin", "hiring_manager", "recruiter", "viewer"];
 
 export type EmploymentType = "full-time" | "part-time" | "contract" | "internship";
 export const EMPLOYMENT_TYPES: EmploymentType[] = ["full-time", "part-time", "contract", "internship"];

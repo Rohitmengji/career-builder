@@ -8,14 +8,14 @@ interface SessionUser {
   id: string;
   email: string;
   name: string;
-  role: "admin" | "editor" | "viewer";
+  role: "super_admin" | "admin" | "hiring_manager" | "recruiter" | "viewer";
 }
 
 interface UserRecord {
   id: string;
   email: string;
   name: string;
-  role: "admin" | "editor" | "viewer";
+  role: "super_admin" | "admin" | "hiring_manager" | "recruiter" | "viewer";
   createdAt: string;
   lastLogin?: string;
 }
@@ -53,7 +53,7 @@ export default function SettingsPage() {
   const [nuEmail, setNuEmail] = useState("");
   const [nuName, setNuName] = useState("");
   const [nuPassword, setNuPassword] = useState("");
-  const [nuRole, setNuRole] = useState<"admin" | "editor" | "viewer">("editor");
+  const [nuRole, setNuRole] = useState<"super_admin" | "admin" | "hiring_manager" | "recruiter" | "viewer">("viewer");
 
   // Audit
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
@@ -98,7 +98,7 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (user?.role === "admin") {
+    if (user?.role === "admin" || user?.role === "super_admin") {
       if (tab === "users") loadUsers();
       if (tab === "audit") loadAudit();
     }
@@ -160,7 +160,7 @@ export default function SettingsPage() {
       setNuEmail("");
       setNuName("");
       setNuPassword("");
-      setNuRole("editor");
+      setNuRole("viewer");
       loadUsers();
       showToast("✅ User created");
     } else {
@@ -243,7 +243,8 @@ export default function SettingsPage() {
     );
   }
 
-  const isAdmin = user.role === "admin";
+  const isAdmin = user.role === "admin" || user.role === "super_admin";
+  const isSuperAdmin = user.role === "super_admin";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -328,11 +329,15 @@ export default function SettingsPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                 <div className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold ${
+                  user.role === "super_admin" ? "bg-red-100 text-red-700" :
                   user.role === "admin" ? "bg-purple-100 text-purple-700" :
-                  user.role === "editor" ? "bg-blue-100 text-blue-700" :
+                  user.role === "hiring_manager" ? "bg-blue-100 text-blue-700" :
+                  user.role === "recruiter" ? "bg-teal-100 text-teal-700" :
                   "bg-gray-100 text-gray-600"
                 }`}>
-                  {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                  {user.role === "super_admin" ? "Super Admin" :
+                   user.role === "hiring_manager" ? "Hiring Manager" :
+                   user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                 </div>
               </div>
 
@@ -429,12 +434,14 @@ export default function SettingsPage() {
                     <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
                     <select
                       value={nuRole}
-                      onChange={(e) => setNuRole(e.target.value as any)}
+                      onChange={(e) => setNuRole(e.target.value as "super_admin" | "admin" | "hiring_manager" | "recruiter" | "viewer")}
                       className="w-full bg-white border border-gray-300 text-gray-900 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="admin">Admin</option>
-                      <option value="editor">Editor</option>
                       <option value="viewer">Viewer</option>
+                      <option value="recruiter">Recruiter</option>
+                      <option value="hiring_manager">Hiring Manager</option>
+                      <option value="admin">Admin</option>
+                      {isSuperAdmin && <option value="super_admin">Super Admin</option>}
                     </select>
                   </div>
                 </div>
@@ -473,29 +480,49 @@ export default function SettingsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <select
-                          value={u.role}
-                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                          disabled={u.id === user.id}
-                          className={`text-xs font-semibold px-2 py-1 rounded-lg border ${
-                            u.role === "admin" ? "bg-purple-50 text-purple-700 border-purple-200" :
-                            u.role === "editor" ? "bg-blue-50 text-blue-700 border-blue-200" :
-                            "bg-gray-50 text-gray-600 border-gray-200"
-                          } ${u.id === user.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                        >
-                          <option value="admin">Admin</option>
-                          <option value="editor">Editor</option>
-                          <option value="viewer">Viewer</option>
-                        </select>
+                        {(() => {
+                          /* Protected accounts: root admin + super admin — roles are immutable */
+                          const isProtectedAccount = u.email === "admin@company.com" || u.email === "superadmin@company.com";
+                          const isSelf = u.id === user.id;
+                          /* Only super_admin can change admin/super_admin roles. Admins can change lower roles. */
+                          const isTargetHigherRole = (u.role === "super_admin" || u.role === "admin") && user.role !== "super_admin";
+                          const isDisabled = isSelf || isProtectedAccount || isTargetHigherRole;
+                          return (
+                            <select
+                              value={u.role}
+                              onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                              disabled={isDisabled}
+                              title={
+                                isProtectedAccount ? "Protected account — role cannot be changed" :
+                                isSelf ? "Cannot change your own role" :
+                                isTargetHigherRole ? "Only Super Admin can change this role" :
+                                undefined
+                              }
+                              className={`text-xs font-semibold px-2 py-1 rounded-lg border ${
+                                u.role === "super_admin" ? "bg-red-50 text-red-700 border-red-200" :
+                                u.role === "admin" ? "bg-purple-50 text-purple-700 border-purple-200" :
+                                u.role === "hiring_manager" ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                u.role === "recruiter" ? "bg-teal-50 text-teal-700 border-teal-200" :
+                                "bg-gray-50 text-gray-600 border-gray-200"
+                              } ${isDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                            >
+                              <option value="viewer">Viewer</option>
+                              <option value="recruiter">Recruiter</option>
+                              <option value="hiring_manager">Hiring Manager</option>
+                              <option value="admin">Admin</option>
+                              {(isSuperAdmin || u.role === "super_admin") && <option value="super_admin">Super Admin</option>}
+                            </select>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-500">
                         {u.lastLogin ? new Date(u.lastLogin).toLocaleString() : "Never"}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {u.id !== user.id && (
+                        {u.id !== user.id && u.email !== "admin@company.com" && u.email !== "superadmin@company.com" && (
                           <div className="flex items-center justify-end gap-3">
-                            {/* Admin passwords can only be changed by themselves — hide Reset for admins */}
-                            {u.role !== "admin" && (
+                            {/* Admin/super_admin passwords can only be changed by themselves */}
+                            {u.role !== "admin" && u.role !== "super_admin" && (
                               <button
                                 onClick={() => {
                                   setResetPasswordUser({ id: u.id, email: u.email, name: u.name });
@@ -507,7 +534,7 @@ export default function SettingsPage() {
                                 Reset Password
                               </button>
                             )}
-                            {u.role === "admin" && (
+                            {(u.role === "admin" || u.role === "super_admin") && (
                               <span className="text-[10px] text-gray-400 italic">Self-managed password</span>
                             )}
                             <button
@@ -520,6 +547,9 @@ export default function SettingsPage() {
                         )}
                         {u.id === user.id && (
                           <span className="text-xs text-gray-300">You</span>
+                        )}
+                        {u.id !== user.id && (u.email === "admin@company.com" || u.email === "superadmin@company.com") && (
+                          <span className="text-[10px] text-gray-400 italic">Protected account</span>
                         )}
                       </td>
                     </tr>
@@ -534,8 +564,10 @@ export default function SettingsPage() {
             {/* Role legend */}
             <div className="mt-6 bg-gray-50 rounded-xl p-4 text-xs text-gray-500 space-y-1.5">
               <p className="font-semibold text-gray-700 mb-2">Role Permissions</p>
+              <p><span className="font-semibold text-red-600">Super Admin</span> — Full platform control: all admin access + AI config, system settings, credit overrides</p>
               <p><span className="font-semibold text-purple-600">Admin</span> — Full access: edit pages, manage users, reset passwords, view audit log</p>
-              <p><span className="font-semibold text-blue-600">Editor</span> — Edit pages, upload media, change own password</p>
+              <p><span className="font-semibold text-blue-600">Hiring Manager</span> — Manage job postings, review applications, edit pages</p>
+              <p><span className="font-semibold text-teal-600">Recruiter</span> — Post jobs, manage candidates, upload media</p>
               <p><span className="font-semibold text-gray-600">Viewer</span> — Preview pages only (read-only)</p>
             </div>
 

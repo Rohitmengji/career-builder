@@ -72,7 +72,7 @@ export default async function AdminHome() {
           </Link>
 
           {/* Settings */}
-          {session.role === "admin" && (
+          {(session.role === "admin" || session.role === "super_admin") && (
             <Link
               href="/settings"
               className="group block rounded-2xl border border-gray-200 bg-white p-8 shadow-sm hover:shadow-md hover:border-gray-300 transition-all"

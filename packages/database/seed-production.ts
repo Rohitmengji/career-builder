@@ -73,8 +73,25 @@ async function main() {
   });
   console.log(`  ✓ Admin: ${admin.email} (password: ${adminPassword === "admin123" ? "admin123" : "***"})`);
 
+  // 3. Super Admin user
+  const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || "superadmin123";
+  const superAdminHash = await hashPassword(superAdminPassword);
+
+  const superAdmin = await prisma.user.upsert({
+    where: { email_tenantId: { email: "superadmin@company.com", tenantId: tenant.id } },
+    update: { passwordHash: superAdminHash },
+    create: {
+      email: "superadmin@company.com",
+      name: "Super Admin",
+      passwordHash: superAdminHash,
+      role: "super_admin",
+      tenantId: tenant.id,
+    },
+  });
+  console.log(`  ✓ Super Admin: ${superAdmin.email} (password: ${superAdminPassword === "superadmin123" ? "superadmin123" : "***"})`);
+
   console.log("\n✅ Production seed complete!");
-  console.log("   You can now log in at /login with admin@company.com\n");
+  console.log("   You can now log in at /login with admin@company.com or superadmin@company.com\n");
 
   if (adminPassword === "admin123") {
     console.log("⚠️  WARNING: Using default password 'admin123'. Change it after first login!");

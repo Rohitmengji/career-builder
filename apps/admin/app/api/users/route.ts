@@ -14,13 +14,21 @@ import {
 import { createUserSchema, updateUserSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeEmail, sanitizeString } from "@career-builder/security/sanitize";
 
-/** GET /api/users — list all users (admin only) */
+/** List of emails that are protected — cannot be deleted or have their role changed */
+const PROTECTED_ACCOUNTS = new Set(["admin@company.com", "superadmin@company.com"]);
+
+/** Check if a role is admin-level (admin or super_admin) */
+function isAdminRole(role: string): boolean {
+  return role === "admin" || role === "super_admin";
+}
+
+/** GET /api/users — list all users (admin/super_admin only) */
 export async function GET() {
   const session = await getSessionReadOnly();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (session.role !== "admin") {
+  if (!isAdminRole(session.role)) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
@@ -28,13 +36,13 @@ export async function GET() {
   return NextResponse.json({ users });
 }
 
-/** POST /api/users — create a new user (admin only) */
+/** POST /api/users — create a new user (admin/super_admin only) */
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (session.role !== "admin") {
+  if (!isAdminRole(session.role)) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
@@ -54,6 +62,11 @@ export async function POST(req: Request) {
   const { role, password } = parsed.data;
   const email = sanitizeEmail(parsed.data.email);
   const name = sanitizeString(parsed.data.name, 200);
+
+  // Only super_admin can create super_admin users
+  if (role === "super_admin" && session.role !== "super_admin") {
+    return NextResponse.json({ error: "Only Super Admin can create Super Admin users." }, { status: 403 });
+  }
 
   if (!email) {
     return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
@@ -94,20 +107,39 @@ export async function PUT(req: Request) {
   const { id } = parsed.data;
 
   // Non-admins can only update their own password/name
-  if (session.role !== "admin" && id !== session.userId) {
+  if (!isAdminRole(session.role) && id !== session.userId) {
     return NextResponse.json({ error: "Cannot update other users" }, { status: 403 });
   }
 
-  // PROTECTION: Admin users' passwords can only be changed by themselves.
-  // This prevents one admin from resetting another admin's password (especially the root admin).
+  // PROTECTION: Admin/super_admin passwords can only be changed by themselves.
   if (parsed.data.password && id !== session.userId) {
     const targetUser = await findUserById(id);
-    if (targetUser && targetUser.role === "admin") {
-      console.warn(`[users] BLOCKED: Admin ${session.email} tried to reset password for admin ${targetUser.email}`);
+    if (targetUser && isAdminRole(targetUser.role)) {
+      console.warn(`[users] BLOCKED: ${session.email} tried to reset password for ${targetUser.role} ${targetUser.email}`);
       return NextResponse.json(
         { error: "Admin passwords can only be changed by the admin themselves. Ask them to change it from their Profile settings." },
         { status: 403 },
       );
+    }
+  }
+
+  // PROTECTION: Protected accounts' roles are immutable.
+  if (parsed.data.role) {
+    const targetUser = await findUserById(id);
+    if (targetUser && PROTECTED_ACCOUNTS.has(targetUser.email)) {
+      console.warn(`[users] BLOCKED: ${session.email} tried to change protected account ${targetUser.email} role to ${parsed.data.role}`);
+      return NextResponse.json(
+        { error: "This account's role cannot be changed." },
+        { status: 403 },
+      );
+    }
+    // Only super_admin can assign/change super_admin role
+    if (parsed.data.role === "super_admin" && session.role !== "super_admin") {
+      return NextResponse.json({ error: "Only Super Admin can assign the Super Admin role." }, { status: 403 });
+    }
+    // Only super_admin can change an existing admin/super_admin's role
+    if (targetUser && isAdminRole(targetUser.role) && session.role !== "super_admin") {
+      return NextResponse.json({ error: "Only Super Admin can change admin-level roles." }, { status: 403 });
     }
   }
 
@@ -116,7 +148,7 @@ export async function PUT(req: Request) {
   if (parsed.data.password) {
     updates.password = parsed.data.password;
   }
-  if (parsed.data.role && session.role === "admin") updates.role = parsed.data.role as UserRole;
+  if (parsed.data.role && isAdminRole(session.role)) updates.role = parsed.data.role as UserRole;
 
   const updated = await updateUser(id, updates);
   if (!updated) {
@@ -130,13 +162,13 @@ export async function PUT(req: Request) {
   });
 }
 
-/** DELETE /api/users — delete a user (admin only) */
+/** DELETE /api/users — delete a user (admin/super_admin only) */
 export async function DELETE(req: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (session.role !== "admin") {
+  if (!isAdminRole(session.role)) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
@@ -154,6 +186,18 @@ export async function DELETE(req: Request) {
 
   if (id === session.userId) {
     return NextResponse.json({ error: "Cannot delete yourself" }, { status: 400 });
+  }
+
+  // PROTECTION: Protected accounts cannot be deleted by anyone.
+  const targetUser = await findUserById(id);
+  if (targetUser && PROTECTED_ACCOUNTS.has(targetUser.email)) {
+    console.warn(`[users] BLOCKED: ${session.email} tried to delete protected account ${targetUser.email}`);
+    return NextResponse.json({ error: "This protected account cannot be deleted." }, { status: 403 });
+  }
+
+  // Only super_admin can delete admin-level users
+  if (targetUser && isAdminRole(targetUser.role) && session.role !== "super_admin") {
+    return NextResponse.json({ error: "Only Super Admin can delete admin-level users." }, { status: 403 });
   }
 
   const deleted = await deleteUser(id, session.tenantId);

@@ -18,7 +18,7 @@ export interface SessionData {
   userId: string;
   email: string;
   name: string;
-  role: "admin" | "hiring_manager" | "recruiter" | "viewer";
+  role: "super_admin" | "admin" | "hiring_manager" | "recruiter" | "viewer";
   tenantId: string;
   /** Epoch ms — used for sliding renewal window */
   issuedAt: number;

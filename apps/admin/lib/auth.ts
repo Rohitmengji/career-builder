@@ -3,7 +3,7 @@
  *
  * Features:
  *   - Multi-user with email + password (hashed with bcrypt, cost 12)
- *   - Roles: admin, hiring_manager, recruiter, viewer (RBAC)
+ *   - Roles: super_admin, admin, hiring_manager, recruiter, viewer (RBAC)
  *   - Rate limiting per IP (5 attempts → 60s lockout)
  *   - CSRF double-submit cookie
  *   - iron-session encrypted cookies (AES-256-GCM, tamper-proof)
@@ -36,7 +36,7 @@ const BCRYPT_ROUNDS = 12;
 /*  Types                                                              */
 /* ================================================================== */
 
-export type UserRole = "admin" | "hiring_manager" | "recruiter" | "viewer";
+export type UserRole = "super_admin" | "admin" | "hiring_manager" | "recruiter" | "viewer";
 
 export interface User {
   id: string;
@@ -413,6 +413,7 @@ export async function hasRole(requiredRole: UserRole): Promise<boolean> {
     recruiter: 1,
     hiring_manager: 2,
     admin: 3,
+    super_admin: 4,
   };
   return (hierarchy[session.role] ?? 0) >= (hierarchy[requiredRole] ?? 0);
 }

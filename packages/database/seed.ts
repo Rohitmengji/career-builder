@@ -77,6 +77,21 @@ async function main() {
   });
   console.log(`  ✓ User: ${admin.email} (${admin.role})`);
 
+  // ─── Super Admin ───────────────────────────────────────────
+  const superAdminHash = await hashPasswordBcrypt("superadmin123");
+  const superAdmin = await prisma.user.upsert({
+    where: { email_tenantId: { email: "superadmin@company.com", tenantId: tenant.id } },
+    update: {},
+    create: {
+      email: "superadmin@company.com",
+      name: "Super Admin",
+      passwordHash: superAdminHash,
+      role: "super_admin",
+      tenantId: tenant.id,
+    },
+  });
+  console.log(`  ✓ User: ${superAdmin.email} (${superAdmin.role})`);
+
   // ─── Hiring Manager ───────────────────────────────────────
   const hmHash = await hashPasswordBcrypt("hiring123");
   const hm = await prisma.user.upsert({
