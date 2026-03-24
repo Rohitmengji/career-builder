@@ -118,14 +118,13 @@ export function useSubscription() {
    * The server re-fetch (500ms later) corrects any drift.
    */
   const decrementCredit = useCallback(() => {
-    setStatus((prev) => {
-      const updated = {
-        ...prev,
-        aiCreditsRemaining: Math.max(0, prev.aiCreditsRemaining - 1),
-      };
-      emitSync(updated);
-      return updated;
-    });
+    const updated = {
+      ...((_cachedStatus || status)),
+      aiCreditsRemaining: Math.max(0, (_cachedStatus || status).aiCreditsRemaining - 1),
+    };
+    setStatus(updated);
+    // Defer emitSync to avoid setState-during-render in other components
+    queueMicrotask(() => emitSync(updated));
 
     // Re-fetch from server after a short delay to get the real count
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
@@ -133,25 +132,24 @@ export function useSubscription() {
       const s = await fetchFromServer();
       emitSync(s);
     }, 800);
-  }, []);
+  }, [status]);
 
   /** Optimistic decrement for job AI credits (separate weekly pool) */
   const decrementJobCredit = useCallback(() => {
-    setStatus((prev) => {
-      const updated = {
-        ...prev,
-        jobAiCreditsRemaining: Math.max(0, prev.jobAiCreditsRemaining - 1),
-      };
-      emitSync(updated);
-      return updated;
-    });
+    const updated = {
+      ...((_cachedStatus || status)),
+      jobAiCreditsRemaining: Math.max(0, (_cachedStatus || status).jobAiCreditsRemaining - 1),
+    };
+    setStatus(updated);
+    // Defer emitSync to avoid setState-during-render in other components
+    queueMicrotask(() => emitSync(updated));
 
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     refreshTimerRef.current = setTimeout(async () => {
       const s = await fetchFromServer();
       emitSync(s);
     }, 800);
-  }, []);
+  }, [status]);
 
   /** Switch plan via dev-only API. Only works in development. */
   const setPlan = useCallback(async (plan: SubscriptionPlan) => {
