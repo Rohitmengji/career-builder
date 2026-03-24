@@ -83,6 +83,15 @@ export const POST = withRequestLogging(async (req: Request) => {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
+  // Defense-in-depth: reject deactivated users even if findByEmail somehow returns them
+  if (!user.isActive) {
+    recordFailedAttempt(ip);
+    recordLoginFailure();
+    metrics.increment(METRIC.LOGIN_FAILURES, { reason: "inactive_user" });
+    log.warn("login_inactive_user", { ip, userId: user.id });
+    return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+  }
+
   clearAttempts(ip);
   try {
     await updateLastLogin(user.id);

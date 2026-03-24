@@ -28,8 +28,8 @@ export const userRepo = {
   },
 
   async findByEmail(email: string, tenantId: string) {
-    return prisma.user.findUnique({
-      where: { email_tenantId: { email: email.toLowerCase(), tenantId } },
+    return prisma.user.findFirst({
+      where: { email: email.toLowerCase(), tenantId, isActive: true },
     });
   },
 
@@ -50,9 +50,25 @@ export const userRepo = {
     });
   },
 
+  /**
+   * Create a new user, or reactivate a previously soft-deleted user with the same email+tenant.
+   * Uses upsert to handle the @@unique([email, tenantId]) constraint safely.
+   */
   async create(data: CreateUserInput) {
-    return prisma.user.create({
-      data: {
+    return prisma.user.upsert({
+      where: {
+        email_tenantId: { email: data.email.toLowerCase(), tenantId: data.tenantId },
+      },
+      // Reactivate soft-deleted user with fresh data
+      update: {
+        name: data.name,
+        passwordHash: data.passwordHash,
+        role: data.role || "viewer",
+        department: data.department ?? null,
+        isActive: true,
+      },
+      // Normal creation path for genuinely new users
+      create: {
         email: data.email.toLowerCase(),
         name: data.name,
         passwordHash: data.passwordHash,

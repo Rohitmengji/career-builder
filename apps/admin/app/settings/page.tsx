@@ -494,16 +494,22 @@ export default function SettingsPage() {
                       <td className="px-4 py-3 text-right">
                         {u.id !== user.id && (
                           <div className="flex items-center justify-end gap-3">
-                            <button
-                              onClick={() => {
-                                setResetPasswordUser({ id: u.id, email: u.email, name: u.name });
-                                setResetPassword("");
-                                setResetConfirm("");
-                              }}
-                              className="text-xs text-blue-500 hover:text-blue-700 font-medium"
-                            >
-                              Reset Password
-                            </button>
+                            {/* Admin passwords can only be changed by themselves — hide Reset for admins */}
+                            {u.role !== "admin" && (
+                              <button
+                                onClick={() => {
+                                  setResetPasswordUser({ id: u.id, email: u.email, name: u.name });
+                                  setResetPassword("");
+                                  setResetConfirm("");
+                                }}
+                                className="text-xs text-blue-500 hover:text-blue-700 font-medium"
+                              >
+                                Reset Password
+                              </button>
+                            )}
+                            {u.role === "admin" && (
+                              <span className="text-[10px] text-gray-400 italic">Self-managed password</span>
+                            )}
                             <button
                               onClick={() => handleDeleteUser(u.id, u.email)}
                               className="text-xs text-red-500 hover:text-red-700 font-medium"

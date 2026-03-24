@@ -153,10 +153,16 @@ export async function createUser(
   tenantId?: string,
 ): Promise<User> {
   const tid = tenantId || DEFAULT_TENANT_ID;
+
+  // findByEmail now only returns active users, so this check
+  // correctly allows re-creating a previously soft-deleted user.
   const existing = await userRepo.findByEmail(email, tid);
   if (existing) {
     throw new Error("Email already exists");
   }
+
+  // userRepo.create uses upsert — if a soft-deleted record exists
+  // with the same email+tenant, it reactivates it with fresh data.
   return userRepo.create({
     email: email.toLowerCase(),
     name,
@@ -337,6 +343,13 @@ export async function getSession(): Promise<SessionPayload | null> {
     return null;
   }
 
+  // Verify the user still exists and is active (handles mid-session deactivation)
+  const user = await userRepo.findById(session.userId);
+  if (!user || !user.isActive) {
+    session.destroy();
+    return null;
+  }
+
   // Sliding renewal — refresh issuedAt
   session.issuedAt = Date.now();
   await session.save();
@@ -354,6 +367,9 @@ export async function getSession(): Promise<SessionPayload | null> {
 /**
  * Read-only session check — safe to call from Server Component pages.
  * Does NOT perform sliding renewal (no cookie write).
+ *
+ * Verifies the user is still active in the database to prevent
+ * soft-deleted users from retaining access via stale sessions.
  */
 export async function getSessionReadOnly(): Promise<SessionPayload | null> {
   const session = await getIronSessionFromCookies();
@@ -362,6 +378,12 @@ export async function getSessionReadOnly(): Promise<SessionPayload | null> {
 
   // Check expiry
   if (session.issuedAt && Date.now() - session.issuedAt > SESSION_MAX_AGE_MS) {
+    return null;
+  }
+
+  // Verify user is still active (handles mid-session deactivation)
+  const user = await userRepo.findById(session.userId);
+  if (!user || !user.isActive) {
     return null;
   }
 

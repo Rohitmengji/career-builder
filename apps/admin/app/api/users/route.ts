@@ -7,6 +7,7 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  findUserById,
   writeAuditLog,
   type UserRole,
 } from "@/lib/auth";
@@ -95,6 +96,19 @@ export async function PUT(req: Request) {
   // Non-admins can only update their own password/name
   if (session.role !== "admin" && id !== session.userId) {
     return NextResponse.json({ error: "Cannot update other users" }, { status: 403 });
+  }
+
+  // PROTECTION: Admin users' passwords can only be changed by themselves.
+  // This prevents one admin from resetting another admin's password (especially the root admin).
+  if (parsed.data.password && id !== session.userId) {
+    const targetUser = await findUserById(id);
+    if (targetUser && targetUser.role === "admin") {
+      console.warn(`[users] BLOCKED: Admin ${session.email} tried to reset password for admin ${targetUser.email}`);
+      return NextResponse.json(
+        { error: "Admin passwords can only be changed by the admin themselves. Ask them to change it from their Profile settings." },
+        { status: 403 },
+      );
+    }
   }
 
   const updates: { name?: string; role?: UserRole; password?: string } = {};
