@@ -79,7 +79,9 @@ export const registerNavbarBlock = (editor: any) => {
     type: "navbar",
     style: {
       padding: "0",
+      "min-height": "4rem",
       "max-width": "100%",
+      cursor: "default",
       ...vs,
     },
     components: buildComponents(d),

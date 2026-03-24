@@ -515,6 +515,14 @@ export default function EditorPage() {
 
     editorInstance.current = editor;
 
+    // Track last canvas click coordinates for fallback block resolution.
+    // GrapesJS sometimes selects the wrapper when clicking on the edge
+    // of full-width blocks (navbar, footer). We use these coordinates
+    // to find which block the user actually meant to click.
+    editor.on("canvas:click", (e: MouseEvent) => {
+      (editor as any).__lastCanvasClick = { x: e.clientX, y: e.clientY };
+    });
+
     // Helper: walk up from any component to find the nearest registered block.
     // Uses both GrapesJS model parent chain AND DOM fallback.
     const KNOWN = new Set(Object.keys(blockSchemas));
@@ -556,7 +564,45 @@ export default function EditorPage() {
       // Resolve to the block-level component (don't call editor.select()
       // to avoid triggering rebuild loops — just pass the block to React state)
       const block = findParentBlock(component);
-      setSelected(block || component);
+      if (block) {
+        setSelected(block);
+        return;
+      }
+
+      // Extra fallback: if the component IS the wrapper or body, check if
+      // only one top-level block exists at the click point. This handles
+      // cases where GrapesJS selects the canvas wrapper when clicking on
+      // the edge/border of full-width blocks like navbar or footer.
+      try {
+        const compType = component?.get?.("type");
+        if (compType === "wrapper" || compType === "body" || !compType) {
+          const el = component?.getEl?.();
+          const iframe = editor.Canvas?.getFrameEl?.();
+          const doc = iframe?.contentDocument || el?.ownerDocument;
+          if (doc) {
+            // Walk all top-level children and find the first whose bounding
+            // rect contains the current selection indicator or the last click.
+            const wrapper = editor.DomComponents.getWrapper();
+            const topKids = wrapper?.components?.()?.toArray?.() ?? [];
+            for (const kid of topKids) {
+              const kidType = kid.get("type");
+              if (!kidType || !KNOWN.has(kidType)) continue;
+              const kidEl = kid.getEl?.();
+              if (!kidEl) continue;
+              const rect = kidEl.getBoundingClientRect();
+              // Check if the selected wrapper's element overlaps with this block
+              // Use the iframe's last click coordinates if available
+              const lastClick = (editor as any).__lastCanvasClick;
+              if (lastClick && rect.top <= lastClick.y && lastClick.y <= rect.bottom && rect.left <= lastClick.x && lastClick.x <= rect.right) {
+                setSelected(kid);
+                return;
+              }
+            }
+          }
+        }
+      } catch { /* fallback failed */ }
+
+      setSelected(component);
     });
 
     editor.on("component:deselected", () => {
