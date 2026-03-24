@@ -14,6 +14,27 @@ const COLOR_MAP: Record<string, string> = {
   yellow: "#fefce8",
 };
 
+function buildComponents(props: any) {
+  return [
+    {
+      type: "text",
+      tagName: "h2",
+      attributes: { "data-field": "title" },
+      content: String(props.title || ""),
+      editable: true,
+      style: { "font-size": "1.75rem", "font-weight": "700", "margin-bottom": "1rem", color: "#111827" },
+    },
+    {
+      type: "text",
+      tagName: "p",
+      attributes: { "data-field": "body" },
+      content: String(props.body || ""),
+      editable: true,
+      style: { "font-size": "1rem", "line-height": "1.75", color: "#4b5563" },
+    },
+  ];
+}
+
 export const registerContentBlock = (editor: any) => {
   const d = getDefaultProps("content");
 
@@ -23,24 +44,8 @@ export const registerContentBlock = (editor: any) => {
       "text-align": String(d.textAlign || "left"),
       "background-color": COLOR_MAP[d.color] || "#ffffff",
     },
-    components: [
-      {
-        type: "text",
-        tagName: "h2",
-        attributes: { "data-field": "title" },
-        content: String(d.title || ""),
-        editable: true,
-        style: { "font-size": "1.75rem", "font-weight": "700", "margin-bottom": "1rem", color: "#111827" },
-      },
-      {
-        type: "text",
-        tagName: "p",
-        attributes: { "data-field": "body" },
-        content: String(d.body || ""),
-        editable: true,
-        style: { "font-size": "1rem", "line-height": "1.75", color: "#4b5563" },
-      },
-    ],
+    components: buildComponents(d),
+    rebuildComponents: buildComponents,
   });
 
   /* Live-rebuild: apply textAlign and background color when props change */

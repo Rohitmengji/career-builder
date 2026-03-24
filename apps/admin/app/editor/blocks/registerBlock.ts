@@ -76,20 +76,22 @@ export function registerBlock(editor: any, reg: BlockRegistration) {
 
   // 3. Auto-rebuild: when a rebuildComponents function is provided,
   //    re-render the entire canvas component tree on any prop change.
-  //    Uses a serialized props snapshot to avoid unnecessary rebuilds
-  //    (e.g. when GrapesJS fires component:update for selection changes).
+  //    Uses a per-model props snapshot cache (WeakMap) to avoid unnecessary
+  //    rebuilds and support multiple instances of the same block type.
   if (rebuildComponents) {
-    let lastPropsJSON = "";
+    const lastPropsCache = new WeakMap<object, string>();
     const rebuild = (model: any) => {
       if (model.get("type") !== type) return;
       const props = { ...defaults, ...model.get("props") };
       const propsJSON = JSON.stringify(props);
-      // Skip rebuild if props haven't actually changed
-      if (propsJSON === lastPropsJSON) return;
-      lastPropsJSON = propsJSON;
+      // Skip rebuild if props haven't actually changed for THIS model
+      if (lastPropsCache.get(model) === propsJSON) return;
+      lastPropsCache.set(model, propsJSON);
       try {
         const newTree = rebuildComponents(props);
         model.components(newTree);
+        // Force view re-render as safety net
+        try { model.view?.render(); } catch { /* noop */ }
       } catch (err) {
         console.warn(`[registerBlock] Rebuild failed for "${type}":`, err);
       }

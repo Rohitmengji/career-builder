@@ -1,10 +1,8 @@
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 
-export const registerJobCategoryBlock = (editor: any) => {
-  const d = getDefaultProps("job-category");
-
-  const categoryTile = (name: string, count: string) => ({
+function buildCategoryTiles(items: any[]) {
+  return items.map((item: any) => ({
     tagName: "div" as const,
     style: {
       flex: "1",
@@ -16,41 +14,53 @@ export const registerJobCategoryBlock = (editor: any) => {
       "text-align": "center",
     },
     components: [
-      { tagName: "h3" as const, content: name, style: { "font-weight": "600", "margin-bottom": "0.25rem" } },
-      { tagName: "span" as const, content: `${count} open roles`, style: { "font-size": "0.875rem", color: "#666" } },
+      { tagName: "h3" as const, content: String(item.name || ""), style: { "font-weight": "600", "margin-bottom": "0.25rem" } },
+      { tagName: "span" as const, content: `${item.count || "0"} open roles`, style: { "font-size": "0.875rem", color: "#666" } },
     ],
-  });
+  }));
+}
+
+function buildComponents(props: any) {
+  const items = Array.isArray(props.categories)
+    ? props.categories
+    : [
+        { name: "Engineering", count: "12" },
+        { name: "Design", count: "5" },
+        { name: "Marketing", count: "8" },
+        { name: "Sales", count: "6" },
+      ];
+  return [
+    {
+      type: "text",
+      tagName: "h2",
+      attributes: { "data-field": "title" },
+      content: String(props.title || ""),
+      editable: true,
+      style: { "font-size": "1.5rem", "font-weight": "700", "text-align": "center", "margin-bottom": "0.5rem" },
+    },
+    {
+      type: "text",
+      tagName: "p",
+      attributes: { "data-field": "subtitle" },
+      content: String(props.subtitle || ""),
+      editable: true,
+      style: { "text-align": "center", color: "#666", "margin-bottom": "2rem" },
+    },
+    {
+      tagName: "div",
+      style: { display: "flex", gap: "1rem", "flex-wrap": "wrap", "justify-content": "center" },
+      components: buildCategoryTiles(items),
+    },
+  ];
+}
+
+export const registerJobCategoryBlock = (editor: any) => {
+  const d = getDefaultProps("job-category");
 
   registerBlock(editor, {
     type: "job-category",
     style: { padding: "3rem 2rem", "background-color": "#f9fafb" },
-    components: [
-      {
-        type: "text",
-        tagName: "h2",
-        attributes: { "data-field": "title" },
-        content: String(d.title || ""),
-        editable: true,
-        style: { "font-size": "1.5rem", "font-weight": "700", "text-align": "center", "margin-bottom": "0.5rem" },
-      },
-      {
-        type: "text",
-        tagName: "p",
-        attributes: { "data-field": "subtitle" },
-        content: String(d.subtitle || ""),
-        editable: true,
-        style: { "text-align": "center", color: "#666", "margin-bottom": "2rem" },
-      },
-      {
-        tagName: "div",
-        style: { display: "flex", gap: "1rem", "flex-wrap": "wrap", "justify-content": "center" },
-        components: [
-          categoryTile("Engineering", "12"),
-          categoryTile("Design", "5"),
-          categoryTile("Marketing", "8"),
-          categoryTile("Sales", "6"),
-        ],
-      },
-    ],
+    components: buildComponents(d),
+    rebuildComponents: buildComponents,
   });
 };

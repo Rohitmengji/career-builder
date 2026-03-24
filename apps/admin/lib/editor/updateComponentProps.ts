@@ -20,19 +20,23 @@ export function updateComponentProps(
 ): void {
   if (!component) return;
 
-  // 1. Merge props
+  // 1. Deep merge props (handles nested objects like list items)
   const current = component.get("props") || {};
-  const merged = { ...current, ...newProps };
+  const merged = deepMerge(current, newProps);
 
-  // 2. Set on model (this alone does NOT trigger canvas rebuild)
-  component.set("props", merged);
+  // 2. Set on model — triggers internal Backbone change events
+  component.set("props", merged, { silent: false });
 
-  // 3. Fire component-level event (legacy handlers)
+  // 3. Fire component-level event (legacy handlers + model listeners)
   component.trigger("change:props", component);
 
   // 4. Fire editor-level events — this is what registerBlock.ts
   //    actually listens on via editor.on("component:update")
-  const editor = component.em?.get?.("Editor") || component.em;
+  //    Try multiple paths to find the editor reference
+  const editor =
+    component.em?.get?.("Editor") ||
+    component.em?.getEditor?.() ||
+    component.em;
   if (editor?.trigger) {
     editor.trigger("component:update", component);
     editor.trigger("component:update:props", component);
@@ -44,4 +48,31 @@ export function updateComponentProps(
   } catch {
     // noop — view may not be mounted yet
   }
+}
+
+/**
+ * Deep merge utility — recursively merges source into target.
+ * Arrays are replaced (not merged) to match user intent for list fields.
+ */
+function deepMerge(
+  target: Record<string, any>,
+  source: Record<string, any>,
+): Record<string, any> {
+  const output: Record<string, any> = { ...target };
+  for (const key of Object.keys(source)) {
+    const val = source[key];
+    if (
+      val !== null &&
+      typeof val === "object" &&
+      !Array.isArray(val) &&
+      typeof target[key] === "object" &&
+      target[key] !== null &&
+      !Array.isArray(target[key])
+    ) {
+      output[key] = deepMerge(target[key], val);
+    } else {
+      output[key] = val;
+    }
+  }
+  return output;
 }

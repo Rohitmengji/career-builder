@@ -522,29 +522,42 @@ export default function Sidebar({ component, onApplyPage }: SidebarProps) {
   const type = block?.get("type") as string | undefined;
   const schema: BlockSchema | undefined = type ? blockSchemas[type] : undefined;
 
-  const [props, setProps] = useState<Record<string, string | boolean>>({});
+  // ── Single source of truth: GrapesJS model props ──────────────
+  // Use a counter to force re-reads from the model after updates.
+  // The GrapesJS model IS the source of truth — we never cache in useState.
+  const [, forceUpdate] = useState(0);
+  const syncCounter = useCallback(() => forceUpdate((n) => n + 1), []);
 
+  // Read props directly from the model on every render
+  const props: Record<string, any> = block?.get("props") || {};
+
+  // Listen to GrapesJS model changes so the sidebar re-renders when
+  // the canvas is edited via inline RTE or other external sources.
   useEffect(() => {
-    setProps(block?.get("props") || {});
-  }, [block]);
+    if (!block) return;
+    const onPropsChange = () => syncCounter();
+    block.on("change:props", onPropsChange);
+    return () => { block.off("change:props", onPropsChange); };
+  }, [block, syncCounter]);
 
   /* ── AI apply handler: replaces all props at once ────────────── */
   const handleAiApply = useCallback((newProps: Record<string, any>) => {
     if (!block) return;
-    const merged = { ...block.get("props"), ...newProps };
-    setProps(merged);
     updateComponentProps(block, newProps);
-  }, [block]);
+    // Force sidebar re-read from model
+    syncCounter();
+  }, [block, syncCounter]);
 
   const handleChange = (name: string, value: string | boolean | Record<string, string>[]) => {
     if (!block) return;
 
-    const newProps = { ...block.get("props"), [name]: value };
-    setProps(newProps);
-
     // Central update — fires model.set + change:props + component:update + view.render
     // This ensures the registerBlock rebuild listener ALWAYS fires for every field type.
+    // The model is the single source of truth — no local state to update.
     updateComponentProps(block, { [name]: value });
+
+    // Force sidebar to re-read from model
+    syncCounter();
 
     // ── Additional direct DOM updates for instant visual feedback ──
     // These run alongside the full rebuild but give immediate canvas response.
