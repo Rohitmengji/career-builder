@@ -1,0 +1,534 @@
+@import "tailwindcss";
+
+/* ================================================================== */
+/*  GLOBAL BEHAVIOUR                                                   */
+/* ================================================================== */
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ================================================================== */
+/*  DESIGN TOKENS                                                      */
+/* ================================================================== */
+
+:root {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+
+  /* ─── Motion tokens (Linear / Vercel feel) ────────────────────── */
+  --motion-fast: 120ms;
+  --motion-normal: 220ms;
+  --motion-slow: 380ms;
+  --motion-slower: 550ms;
+
+  /* Apple-style ease curves */
+  --ease-default: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Shadow scale (consistent elevation system) */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
+  --shadow-xl: 0 16px 48px rgba(0,0,0,0.1), 0 8px 16px rgba(0,0,0,0.04);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ================================================================== */
+/*  BASE                                                               */
+/* ================================================================== */
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ================================================================== */
+/*  GLOBAL MICRO-INTERACTIONS                                          */
+/* ================================================================== */
+
+/* ─── Buttons: scale + shadow on hover/active ───────────────────── */
+a[class*="inline-flex"],
+button:not([disabled]) {
+  transition:
+    transform var(--motion-fast) var(--ease-spring),
+    box-shadow var(--motion-normal) var(--ease-default),
+    background-color var(--motion-normal) var(--ease-default),
+    color var(--motion-normal) var(--ease-default),
+    opacity var(--motion-normal) var(--ease-default);
+}
+
+a[class*="inline-flex"]:hover,
+button:not([disabled]):hover {
+  transform: translateY(-1px);
+}
+
+a[class*="inline-flex"]:active,
+button:not([disabled]):active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* ─── Cards: lift on hover ──────────────────────────────────────── */
+[class*="border"][class*="p-6"] {
+  transition:
+    transform var(--motion-normal) var(--ease-out),
+    box-shadow var(--motion-normal) var(--ease-out),
+    border-color var(--motion-normal) var(--ease-default);
+}
+
+[class*="border"][class*="p-6"]:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ─── Links: underline slide from left ──────────────────────────── */
+nav a,
+footer a {
+  position: relative;
+  transition: color var(--motion-normal) var(--ease-default);
+}
+
+nav a::after,
+footer a::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1.5px;
+  background: currentColor;
+  transition: width var(--motion-normal) var(--ease-out);
+}
+
+nav a:hover::after,
+footer a:hover::after {
+  width: 100%;
+}
+
+/* ================================================================== */
+/*  BLOCK ENTRY ANIMATIONS (IntersectionObserver-driven)               */
+/* ================================================================== */
+
+/* Blocks start hidden, then reveal on scroll via .cb-visible */
+.cb-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity var(--motion-slower) var(--ease-out),
+    transform var(--motion-slower) var(--ease-out);
+}
+
+.cb-reveal.cb-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger children inside a revealed block (grid items, cards) */
+.cb-reveal.cb-visible > * { animation: staggerFadeIn var(--motion-slow) var(--ease-out) both; }
+.cb-reveal.cb-visible > *:nth-child(1) { animation-delay: 0ms; }
+.cb-reveal.cb-visible > *:nth-child(2) { animation-delay: 60ms; }
+.cb-reveal.cb-visible > *:nth-child(3) { animation-delay: 120ms; }
+.cb-reveal.cb-visible > *:nth-child(4) { animation-delay: 180ms; }
+.cb-reveal.cb-visible > *:nth-child(5) { animation-delay: 240ms; }
+.cb-reveal.cb-visible > *:nth-child(6) { animation-delay: 300ms; }
+.cb-reveal.cb-visible > *:nth-child(n+7) { animation-delay: 350ms; }
+
+@keyframes staggerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Initial page load — staggered section entrance */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+main > section,
+main > div,
+main > hr,
+main > nav,
+main > footer {
+  animation: fadeInUp 0.6s var(--ease-out) both;
+}
+
+main > *:nth-child(1) { animation-delay: 0s; }
+main > *:nth-child(2) { animation-delay: 0.07s; }
+main > *:nth-child(3) { animation-delay: 0.14s; }
+main > *:nth-child(4) { animation-delay: 0.21s; }
+main > *:nth-child(5) { animation-delay: 0.28s; }
+main > *:nth-child(6) { animation-delay: 0.35s; }
+main > *:nth-child(n+7) { animation-delay: 0.4s; }
+
+/* ================================================================== */
+/*  IMAGE MICRO-INTERACTIONS                                           */
+/* ================================================================== */
+
+/* Images: fade in on load + subtle zoom on hover */
+img {
+  transition:
+    opacity var(--motion-slow) var(--ease-out),
+    transform var(--motion-slow) var(--ease-out);
+}
+
+/* Carousel / grid images: smooth zoom on hover */
+.group:hover img,
+[class*="group"]:hover img {
+  transform: scale(1.04);
+}
+
+/* ================================================================== */
+/*  NAVBAR GLASSMORPHISM & SHRINK                                      */
+/* ================================================================== */
+
+/* Navbar already has backdrop-blur-lg via renderer — enhance transition */
+nav[class*="sticky"],
+nav[class*="border-b"] {
+  transition:
+    background-color var(--motion-normal) var(--ease-default),
+    box-shadow var(--motion-normal) var(--ease-default),
+    border-color var(--motion-normal) var(--ease-default);
+}
+
+/* When scrolled (JS adds this class) */
+nav.cb-scrolled {
+  box-shadow: var(--shadow-sm);
+}
+
+/* ================================================================== */
+/*  SKELETON / SHIMMER LOADER                                          */
+/* ================================================================== */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.cb-skeleton {
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s var(--ease-default) infinite;
+  border-radius: 8px;
+}
+
+.cb-skeleton-text {
+  height: 1em;
+  width: 80%;
+  margin-bottom: 0.5em;
+}
+
+.cb-skeleton-heading {
+  height: 1.5em;
+  width: 60%;
+  margin-bottom: 0.75em;
+}
+
+.cb-skeleton-image {
+  aspect-ratio: 16/9;
+  width: 100%;
+}
+
+/* ================================================================== */
+/*  ACCORDION SMOOTH OPEN/CLOSE                                        */
+/* ================================================================== */
+
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+details[open] summary svg {
+  transform: rotate(45deg);
+}
+
+details summary svg {
+  transition: transform var(--motion-normal) var(--ease-spring);
+}
+
+/* Smooth content reveal */
+details > *:not(summary) {
+  animation: accordionOpen var(--motion-normal) var(--ease-out) both;
+}
+
+@keyframes accordionOpen {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ================================================================== */
+/*  MODAL ANIMATIONS                                                   */
+/* ================================================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ================================================================== */
+/*  FORM INTERACTIONS                                                  */
+/* ================================================================== */
+
+input,
+textarea,
+select {
+  transition:
+    border-color var(--motion-fast) var(--ease-default),
+    box-shadow var(--motion-fast) var(--ease-default),
+    background-color var(--motion-fast) var(--ease-default);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* ================================================================== */
+/*  FOCUS RING — WCAG 2.1 AA                                           */
+/* ================================================================== */
+
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ================================================================== */
+/*  REDUCED MOTION — Accessibility                                     */
+/* ================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  .cb-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ================================================================== */
+/*  UTILITIES                                                          */
+/* ================================================================== */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+::selection {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+/* Thin scrollbar utility for sidebar panels */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: #d1d5db;
+}
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #e5e7eb transparent;
+}
+
+img[loading="lazy"] {
+  content-visibility: auto;
+}
+
+/* ================================================================== */
+/*  MARKETING PAGE ANIMATIONS                                          */
+/* ================================================================== */
+
+.animate-in {
+  animation: animateIn 0.5s var(--ease-out) both;
+}
+
+@keyframes animateIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scroll-triggered fade-in-up (CSS-only via IntersectionObserver class toggle) */
+.fade-up {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger children — add delay via inline style --delay */
+.fade-up-stagger > * {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fade-up-stagger.visible > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+.fade-up-stagger.visible > *:nth-child(1) { transition-delay: 0ms; }
+.fade-up-stagger.visible > *:nth-child(2) { transition-delay: 80ms; }
+.fade-up-stagger.visible > *:nth-child(3) { transition-delay: 160ms; }
+.fade-up-stagger.visible > *:nth-child(4) { transition-delay: 240ms; }
+.fade-up-stagger.visible > *:nth-child(5) { transition-delay: 320ms; }
+.fade-up-stagger.visible > *:nth-child(6) { transition-delay: 400ms; }
+
+/* Shimmer effect for skeleton loading */
+.shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmerSlide 2s ease-in-out infinite;
+}
+@keyframes shimmerSlide {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Floating animation for badges */
+.float {
+  animation: floatY 3s ease-in-out infinite;
+}
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* Gradient text animation */
+.gradient-text-animate {
+  background-size: 200% auto;
+  animation: gradientShift 4s linear infinite;
+}
+@keyframes gradientShift {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* Pulse ring (for live badge) */
+.pulse-ring {
+  animation: pulseRing 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulseRing {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50% { opacity: 0; transform: scale(2); }
+}
+
+@media (forced-colors: active) {
+  a,
+  button {
+    border: 1px solid ButtonText;
+  }
+}
+
+@media print {
+  nav, footer, .no-print {
+    display: none !important;
+  }
+  main {
+    margin: 0;
+    padding: 0;
+  }
+}

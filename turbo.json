@@ -1,0 +1,41 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "OPENAI_API_KEY",
+    "AI_MODEL",
+    "OPENAI_BASE_URL",
+    "DATABASE_URL",
+    "TENANT_ID",
+    "SESSION_SECRET",
+    "AUTH_SECRET",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_PRO_PRICE_ID",
+    "STRIPE_ENT_PRICE_ID",
+    "NEXT_PUBLIC_APP_URL",
+    "NEXT_PUBLIC_SITE_URL",
+    "NEXT_PUBLIC_ADMIN_API_URL",
+    "ADMIN_API_URL",
+    "VERCEL",
+    "VERCEL_URL",
+    "VERCEL_ENV",
+    "VERCEL_GIT_COMMIT_SHA",
+    "NODE_ENV",
+    "NEXT_PHASE"
+  ],
+  "tasks": {
+    "dev": {
+      "cache": false
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**"]
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "type-check": {
+      "dependsOn": ["^build"]
+    }
+  }
+}

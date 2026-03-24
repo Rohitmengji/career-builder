@@ -1,0 +1,117 @@
+# ================================================================
+# Career Builder SaaS — CI/CD Pipeline
+# ================================================================
+#
+# Runs on every PR and push to main.
+# Steps: install → type check → lint → build
+# Prevents bad deploys by failing on any error.
+#
+# Vercel handles production deployment via Git integration.
+# This pipeline is the safety gate before Vercel deploys.
+# ================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Required by Prisma generate (build step)
+  DATABASE_URL: "file:./ci-test.db"
+  TENANT_ID: "ci-test"
+  # Suppress warnings in CI
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  ci:
+    name: Type Check, Lint & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate --schema=packages/database/prisma/schema.prisma
+
+      - name: Type Check (admin)
+        run: npx tsc --noEmit --project apps/admin/tsconfig.json
+
+      - name: Type Check (web)
+        run: npx tsc --noEmit --project apps/web/tsconfig.json
+
+      - name: Lint (admin)
+        run: cd apps/admin && npx eslint . --max-warnings 0
+        continue-on-error: false
+
+      - name: Lint (web)
+        run: cd apps/web && npx eslint . --max-warnings 0
+        continue-on-error: false
+
+      - name: Build (all apps)
+        run: npm run build
+
+      - name: Verify build artifacts
+        run: |
+          echo "Checking admin build..."
+          test -d apps/admin/.next || (echo "Admin build failed!" && exit 1)
+          echo "Checking web build..."
+          test -d apps/web/.next || (echo "Web build failed!" && exit 1)
+          echo "✅ All builds passed"
+
+  # Separate job for DB migration safety check
+  migration-safety:
+    name: Migration Safety Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for destructive migrations
+        run: |
+          # Check if Prisma schema changed
+          if git diff --name-only origin/main...HEAD | grep -q "schema.prisma"; then
+            echo "⚠️  Prisma schema changed — reviewing for safety..."
+            
+            # Check for destructive operations
+            DIFF=$(git diff origin/main...HEAD -- packages/database/prisma/schema.prisma)
+            
+            if echo "$DIFF" | grep -E '^\-\s*(model|@@)' | head -5; then
+              echo ""
+              echo "🚨 POTENTIAL DESTRUCTIVE MIGRATION DETECTED"
+              echo "Please review the schema changes carefully."
+              echo "Dropped models or indexes found in the diff."
+              echo ""
+              echo "If this is intentional, add [migration-safe] to your PR description."
+              
+              # Only fail if PR description doesn't contain the override
+              if ! echo "${{ github.event.pull_request.body }}" | grep -q "\[migration-safe\]"; then
+                exit 1
+              fi
+            else
+              echo "✅ Schema changes look safe (no destructive operations)"
+            fi
+          else
+            echo "✅ No schema changes"
+          fi

@@ -1,0 +1,12 @@
+{
+  "name": "@career-builder/tenant-config",
+  "version": "0.2.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./validation": "./validation.ts",
+    "./tokens": "./tokens.ts"
+  }
+}

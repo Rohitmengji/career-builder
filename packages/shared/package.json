@@ -1,0 +1,13 @@
+{
+  "name": "@career-builder/shared",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./env": "./env.ts",
+    "./api-response": "./api-response.ts",
+    "./tenant-resolver": "./tenant-resolver.ts"
+  }
+}

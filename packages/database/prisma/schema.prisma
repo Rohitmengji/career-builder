@@ -1,0 +1,242 @@
+// ============================================================
+// Career Builder — Prisma Schema
+// ============================================================
+// SQLite for development. Switch to PostgreSQL in production by
+// changing the datasource provider and DATABASE_URL.
+//
+// All entities carry a `tenantId` for multi-tenant isolation.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── TENANT ──────────────────────────────────────────────────
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  domain    String?  @unique
+  theme     String   @default("{}") // JSON blob — TenantTheme
+  branding  String   @default("{}") // JSON blob — TenantBranding
+  settings  String   @default("{}") // JSON blob — feature flags, etc.
+  plan      String   @default("free") // free | pro | enterprise
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users        User[]
+  jobs         Job[]
+  pages        Page[]
+  applications Application[]
+  auditLogs    AuditLog[]
+  analytics    AnalyticsEvent[]
+  webhooks     Webhook[]
+}
+
+// ─── USER ────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String
+  name         String
+  passwordHash String
+  role         String   @default("viewer") // admin | hiring_manager | recruiter | viewer
+  department   String?  // for hiring_manager scoping
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // ── Subscription & Billing ──
+  plan                 String   @default("free") // free | pro | enterprise
+  stripeCustomerId     String?  @unique
+  stripeSubscriptionId String?  @unique
+  stripePriceId        String?
+  subscriptionStatus   String   @default("none") // none | active | past_due | canceled | trialing
+  aiCredits            Int      @default(0)
+  aiCreditsResetAt     DateTime?
+  billingCycleStart    DateTime?
+
+  // ── Job AI credits (weekly cap, separate from page AI credits) ──
+  jobAiCredits         Int      @default(0)      // weekly job generation credits
+  jobAiCreditsResetAt  DateTime?                  // when the weekly job credits reset
+
+  // Tenant isolation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Relations
+  auditLogs AuditLog[]
+
+  @@unique([email, tenantId])
+  @@index([tenantId])
+  @@index([stripeCustomerId])
+}
+
+// ─── JOB ─────────────────────────────────────────────────────
+
+model Job {
+  id              String   @id @default(cuid())
+  title           String
+  slug            String
+  department      String
+  location        String
+  description     String   // Rich text / markdown
+  employmentType  String   @default("full-time")
+  experienceLevel String   @default("mid")
+  salaryMin       Int?
+  salaryMax       Int?
+  salaryCurrency  String   @default("USD")
+  salaryPeriod    String   @default("yearly")
+  requirements    String   @default("[]") // JSON array
+  niceToHave      String   @default("[]") // JSON array
+  benefits        String   @default("[]") // JSON array
+  tags            String   @default("[]") // JSON array
+  isRemote        Boolean  @default(false)
+  isPublished     Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  postedAt        DateTime @default(now())
+  closesAt        DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // ATS integration fields
+  externalId     String?  // ID from Greenhouse/Lever/etc.
+  externalSource String?  // "greenhouse" | "lever" | "workday"
+  externalUrl    String?  // Link to ATS job posting
+
+  // Tenant isolation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Relations
+  applications Application[]
+
+  @@unique([slug, tenantId])
+  @@index([tenantId])
+  @@index([tenantId, isPublished])
+  @@index([department])
+  @@index([location])
+}
+
+// ─── APPLICATION ─────────────────────────────────────────────
+
+model Application {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String
+  phone       String?
+  resumeUrl   String?
+  resumePath  String?  // Local file path (if uploaded)
+  coverLetter String?
+  linkedinUrl String?
+  status      String   @default("applied") // applied | screening | interview | offer | hired | rejected
+  rating      Int?     // 1-5 recruiter rating
+  notes       String?  // Internal recruiter notes
+  source      String?  // where the applicant came from (direct, linkedin, referral, etc.)
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // ATS integration
+  externalId String? // ID from ATS
+
+  // Relations
+  jobId    String
+  job      Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([email, tenantId])
+}
+
+// ─── PAGE ────────────────────────────────────────────────────
+
+model Page {
+  id          String   @id @default(cuid())
+  slug        String
+  title       String   @default("")
+  blocks      String   @default("[]") // JSON array of block definitions
+  isPublished Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Tenant isolation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([slug, tenantId])
+  @@index([tenantId])
+}
+
+// ─── AUDIT LOG ───────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // login | logout | create_job | update_job | etc.
+  entity    String?  // "job" | "application" | "page" | "tenant" | "user"
+  entityId  String?
+  details   String?  // JSON blob with change details
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId   String?
+  user     User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, action])
+  @@index([userId])
+}
+
+// ─── ANALYTICS EVENT ─────────────────────────────────────────
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  type      String   // job_view | apply_click | application_submit | search | page_view
+  jobId     String?
+  pageSlug  String?
+  metadata  String?  // JSON blob — search query, referrer, user agent, etc.
+  sessionId String?  // anonymous visitor session
+  createdAt DateTime @default(now())
+
+  // Tenant isolation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, type])
+  @@index([tenantId, jobId])
+  @@index([createdAt])
+}
+
+// ─── WEBHOOK ─────────────────────────────────────────────────
+
+model Webhook {
+  id        String   @id @default(cuid())
+  url       String
+  events    String   // JSON array of event types: ["application.created", "job.published"]
+  secret    String?  // HMAC signing secret
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Tenant isolation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}

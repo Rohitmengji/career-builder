@@ -1,0 +1,25 @@
+{
+  "name": "@career-builder/observability",
+  "version": "0.2.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./logger": "./logger.ts",
+    "./metrics": "./metrics.ts",
+    "./alerts": "./alerts.ts",
+    "./bot-detection": "./bot-detection.ts",
+    "./anomaly": "./anomaly.ts",
+    "./correlation": "./correlation.ts",
+    "./request-logger": "./request-logger.ts",
+    "./performance": "./performance.ts",
+    "./api-protection": "./api-protection.ts",
+    "./rate-limiter": "./rate-limiter.ts",
+    "./rate-limiter-edge": "./rate-limiter-edge.ts",
+    "./sentry": "./sentry.ts",
+    "./persistence": "./persistence.ts",
+    "./tracing": "./tracing.ts",
+    "./edge": "./edge.ts"
+  }
+}

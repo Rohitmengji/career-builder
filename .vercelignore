@@ -1,0 +1,12 @@
+# Ignore for Vercel deployment
+node_modules
+.turbo
+*.tsbuildinfo
+ui-audit/screenshots
+ui-audit/reports
+playwright-report
+test-results
+*.db
+*.db-journal
+data/media/*
+!data/media/.gitkeep

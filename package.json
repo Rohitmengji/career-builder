@@ -1,0 +1,45 @@
+{
+  "name": "career-builder",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "npm@10.9.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "ci": "npm run type-check && npm run lint && npm run build",
+    "ui:audit": "npx playwright test --config=playwright.config.ts",
+    "ui:audit:mobile": "npx playwright test --config=playwright.config.ts --project=mobile-se --project=mobile-14",
+    "ui:audit:desktop": "npx playwright test --config=playwright.config.ts --project=desktop",
+    "ui:audit:report": "cat ui-audit/reports/ui-audit.md",
+    "ui:baseline:save": "node ui-audit/baseline.mjs save",
+    "ui:baseline:compare": "node ui-audit/baseline.mjs compare",
+    "ui:fix": "npx tsx ui-audit/fix-engine.ts suggest",
+    "ui:fix:apply": "npx tsx ui-audit/fix-engine.ts apply",
+    "ui:verify": "npx tsx ui-audit/fix-engine.ts verify",
+    "ui:rollback": "npx tsx ui-audit/fix-engine.ts rollback",
+    "ui:fix:status": "npx tsx ui-audit/fix-engine.ts status",
+    "ui:heal": "npm run ui:audit && npm run ui:fix && npm run ui:fix:apply && npm run ui:verify",
+    "regen": "./scripts/prisma-regen.sh",
+    "db:push": "cd packages/database && npx prisma db push",
+    "db:studio": "cd packages/database && npx prisma studio"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
+    "@playwright/test": "^1.58.2",
+    "@types/dompurify": "^3.0.5",
+    "axe-core": "^4.11.1",
+    "tsx": "^4.21.0",
+    "turbo": "^2.8.17",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "dompurify": "^3.3.3",
+    "zod": "^4.3.6"
+  }
+}
