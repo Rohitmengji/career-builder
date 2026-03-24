@@ -21,6 +21,8 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.2",
+    "@prisma/adapter-libsql": "^6.19.2",
     "@prisma/client": "^6.19.2"
   },
   "devDependencies": {

@@ -4,7 +4,7 @@
 // SQLite for development. Switch to PostgreSQL in production by
 // changing the datasource provider and DATABASE_URL.
 //
-// All entities carry a `tenantId` for multi-tenant isolation.
+// All entities carry a tenantId for multi-tenant isolation.
 // ============================================================
 
 generator client {
@@ -17,15 +17,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── TENANT ──────────────────────────────────────────────────
+// --- TENANT ---
 
 model Tenant {
   id        String   @id @default(cuid())
   name      String
   domain    String?  @unique
-  theme     String   @default("{}") // JSON blob — TenantTheme
-  branding  String   @default("{}") // JSON blob — TenantBranding
-  settings  String   @default("{}") // JSON blob — feature flags, etc.
+  theme     String   @default("{}") // JSON blob
+  branding  String   @default("{}") // JSON blob
+  settings  String   @default("{}") // JSON blob
   plan      String   @default("free") // free | pro | enterprise
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -41,33 +41,33 @@ model Tenant {
   webhooks     Webhook[]
 }
 
-// ─── USER ────────────────────────────────────────────────────
+// --- USER ---
 
 model User {
   id           String   @id @default(cuid())
   email        String
   name         String
   passwordHash String
-  role         String   @default("viewer") // admin | hiring_manager | recruiter | viewer
-  department   String?  // for hiring_manager scoping
+  role         String   @default("viewer")
+  department   String?
   isActive     Boolean  @default(true)
   lastLoginAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // ── Subscription & Billing ──
-  plan                 String   @default("free") // free | pro | enterprise
+  // Subscription & Billing
+  plan                 String   @default("free")
   stripeCustomerId     String?  @unique
   stripeSubscriptionId String?  @unique
   stripePriceId        String?
-  subscriptionStatus   String   @default("none") // none | active | past_due | canceled | trialing
+  subscriptionStatus   String   @default("none")
   aiCredits            Int      @default(0)
   aiCreditsResetAt     DateTime?
   billingCycleStart    DateTime?
 
-  // ── Job AI credits (weekly cap, separate from page AI credits) ──
-  jobAiCredits         Int      @default(0)      // weekly job generation credits
-  jobAiCreditsResetAt  DateTime?                  // when the weekly job credits reset
+  // Job AI credits (weekly cap, separate from page AI credits)
+  jobAiCredits         Int      @default(0)
+  jobAiCreditsResetAt  DateTime?
 
   // Tenant isolation
   tenantId String
@@ -81,7 +81,7 @@ model User {
   @@index([stripeCustomerId])
 }
 
-// ─── JOB ─────────────────────────────────────────────────────
+// --- JOB ---
 
 model Job {
   id              String   @id @default(cuid())
@@ -89,7 +89,7 @@ model Job {
   slug            String
   department      String
   location        String
-  description     String   // Rich text / markdown
+  description     String
   employmentType  String   @default("full-time")
   experienceLevel String   @default("mid")
   salaryMin       Int?
@@ -109,9 +109,9 @@ model Job {
   updatedAt       DateTime @updatedAt
 
   // ATS integration fields
-  externalId     String?  // ID from Greenhouse/Lever/etc.
-  externalSource String?  // "greenhouse" | "lever" | "workday"
-  externalUrl    String?  // Link to ATS job posting
+  externalId     String?
+  externalSource String?
+  externalUrl    String?
 
   // Tenant isolation
   tenantId String
@@ -127,7 +127,7 @@ model Job {
   @@index([location])
 }
 
-// ─── APPLICATION ─────────────────────────────────────────────
+// --- APPLICATION ---
 
 model Application {
   id          String   @id @default(cuid())
@@ -136,18 +136,18 @@ model Application {
   email       String
   phone       String?
   resumeUrl   String?
-  resumePath  String?  // Local file path (if uploaded)
+  resumePath  String?
   coverLetter String?
   linkedinUrl String?
-  status      String   @default("applied") // applied | screening | interview | offer | hired | rejected
-  rating      Int?     // 1-5 recruiter rating
-  notes       String?  // Internal recruiter notes
-  source      String?  // where the applicant came from (direct, linkedin, referral, etc.)
+  status      String   @default("applied")
+  rating      Int?
+  notes       String?
+  source      String?
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // ATS integration
-  externalId String? // ID from ATS
+  externalId String?
 
   // Relations
   jobId    String
@@ -161,7 +161,7 @@ model Application {
   @@index([email, tenantId])
 }
 
-// ─── PAGE ────────────────────────────────────────────────────
+// --- PAGE ---
 
 model Page {
   id          String   @id @default(cuid())
@@ -181,14 +181,14 @@ model Page {
   @@index([tenantId])
 }
 
-// ─── AUDIT LOG ───────────────────────────────────────────────
+// --- AUDIT LOG ---
 
 model AuditLog {
   id        String   @id @default(cuid())
-  action    String   // login | logout | create_job | update_job | etc.
-  entity    String?  // "job" | "application" | "page" | "tenant" | "user"
+  action    String
+  entity    String?
   entityId  String?
-  details   String?  // JSON blob with change details
+  details   String?
   ipAddress String?
   createdAt DateTime @default(now())
 
@@ -203,15 +203,15 @@ model AuditLog {
   @@index([userId])
 }
 
-// ─── ANALYTICS EVENT ─────────────────────────────────────────
+// --- ANALYTICS EVENT ---
 
 model AnalyticsEvent {
   id        String   @id @default(cuid())
-  type      String   // job_view | apply_click | application_submit | search | page_view
+  type      String
   jobId     String?
   pageSlug  String?
-  metadata  String?  // JSON blob — search query, referrer, user agent, etc.
-  sessionId String?  // anonymous visitor session
+  metadata  String?
+  sessionId String?
   createdAt DateTime @default(now())
 
   // Tenant isolation
@@ -223,13 +223,13 @@ model AnalyticsEvent {
   @@index([createdAt])
 }
 
-// ─── WEBHOOK ─────────────────────────────────────────────────
+// --- WEBHOOK ---
 
 model Webhook {
   id        String   @id @default(cuid())
   url       String
-  events    String   // JSON array of event types: ["application.created", "job.published"]
-  secret    String?  // HMAC signing secret
+  events    String   // JSON array of event types
+  secret    String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

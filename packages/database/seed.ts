@@ -7,7 +7,9 @@
 import { PrismaClient } from "@prisma/client";
 import * as crypto from "crypto";
 
-const prisma = new PrismaClient();
+// Use our client.ts which handles Turso/libsql adapter automatically
+import { prisma as sharedPrisma } from "./client";
+const prisma = sharedPrisma;
 
 const AUTH_SECRET = process.env.AUTH_SECRET || "career-builder-secret-key";
 
