@@ -21,24 +21,58 @@ import { getDefaultPageBlocks, fetchJobSummaries, buildJobContextString } from "
 
 function generateBrandVoice(input: SiteGenerationInput): string {
   const toneMap: Record<string, string> = {
-    professional: "Professional, confident, and authoritative. Use clear corporate language.",
-    friendly: "Warm, human, and conversational. Make it feel personal.",
-    bold: "Bold, energetic, and exciting. Short punchy sentences. Create urgency.",
-    minimal: "Clean and minimal. Every word counts. No fluff.",
-    "hiring-focused": "Recruiting-focused. Emphasize growth, culture, and opportunity.",
+    professional: "Professional, confident, and authoritative. Use clear, polished corporate language. Think McKinsey, Deloitte, or Stripe.",
+    friendly: "Warm, human, and conversational. Make it feel personal and approachable. Think Notion, Figma, or Slack.",
+    bold: "Bold, energetic, and exciting. Short punchy sentences. Create urgency and excitement. Think Vercel, Linear, or Supabase.",
+    minimal: "Clean and minimal. Every word counts. No fluff. Whitespace is your friend. Think Apple, Aesop, or Muji.",
+    "hiring-focused": "Recruiting-focused and persuasive. Emphasize growth, culture, and opportunity. Think Google Careers or Netflix Jobs.",
   };
 
   const companyTypeVoice: Record<string, string> = {
-    startup: "Fast-paced startup energy. Emphasize impact and ownership.",
-    scaleup: "Growing company momentum. Balance between startup agility and stability.",
-    enterprise: "Established and trusted. Emphasize scale, stability, and benefits.",
-    agency: "Creative and dynamic. Emphasize variety and collaboration.",
-    nonprofit: "Mission-driven and purposeful. Emphasize impact and meaning.",
+    startup: "Fast-paced startup energy. Emphasize impact, ownership, and moving fast. Candidates should feel like they'll shape the company's future.",
+    scaleup: "Growing company momentum. Balance startup agility with emerging stability. Highlight the rare window of joining at the right time.",
+    enterprise: "Established and trusted. Emphasize scale, stability, and world-class benefits. Candidates should feel they're joining an institution.",
+    agency: "Creative and dynamic. Emphasize variety, collaboration, and exciting client work. Each day brings something new.",
+    nonprofit: "Mission-driven and purposeful. Emphasize impact, meaning, and making a difference. Work that matters.",
   };
 
-  return `${toneMap[input.tone] || toneMap.professional} ${companyTypeVoice[input.companyType] || ""}
-Company: ${input.companyName}. Industry: ${input.industry}.
-${input.hiringGoals ? `Hiring focus: ${input.hiringGoals}` : ""}`;
+  const industryContext: Record<string, string> = {
+    technology: "Use modern tech language. Reference innovation, engineering excellence, and building products that scale.",
+    fintech: "Blend finance credibility with tech innovation. Reference trust, security, and democratizing finance.",
+    healthcare: "Emphasize patient impact and care. Reference improving lives, clinical excellence, and health outcomes.",
+    education: "Emphasize learning and growth. Reference empowering students, teachers, and lifelong learning.",
+    ecommerce: "Emphasize customer obsession and growth. Reference scale, user experience, and marketplace dynamics.",
+    saas: "Emphasize product craft and customer success. Reference ARR growth, platform thinking, and developer experience.",
+    consulting: "Emphasize problem-solving and expertise. Reference client impact, thought leadership, and career development.",
+    manufacturing: "Emphasize precision and innovation. Reference operational excellence, sustainability, and engineering.",
+    media: "Emphasize storytelling and creativity. Reference content, audience, and cultural impact.",
+    nonprofit: "Emphasize mission and social impact. Reference community, service, and making a difference.",
+    other: "Use inclusive, professional language that appeals to a broad range of candidates.",
+  };
+
+  return `BRAND VOICE:
+${toneMap[input.tone] || toneMap.professional}
+${companyTypeVoice[input.companyType] || ""}
+
+INDUSTRY CONTEXT:
+${industryContext[input.industry] || industryContext.other}
+
+COMPANY: ${input.companyName}
+INDUSTRY: ${input.industry}
+TYPE: ${input.companyType}
+${input.hiringGoals ? `HIRING FOCUS: ${input.hiringGoals}` : ""}
+${input.audience ? `TARGET AUDIENCE: ${input.audience}` : ""}
+
+DESIGN PHILOSOPHY:
+- Write like a senior product designer + conversion copywriter
+- Large, impactful headings (6-8 words max, punchy)
+- Subtitles that add value (15-25 words, explain the benefit)
+- Card-based UI sections with clean grid layouts
+- Generous whitespace between sections
+- Stats/numbers that impress (quantify everything possible)
+- 3-5 items per list section (quality over quantity)
+- Each section should have a clear purpose and CTA intent
+- No generic filler text — every word should earn its place`;
 }
 
 /* ================================================================== */

@@ -209,7 +209,7 @@ export const AI_LIMITS = {
   /** Response cache TTL in ms */
   CACHE_TTL: 5 * 60 * 1000,
   /** Max blocks in a generated page */
-  MAX_PAGE_BLOCKS: 8,
+  MAX_PAGE_BLOCKS: 14,
   /** Debounce delay for AI calls (ms) */
   DEBOUNCE_MS: 300,
 } as const;
