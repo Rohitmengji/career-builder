@@ -183,7 +183,7 @@
 | Stripe Checkout | `/api/stripe/checkout` — creates customer + session |
 | Webhook Handler | `/api/stripe/webhook` — 5 events with signature verification + idempotency |
 | Subscription Lifecycle | activate → renew → past_due → cancel — all handled |
-| Credit System | `aiCredits` (1000/month page AI) + `jobAiCredits` (25/week job AI) |
+| Credit System | `aiCredits` (500/month Pro, 2500/month Enterprise) + `jobAiCredits` (25/week job AI) |
 | Atomic Decrement | `updateMany` with `credits > 0` condition — race-safe |
 | Pre-pay Model | Credit deducted BEFORE OpenAI call, refunded on failure |
 | Billing Portal | Stripe Customer Portal redirect |

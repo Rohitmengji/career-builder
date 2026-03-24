@@ -14,7 +14,7 @@ import { buildPrompt } from "@/lib/ai/prompts";
 import { buildJobPrompt } from "@/lib/ai/prompts";
 import { validateAiOutput, validatePageOutput, validateJobOutput, parseAiJson } from "@/lib/ai/validator";
 import { blockSchemas } from "@/lib/blockSchemas";
-import { subscriptionRepo, prisma } from "@career-builder/database";
+import { subscriptionRepo } from "@career-builder/database";
 import { JOB_AI_CREDITS_PER_WEEK } from "@/lib/stripe/config";
 import { getFallbackBlocks } from "@/lib/ai/fallback";
 
@@ -498,16 +498,28 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(response);
   } catch (err: any) {
-    // REFUND: Restore the pre-paid credit since AI generation failed
+    // REFUND: Restore the pre-paid credit since AI generation failed.
+    // Uses safe repo methods with hard-cap protection — credits cannot exceed plan limit.
     try {
-      const refundField = isJobAction ? "jobAiCredits" : "aiCredits";
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { [refundField]: { increment: 1 } },
-      });
-      console.log(`[AI] Refunded 1 ${refundField} credit to user ${user.id} after failure`);
+      if (isJobAction) {
+        const sub = await subscriptionRepo.getByUserId(user.id);
+        const weeklyJobLimit = JOB_AI_CREDITS_PER_WEEK[sub?.plan || "free"] || 0;
+        await subscriptionRepo.refundJobCredit(user.id, weeklyJobLimit);
+      } else {
+        const sub = await subscriptionRepo.getByUserId(user.id);
+        const PLAN_LIMITS: Record<string, number> = { pro: 500, enterprise: 2500 };
+        const planLimit = PLAN_LIMITS[sub?.plan || "free"] || 0;
+        await subscriptionRepo.refundCredit(user.id, planLimit);
+      }
     } catch (refundErr) {
       console.error(`[AI] CRITICAL: Failed to refund credit for user ${user.id}:`, refundErr);
+    }
+
+    // Safety: clamp any negative credits to 0 (should never happen with atomic ops)
+    try {
+      await subscriptionRepo.clampNegativeCredits(user.id);
+    } catch (clampErr) {
+      console.error(`[AI] Failed to clamp negative credits for user ${user.id}:`, clampErr);
     }
 
     const rawMsg = err.message || String(err);

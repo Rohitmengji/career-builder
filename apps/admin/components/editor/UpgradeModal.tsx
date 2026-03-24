@@ -51,7 +51,7 @@ function buildPlans(pricing: RegionPricing) {
         "Everything in Free",
         "AI content generation",
         "AI page builder",
-        "1,000 AI credits/month",
+        "500 AI credits/month",
         "Priority support",
       ],
       cta: "Upgrade to Pro",
@@ -65,7 +65,7 @@ function buildPlans(pricing: RegionPricing) {
       period: "/month",
       features: [
         "Everything in Pro",
-        "5,000 AI credits/month",
+        "2,500 AI credits/month",
         "Custom AI models",
         "Team collaboration",
         "Dedicated support",
@@ -91,7 +91,7 @@ export default function UpgradeModal({ currentPlan, hasStripeCustomer, subscript
     if (plan === "enterprise") {
       const subject = encodeURIComponent("Enterprise Plan Inquiry — Career Builder");
       const body = encodeURIComponent(
-        `Hi,\n\nI'm interested in the Enterprise plan for Career Builder.\n\nPlease share details about:\n- 5,000 AI credits/month\n- Custom AI models\n- Team collaboration & SSO\n- Dedicated support\n\nCompany: \nTeam size: \n\nThank you!`
+        `Hi,\n\nI'm interested in the Enterprise plan for Career Builder.\n\nPlease share details about:\n- 2,500 AI credits/month\n- Custom AI models\n- Team collaboration & SSO\n- Dedicated support\n\nCompany: \nTeam size: \n\nThank you!`
       );
       window.open(`mailto:rohitmengji403@gmail.com?subject=${subject}&body=${body}`, "_blank");
       return;

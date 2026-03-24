@@ -37,6 +37,20 @@ export async function GET() {
 
     const isActive = sub.subscriptionStatus === "active";
     const aiEnabled = sub.plan !== "free" && isActive;
+    const planTotal = PLAN_CREDITS[sub.plan] || 0;
+
+    // Clamp credits: if DB has more credits than the plan allows
+    // (e.g., after a plan limit reduction), cap to the plan max.
+    // Also fix in DB in background to prevent recurring mismatch.
+    let aiCreditsRemaining = Math.min(sub.aiCredits, planTotal);
+    if (aiCreditsRemaining < 0) aiCreditsRemaining = 0; // hard floor safety
+
+    if (sub.aiCredits > planTotal && planTotal > 0) {
+      // Background DB correction — don't block the response
+      subscriptionRepo.resetCredits(session.userId, planTotal).catch((err) => {
+        console.error("[subscription] Failed to clamp credits in DB:", err);
+      });
+    }
 
     // Auto-reset weekly job credits if the reset time has passed
     let jobCredits = sub.jobAiCredits;
@@ -54,8 +68,8 @@ export async function GET() {
     return NextResponse.json({
       plan: sub.plan,
       aiEnabled,
-      aiCreditsRemaining: sub.aiCredits,
-      aiCreditsTotal: PLAN_CREDITS[sub.plan] || 0,
+      aiCreditsRemaining,
+      aiCreditsTotal: planTotal,
       subscriptionStatus: sub.subscriptionStatus,
       hasStripeCustomer: !!sub.stripeCustomerId,
       billingCycleStart: sub.billingCycleStart?.toISOString() || null,

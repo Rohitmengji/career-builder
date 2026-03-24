@@ -15,8 +15,8 @@ import { prisma } from "@career-builder/database";
 
 const PLAN_CREDITS: Record<string, number> = {
   free: 0,
-  pro: 1000,
-  enterprise: 5000,
+  pro: 500,
+  enterprise: 2500,
 };
 
 const JOB_AI_CREDITS_PER_WEEK: Record<string, number> = {

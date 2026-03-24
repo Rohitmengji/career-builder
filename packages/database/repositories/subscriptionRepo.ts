@@ -154,9 +154,10 @@ export const subscriptionRepo = {
 
   /** Decrement AI credits by 1. Returns false if no credits left.
    *  Uses atomic updateMany with conditions to prevent race conditions.
-   *  Wrapped with retry for SQLite BUSY errors. */
+   *  Wrapped with retry for SQLite BUSY errors.
+   *  CRITICAL: The WHERE clause (aiCredits > 0) makes this atomic —
+   *  parallel requests cannot both succeed if only 1 credit remains. */
   async decrementCredit(userId: string): Promise<boolean> {
-    // Atomic: only decrements if plan != free, status = active, credits > 0
     const result = await withDbRetry(() => prisma.user.updateMany({
       where: {
         id: userId,
@@ -166,7 +167,58 @@ export const subscriptionRepo = {
       },
       data: { aiCredits: { decrement: 1 } },
     }));
-    return result.count > 0;
+    const success = result.count > 0;
+    if (success) {
+      // Log credit usage for observability — fetch remaining credits
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { aiCredits: true } });
+      console.log(`[credits] Decremented AI credit for user ${userId}. Remaining: ${user?.aiCredits ?? "unknown"}`);
+    } else {
+      console.warn(`[credits] Decrement BLOCKED for user ${userId} — no credits or inactive`);
+    }
+    return success;
+  },
+
+  /** Refund 1 AI credit (after failed AI call).
+   *  Uses atomic increment with a hard-cap safety check to prevent
+   *  credits from exceeding the plan limit. */
+  async refundCredit(userId: string, planCreditLimit: number): Promise<void> {
+    await withDbRetry(() => prisma.user.updateMany({
+      where: {
+        id: userId,
+        plan: { not: "free" },
+        // Safety: only refund if below the plan limit (prevents over-crediting)
+        aiCredits: { lt: planCreditLimit },
+      },
+      data: { aiCredits: { increment: 1 } },
+    }));
+    console.log(`[credits] Refunded 1 AI credit to user ${userId} (cap: ${planCreditLimit})`);
+  },
+
+  /** Refund 1 job AI credit (after failed AI call).
+   *  Uses atomic increment with hard-cap safety. */
+  async refundJobCredit(userId: string, weeklyJobLimit: number): Promise<void> {
+    await withDbRetry(() => prisma.user.updateMany({
+      where: {
+        id: userId,
+        plan: { not: "free" },
+        jobAiCredits: { lt: weeklyJobLimit },
+      },
+      data: { jobAiCredits: { increment: 1 } },
+    }));
+    console.log(`[credits] Refunded 1 job AI credit to user ${userId} (cap: ${weeklyJobLimit})`);
+  },
+
+  /** Enforce hard floor: if credits somehow went negative, clamp to 0.
+   *  Called defensively — should never be needed with atomic decrements. */
+  async clampNegativeCredits(userId: string): Promise<void> {
+    await prisma.user.updateMany({
+      where: { id: userId, aiCredits: { lt: 0 } },
+      data: { aiCredits: 0 },
+    });
+    await prisma.user.updateMany({
+      where: { id: userId, jobAiCredits: { lt: 0 } },
+      data: { jobAiCredits: 0 },
+    });
   },
 
   /** Reset credits for a new billing cycle */
@@ -174,6 +226,7 @@ export const subscriptionRepo = {
     const resetAt = new Date();
     resetAt.setMonth(resetAt.getMonth() + 1);
 
+    console.log(`[credits] Resetting AI credits for user ${userId} to ${credits}. Next reset: ${resetAt.toISOString()}`);
     return withDbRetry(() => prisma.user.update({
       where: { id: userId },
       data: {
@@ -183,13 +236,46 @@ export const subscriptionRepo = {
     }));
   },
 
-  /** Check if user can use AI (server-side enforced) */
+  /** Check if user can use AI (server-side enforced).
+   *  Also handles monthly auto-reset if billing cycle has passed. */
   async canUseAi(userId: string): Promise<{ allowed: boolean; reason?: string; credits: number }> {
     const sub = await this.getByUserId(userId);
     if (!sub) return { allowed: false, reason: "User not found", credits: 0 };
     if (sub.plan === "free") return { allowed: false, reason: "Upgrade to Pro to use AI", credits: 0 };
     if (sub.subscriptionStatus !== "active") return { allowed: false, reason: "Subscription not active", credits: sub.aiCredits };
+
+    // Auto-reset: if the monthly reset time has passed, reset credits
+    // This catches cases where the Stripe webhook was missed
+    if (sub.aiCreditsResetAt && new Date() >= sub.aiCreditsResetAt) {
+      // Import plan limits dynamically to avoid circular dep — use known limits
+      const PLAN_LIMITS: Record<string, number> = { pro: 500, enterprise: 2500 };
+      const limit = PLAN_LIMITS[sub.plan] || 0;
+      if (limit > 0) {
+        const nextReset = new Date();
+        nextReset.setMonth(nextReset.getMonth() + 1);
+        await withDbRetry(() => prisma.user.update({
+          where: { id: userId },
+          data: { aiCredits: limit, aiCreditsResetAt: nextReset },
+        }));
+        console.log(`[credits] Auto-reset AI credits for user ${userId} to ${limit} (monthly cycle)`);
+        return { allowed: true, credits: limit };
+      }
+    }
+
     if (sub.aiCredits <= 0) return { allowed: false, reason: "No AI credits remaining", credits: 0 };
+
+    // Safety: if credits exceed plan limit (e.g., after plan limit reduction), clamp in DB
+    const PLAN_LIMITS_CHECK: Record<string, number> = { pro: 500, enterprise: 2500 };
+    const planMax = PLAN_LIMITS_CHECK[sub.plan] || 0;
+    if (planMax > 0 && sub.aiCredits > planMax) {
+      await withDbRetry(() => prisma.user.update({
+        where: { id: userId },
+        data: { aiCredits: planMax },
+      }));
+      console.log(`[credits] Clamped over-limit credits for user ${userId}: ${sub.aiCredits} → ${planMax}`);
+      return { allowed: true, credits: planMax };
+    }
+
     return { allowed: true, credits: sub.aiCredits };
   },
 
@@ -233,7 +319,14 @@ export const subscriptionRepo = {
       },
       data: { jobAiCredits: { decrement: 1 } },
     }));
-    return result.count > 0;
+    const success = result.count > 0;
+    if (success) {
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { jobAiCredits: true } });
+      console.log(`[credits] Decremented job AI credit for user ${userId}. Remaining: ${user?.jobAiCredits ?? "unknown"}`);
+    } else {
+      console.warn(`[credits] Job credit decrement BLOCKED for user ${userId} — no credits or inactive`);
+    }
+    return success;
   },
 
   /** Initialize or reset weekly job AI credits */
@@ -241,6 +334,7 @@ export const subscriptionRepo = {
     const resetAt = new Date();
     resetAt.setDate(resetAt.getDate() + 7);
 
+    console.log(`[credits] Resetting job AI credits for user ${userId} to ${credits}. Next reset: ${resetAt.toISOString()}`);
     return withDbRetry(() => prisma.user.update({
       where: { id: userId },
       data: {

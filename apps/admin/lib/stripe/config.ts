@@ -51,8 +51,8 @@ export const stripe = new Stripe(STRIPE_SECRET_KEY, {
 /* ================================================================== */
 
 export const PLAN_PRICE_MAP: Record<string, { plan: "pro" | "enterprise"; credits: number }> = {};
-if (STRIPE_PRO_PRICE_ID) PLAN_PRICE_MAP[STRIPE_PRO_PRICE_ID] = { plan: "pro", credits: 1000 };
-if (STRIPE_ENT_PRICE_ID) PLAN_PRICE_MAP[STRIPE_ENT_PRICE_ID] = { plan: "enterprise", credits: 5000 };
+if (STRIPE_PRO_PRICE_ID) PLAN_PRICE_MAP[STRIPE_PRO_PRICE_ID] = { plan: "pro", credits: 500 };
+if (STRIPE_ENT_PRICE_ID) PLAN_PRICE_MAP[STRIPE_ENT_PRICE_ID] = { plan: "enterprise", credits: 2500 };
 
 export const PLAN_TO_PRICE: Record<string, string> = {
   pro: STRIPE_PRO_PRICE_ID,
@@ -61,8 +61,8 @@ export const PLAN_TO_PRICE: Record<string, string> = {
 
 export const PLAN_CREDITS: Record<string, number> = {
   free: 0,
-  pro: 1000,
-  enterprise: 5000,
+  pro: 500,
+  enterprise: 2500,
 };
 
 /** Weekly job AI credits per plan (separate from page AI credits) */

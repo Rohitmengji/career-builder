@@ -16,10 +16,10 @@
  * Cost per AI request (GPT-5.4-mini): ~₹0.14 ($0.0016)
  *
  * Margin analysis:
- *   Pro  (1,000 credits): max cost ₹140 → IN ₹1,499 = 91% margin
- *   Ent  (5,000 credits): max cost ₹700 → IN ₹4,999 = 86% margin
- *   Pro  (1,000 credits): max cost $1.60 → US $79 = 98% margin
- *   Ent  (5,000 credits): max cost $8.00 → US $249 = 97% margin
+ *   Pro  (500 credits):   max cost ₹70  → IN ₹1,499 = 95% margin
+ *   Ent  (2,500 credits): max cost ₹350 → IN ₹4,999 = 93% margin
+ *   Pro  (500 credits):   max cost $0.80 → US $79 = 99% margin
+ *   Ent  (2,500 credits): max cost $4.00 → US $249 = 98% margin
  */
 
 import { useState, useEffect } from "react";

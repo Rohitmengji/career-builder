@@ -261,8 +261,8 @@ AiAssistant.tsx → POST /api/ai → buildPrompt() → OpenAI → parseAiJson() 
 | Plan | Price (US) | Price (IN) | AI Credits/Month | Features |
 |------|-----------|-----------|-------------------|----------|
 | **Free** | $0 | ₹0 | 0 | Visual editor, 30+ blocks, publish, mobile responsive |
-| **Pro** | $79/mo | ₹1,499/mo | 1,000 | + AI content generation, AI page builder, priority support |
-| **Enterprise** | $249/mo | ₹4,999/mo | 5,000 | + Custom AI models, team collaboration, SSO, dedicated support |
+| **Pro** | $79/mo | ₹1,499/mo | 500 | + AI content generation, AI page builder, priority support |
+| **Enterprise** | $249/mo | ₹4,999/mo | 2,500 | + Custom AI models, team collaboration, SSO, dedicated support |
 
 ### Checkout Flow
 

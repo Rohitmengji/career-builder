@@ -61,8 +61,8 @@ export interface SubscriptionStatus {
 
 export const PLAN_FEATURES: Record<SubscriptionPlan, { label: string; aiEnabled: boolean; aiCreditsPerMonth: number }> = {
   free: { label: "Free", aiEnabled: false, aiCreditsPerMonth: 0 },
-  pro: { label: "Pro", aiEnabled: true, aiCreditsPerMonth: 1000 },
-  enterprise: { label: "Enterprise", aiEnabled: true, aiCreditsPerMonth: 5000 },
+  pro: { label: "Pro", aiEnabled: true, aiCreditsPerMonth: 500 },
+  enterprise: { label: "Enterprise", aiEnabled: true, aiCreditsPerMonth: 2500 },
 };
 
 /* ================================================================== */

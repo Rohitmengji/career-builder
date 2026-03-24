@@ -140,7 +140,7 @@ export default function PricingSection() {
             <ul className="mt-8 space-y-3">
               {[
                 "Everything in Free",
-                "1,000 AI credits/month",
+                "500 AI credits/month",
                 "25 AI job descriptions/week",
                 "Unlimited job listings",
                 "Multi-page AI generation",
@@ -179,7 +179,7 @@ export default function PricingSection() {
             <ul className="mt-8 space-y-3">
               {[
                 "Everything in Pro",
-                "5,000 AI credits/month",
+                "2,500 AI credits/month",
                 "White-label branding",
                 "Multi-tenant support",
                 "Stripe billing portal",

@@ -182,12 +182,12 @@ Admin User          UpgradeModal          /api/stripe/checkout      Stripe      
     │                    │                      │                      │ checkout.completed │
     │                    │                      │                      ├───────────────────►│
     │                    │                      │                      │                    │ activateSubscription
-    │                    │                      │                      │                    │ set credits=1000
+    │                    │                      │                      │                    │ set credits=500
     │  redirect back     │                      │                      │                    │
     │  /editor?checkout=success                 │                      │                    │
     │                    │                      │                      │                    │
     │  useSubscription() │                      │                      │                    │
-    │  GET /api/subscription → plan=pro, credits=1000                 │                    │
+    │  GET /api/subscription → plan=pro, credits=500                  │                    │
 ```
 
 ---
@@ -891,8 +891,8 @@ packages/database/repositories/
 | Plan | AI Credits/month | Price (India) | Price (US) |
 |------|-----------------|---------------|-----------|
 | Free | 0 | ₹0 | $0 |
-| Pro | 1,000 | ₹1,499/mo | $79/mo |
-| Enterprise | 5,000 | Contact sales | $249/mo |
+| Pro | 500 | ₹1,499/mo | $79/mo |
+| Enterprise | 2,500 | Contact sales | $249/mo |
 
 ### Subscription Database Fields (User model)
 
@@ -1074,10 +1074,10 @@ Detects user region and shows localized pricing in the UpgradeModal. Uses a mult
 ```
 Cost per AI request (GPT-5.4-mini): ~₹0.14 ($0.0016)
 
-Pro  (1,000 credits): max cost ₹140 → IN ₹1,499 = 91% margin
-Ent  (5,000 credits): max cost ₹700 → IN ₹4,999 = 86% margin
-Pro  (1,000 credits): max cost $1.60 → US $79   = 98% margin
-Ent  (5,000 credits): max cost $8.00 → US $249  = 97% margin
+Pro  (500 credits):   max cost ₹70  → IN ₹1,499 = 95% margin
+Ent  (2,500 credits): max cost ₹350 → IN ₹4,999 = 93% margin
+Pro  (500 credits):   max cost $0.80 → US $79   = 99% margin
+Ent  (2,500 credits): max cost $4.00 → US $249  = 98% margin
 ```
 
 ### CSP Whitelisting
@@ -1133,7 +1133,7 @@ await subscriptionRepo.decrementCredit(user.id);
 ### Credit Lifecycle
 
 ```
-User subscribes → activateSubscription(credits: 1000)
+User subscribes → activateSubscription(credits: 500 for Pro, 2500 for Enterprise)
     │
     ▼
 User uses AI → decrementCredit() [atomic: plan≠free AND status=active AND credits>0]
@@ -1142,7 +1142,7 @@ User uses AI → decrementCredit() [atomic: plan≠free AND status=active AND cr
 Credits reach 0 → canUseAi() returns { allowed: false, reason: "No AI credits remaining" }
     │
     ▼
-Billing cycle renews → invoice.paid webhook → resetCredits(1000)
+Billing cycle renews → invoice.paid webhook → resetCredits(500 or 2500)
     │
     ▼
 User cancels → subscription.deleted webhook → updateStatus("canceled") → plan=free, credits=0
