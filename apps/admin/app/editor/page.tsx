@@ -278,6 +278,14 @@ export default function EditorPage() {
       editor.addComponents({ type: block.type, props: mergedProps });
     }
 
+    // Force rebuild so AI-generated props render immediately on canvas
+    requestAnimationFrame(() => {
+      const allComponents = editor.getComponents?.()?.toArray?.() ?? [];
+      for (const comp of allComponents) {
+        editor.trigger("component:update:props", comp);
+      }
+    });
+
     setSelected(null);
     scheduleAutoSave();
   }, [scheduleAutoSave, user]);
@@ -376,6 +384,17 @@ export default function EditorPage() {
         const mergedProps = { ...defaults, ...b.props };
         editor.addComponents({ type: b.type, props: mergedProps });
       });
+
+      // Force a rebuild pass on every block so saved props render immediately.
+      // component:add fires during addComponents but GrapesJS may not have the
+      // view mounted yet. This deferred pass guarantees the canvas shows the
+      // actual saved content, not stale defaults.
+      requestAnimationFrame(() => {
+        const allComponents = editor.getComponents?.()?.toArray?.() ?? [];
+        for (const comp of allComponents) {
+          editor.trigger("component:update:props", comp);
+        }
+      });
     } catch {
       // API might not have data yet
     }
@@ -422,6 +441,14 @@ export default function EditorPage() {
           const mergedProps = { ...defaults, ...b.props };
           editor.addComponents({ type: b.type, props: mergedProps });
         }
+
+        // Force rebuild so saved props render immediately on canvas
+        requestAnimationFrame(() => {
+          const allComponents = editor.getComponents?.()?.toArray?.() ?? [];
+          for (const comp of allComponents) {
+            editor.trigger("component:update:props", comp);
+          }
+        });
       } catch {
         // New blank page — nothing to load
       } finally {

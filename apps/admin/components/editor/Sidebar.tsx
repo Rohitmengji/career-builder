@@ -532,12 +532,34 @@ export default function Sidebar({ component, onApplyPage }: SidebarProps) {
   const props: Record<string, any> = block?.get("props") || {};
 
   // Listen to GrapesJS model changes so the sidebar re-renders when
-  // the canvas is edited via inline RTE or other external sources.
+  // the canvas is edited via inline RTE, AI updates, or other external sources.
+  // Subscribe to BOTH model-level and editor-level events for full coverage.
   useEffect(() => {
     if (!block) return;
     const onPropsChange = () => syncCounter();
     block.on("change:props", onPropsChange);
-    return () => { block.off("change:props", onPropsChange); };
+
+    // Also subscribe to editor-level component:update for this specific block.
+    // This catches updates triggered via editor.trigger("component:update")
+    // which may not fire change:props (e.g. AI bulk updates, external sources).
+    const em = block.em;
+    const editorFacade = em?.get?.("Editor") || em?.getEditor?.() || null;
+    const onEditorUpdate = (model: any) => {
+      // Only react if this update is for OUR block
+      if (model === block || model?.cid === block?.cid) {
+        syncCounter();
+      }
+    };
+    if (editorFacade?.on) {
+      editorFacade.on("component:update:props", onEditorUpdate);
+    }
+
+    return () => {
+      block.off("change:props", onPropsChange);
+      if (editorFacade?.off) {
+        editorFacade.off("component:update:props", onEditorUpdate);
+      }
+    };
   }, [block, syncCounter]);
 
   /* ── AI apply handler: replaces all props at once ────────────── */
