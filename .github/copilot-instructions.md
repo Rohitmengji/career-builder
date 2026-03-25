@@ -316,3 +316,25 @@ Before any major change, Copilot must mentally simulate:
 5. **Will this break Stripe billing?** — Check `subscriptionRepo` state transitions, webhook idempotency
 
 If unsure about ANY of these → choose the safer approach → add fallback → add logging.
+
+## ⚠️ CRITICAL: Prisma Schema → Production DB Migration
+
+**Every `schema.prisma` change MUST be migrated to the production Turso DB manually.**
+
+`npm run db:push` only updates local SQLite. Production Turso requires explicit `ALTER TABLE` statements.
+Failure to do this = **production 500 errors for ALL users** (learned the hard way March 25, 2026).
+
+**Required steps for any schema change:**
+1. `npm run db:push` — update local SQLite
+2. `npm run regen` — regenerate Prisma types
+3. **Run `ALTER TABLE` on Turso** — `echo 'ALTER TABLE "X" ADD COLUMN "y" TYPE;' | turso db shell career-builder`
+4. Update `packages/database/push-turso.ts` — both CREATE TABLE and MIGRATION_STATEMENTS
+5. `npm run build` — verify full build passes
+6. `git push` — deploy
+
+See `docs/TURSO_MIGRATION_GUIDE.md` for full details.
+
+**Vercel has 3 separate projects** — set env vars on the correct one:
+- `career-builder-admin` → `career-builder-admin.vercel.app` (admin app)
+- `career-builder-web` → `career-builder-web.vercel.app` (public site)
+- `career-builder` → unused, ignore it
