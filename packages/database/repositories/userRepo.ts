@@ -103,7 +103,7 @@ export const userRepo = {
 
   async countAdmins(tenantId: string) {
     return prisma.user.count({
-      where: { tenantId, role: "admin", isActive: true },
+      where: { tenantId, role: { in: ["admin", "super_admin"] }, isActive: true },
     });
   },
 };

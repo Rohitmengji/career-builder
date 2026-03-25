@@ -30,9 +30,20 @@ const processedEvents = new Map<string, number>();
 const IDEMPOTENCY_TTL = 10 * 60_000; // 10 minutes (Stripe may retry up to ~7 min)
 const MAX_IDEMPOTENCY_ENTRIES = 5000;
 
+// Periodic cleanup to prevent unbounded growth (every 5 min)
+const _whCleanup = setInterval(() => {
+  const now = Date.now();
+  for (const [id, ts] of processedEvents) {
+    if (now - ts > IDEMPOTENCY_TTL) processedEvents.delete(id);
+  }
+}, 300_000);
+if (typeof _whCleanup === "object" && _whCleanup && "unref" in _whCleanup) {
+  (_whCleanup as NodeJS.Timeout).unref();
+}
+
 function isDuplicate(eventId: string): boolean {
   const now = Date.now();
-  // Cleanup stale entries — run every time size exceeds threshold
+  // Also cleanup on high watermark as a safety net
   if (processedEvents.size > MAX_IDEMPOTENCY_ENTRIES) {
     for (const [id, ts] of processedEvents) {
       if (now - ts > IDEMPOTENCY_TTL) processedEvents.delete(id);

@@ -191,6 +191,8 @@ export async function deleteUser(id: string, tenantId?: string): Promise<boolean
   const tid = tenantId || DEFAULT_TENANT_ID;
   const user = await userRepo.findById(id);
   if (!user) return false;
+  // Verify user belongs to the caller's tenant
+  if (user.tenantId !== tid) return false;
   // Prevent deleting the last admin
   if (user.role === "admin") {
     const adminCount = await userRepo.countAdmins(tid);

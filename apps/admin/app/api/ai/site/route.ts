@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { generateSite, regeneratePage, type SiteGenerationInput, type GeneratedSite } from "@/lib/ai/site-generator";
-import { subscriptionRepo, prisma } from "@career-builder/database";
+import { subscriptionRepo } from "@career-builder/database";
 import { savePage, loadPage } from "@/lib/store";
 import { getSession, validateCsrf, writeAuditLog } from "@/lib/auth";
 
@@ -23,6 +23,17 @@ import { getSession, validateCsrf, writeAuditLog } from "@/lib/auth";
 /* ================================================================== */
 
 const siteRateLimits = new Map<string, { count: number; resetAt: number }>();
+
+// Periodic cleanup to prevent unbounded growth (every 5 min)
+const _siteRlCleanup = setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of siteRateLimits) {
+    if (now > entry.resetAt) siteRateLimits.delete(key);
+  }
+}, 300_000);
+if (typeof _siteRlCleanup === "object" && _siteRlCleanup && "unref" in _siteRlCleanup) {
+  (_siteRlCleanup as NodeJS.Timeout).unref();
+}
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
@@ -40,18 +51,17 @@ function isRateLimited(ip: string): boolean {
 /*  Auth helper                                                        */
 /* ================================================================== */
 
-async function getAuthUser(req: NextRequest): Promise<{ id: string; role: string } | null> {
+async function getAuthUser(_req: NextRequest): Promise<{ id: string; role: string; tenantId: string } | null> {
   try {
-    const cookieHeader = req.headers.get("cookie") || "";
-    const res = await fetch(new URL("/api/auth", req.url), {
-      headers: { cookie: cookieHeader },
-    });
-    const data = await res.json();
-    if (data.authenticated && data.user) return data.user;
+    // Use getSession() directly — no self-fetch. This is a mutation endpoint,
+    // so getSession() (which writes cookie for sliding renewal) is correct.
+    const session = await getSession();
+    if (!session) return null;
+    return { id: session.userId, role: session.role, tenantId: session.tenantId };
   } catch (err) {
     console.error("[SiteGen] Auth check failed:", err instanceof Error ? err.message : err);
+    return null;
   }
-  return null;
 }
 
 /* ================================================================== */
@@ -68,6 +78,12 @@ export async function POST(req: NextRequest) {
   }
   if (user.role === "viewer") {
     return NextResponse.json({ success: false, error: "Insufficient permissions" }, { status: 403 });
+  }
+
+  // 1a. CSRF validation — all POST mutations require it
+  const csrfValid = await validateCsrf(req);
+  if (!csrfValid) {
+    return NextResponse.json({ success: false, error: "Invalid CSRF token" }, { status: 403 });
   }
 
   // 2. Subscription check — site generation costs 5 credits
@@ -122,13 +138,8 @@ export async function POST(req: NextRequest) {
     prompt: body.prompt?.trim()?.slice(0, 2000) || "",
   };
 
-  // Inject tenant ID so generateSite can fetch live job data
-  try {
-    const session = await getSession();
-    if (session?.tenantId) input.tenantId = session.tenantId;
-  } catch (err) {
-    console.warn("[SiteGen] Failed to get session for tenantId:", err instanceof Error ? err.message : err);
-  }
+  // Use tenantId from auth (already resolved via getSession in getAuthUser)
+  if (user.tenantId) input.tenantId = user.tenantId;
 
   if (!input.companyName) {
     return NextResponse.json({ success: false, error: "Company name is required" }, { status: 400 });
@@ -168,14 +179,16 @@ export async function POST(req: NextRequest) {
       creditsUsed: creditsDeducted,
     });
   } catch (err: any) {
-    // Refund credits on failure
-    try {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { aiCredits: { increment: creditsDeducted } },
-      });
-    } catch (refundErr) {
-      console.error("[SiteGen] CRITICAL: Credit refund failed for user", user.id, "credits:", creditsDeducted, refundErr);
+    // Refund credits on failure using safe atomic method with plan-limit cap
+    const PLAN_LIMITS: Record<string, number> = { pro: 500, enterprise: 2500 };
+    const sub = await subscriptionRepo.getByUserId(user.id);
+    const cap = PLAN_LIMITS[sub?.plan || ""] || 500;
+    for (let i = 0; i < creditsDeducted; i++) {
+      try {
+        await subscriptionRepo.refundCredit(user.id, cap);
+      } catch (refundErr) {
+        console.error("[SiteGen] CRITICAL: Credit refund failed for user", user.id, "credit:", i + 1, refundErr);
+      }
     }
 
     console.error("[SiteGen API] Error:", err.message);
@@ -193,19 +206,14 @@ export async function POST(req: NextRequest) {
 /* ================================================================== */
 
 async function handleApply(
-  req: NextRequest,
+  _req: NextRequest,
   body: any,
-  user: { id: string; role: string },
+  user: { id: string; role: string; tenantId: string },
 ) {
-  // Get session for tenant ID and CSRF
+  // Get session for tenant ID — CSRF already validated at top of POST handler
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ success: false, error: "Session expired" }, { status: 401 });
-  }
-
-  const csrfValid = await validateCsrf(req);
-  if (!csrfValid) {
-    return NextResponse.json({ success: false, error: "Invalid CSRF token" }, { status: 403 });
   }
 
   const site: GeneratedSite = body.site;
@@ -270,9 +278,9 @@ async function handleApply(
 /* ================================================================== */
 
 async function handleRegen(
-  req: NextRequest,
+  _req: NextRequest,
   body: any,
-  user: { id: string; role: string },
+  user: { id: string; role: string; tenantId: string },
   ip: string,
 ) {
   const { site, pageIndex, input, regenOption } = body;
@@ -302,19 +310,22 @@ async function handleRegen(
       creditsUsed: 1,
     });
   } catch (err: any) {
-    // Refund
+    // Refund using safe atomic method with plan-limit cap
     try {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { aiCredits: { increment: 1 } },
-      });
+      const PLAN_LIMITS: Record<string, number> = { pro: 500, enterprise: 2500 };
+      const sub = await subscriptionRepo.getByUserId(user.id);
+      const cap = PLAN_LIMITS[sub?.plan || ""] || 500;
+      await subscriptionRepo.refundCredit(user.id, cap);
     } catch (refundErr) {
       console.error("[SiteGen] CRITICAL: Regen credit refund failed for user", user.id, refundErr);
     }
 
+    console.error("[SiteGen] Regen error:", err.message);
     return NextResponse.json({
       success: false,
-      error: `Regeneration failed: ${err.message}`,
+      error: process.env.NODE_ENV !== "production"
+        ? `Regeneration failed: ${err.message}`
+        : "Page regeneration failed. Please try again.",
     }, { status: 500 });
   }
 }
