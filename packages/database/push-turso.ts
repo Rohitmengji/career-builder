@@ -81,6 +81,7 @@ const SQL_STATEMENTS = [
     "department" TEXT,
     "isActive" INTEGER NOT NULL DEFAULT 1,
     "lastLoginAt" DATETIME,
+    "passwordChangedAt" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     "tenantId" TEXT NOT NULL,
@@ -94,6 +95,8 @@ const SQL_STATEMENTS = [
     "billingCycleStart" DATETIME,
     "jobAiCredits" INTEGER NOT NULL DEFAULT 0,
     "jobAiCreditsResetAt" DATETIME,
+    "aiDailyUsed" INTEGER NOT NULL DEFAULT 0,
+    "aiDailyResetAt" DATETIME,
     CONSTRAINT "User_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "User_email_tenantId_key" ON "User"("email", "tenantId")`,
@@ -227,6 +230,25 @@ const SQL_STATEMENTS = [
     CONSTRAINT "Webhook_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
   )`,
   `CREATE INDEX IF NOT EXISTS "Webhook_tenantId_idx" ON "Webhook"("tenantId")`,
+
+  // AppConfig (key-value settings store)
+  `CREATE TABLE IF NOT EXISTS "AppConfig" (
+    "key" TEXT NOT NULL PRIMARY KEY,
+    "value" TEXT NOT NULL,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
+];
+
+// ── Migration statements ─────────────────────────────────────────
+// These ALTER TABLE statements add columns that may be missing from
+// older deployments. SQLite will throw "duplicate column" if the column
+// already exists — we catch and skip those errors.
+const MIGRATION_STATEMENTS = [
+  // Added in auth-hardening: passwordChangedAt for session invalidation
+  `ALTER TABLE "User" ADD COLUMN "passwordChangedAt" DATETIME`,
+  // Added in daily-credit-limit: daily AI usage tracking
+  `ALTER TABLE "User" ADD COLUMN "aiDailyUsed" INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE "User" ADD COLUMN "aiDailyResetAt" DATETIME`,
 ];
 
 async function main() {
@@ -251,6 +273,32 @@ async function main() {
   }
 
   console.log(`\n  ✓ ${success} statements executed, ${skipped} skipped (already exist)`);
+
+  // Run migration statements (safe: catches "duplicate column" errors)
+  let migrated = 0;
+  let alreadyApplied = 0;
+  console.log("\n🔄 Running migrations...");
+
+  for (const sql of MIGRATION_STATEMENTS) {
+    try {
+      await client.execute(sql);
+      migrated++;
+      console.log(`  ✓ ${sql.slice(0, 80)}...`);
+    } catch (err: any) {
+      if (
+        err.message?.includes("duplicate column") ||
+        err.message?.includes("already exists")
+      ) {
+        alreadyApplied++;
+      } else {
+        console.error(`  ❌ Migration error: ${err.message}`);
+        console.error(`     SQL: ${sql.slice(0, 100)}...`);
+      }
+    }
+  }
+
+  console.log(`  ✓ ${migrated} migrations applied, ${alreadyApplied} already applied`);
+
   console.log("\n✅ Schema pushed to Turso!\n");
   console.log("Next: Run seed-production.ts to create the admin user.");
 
