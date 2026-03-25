@@ -8,6 +8,10 @@ import { isPathSafe } from "@career-builder/security/file-upload";
 const MEDIA_DIR = path.join(process.cwd(), "data", "media");
 const PUBLIC_PATH = "/api/media/file"; // served via GET
 
+// ⚠️ On Vercel, filesystem is ephemeral — uploaded files will be lost between deployments.
+// TODO: Migrate to cloud storage (S3, Cloudflare R2, or Vercel Blob) for production.
+const IS_VERCEL = !!process.env.VERCEL;
+
 function ensureDir() {
   if (!fs.existsSync(MEDIA_DIR)) {
     fs.mkdirSync(MEDIA_DIR, { recursive: true });
@@ -62,6 +66,10 @@ export async function POST(req: Request) {
   }
 
   fs.writeFileSync(filePath, buffer);
+
+  if (IS_VERCEL) {
+    console.warn("[media] File written to ephemeral filesystem on Vercel — will be lost on next deployment. Consider migrating to cloud storage.");
+  }
 
   const url = `${PUBLIC_PATH}/${uniqueName}`;
 

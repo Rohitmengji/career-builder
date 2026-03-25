@@ -136,6 +136,10 @@ export async function POST(request: Request) {
       const filePath = path.join(uploadDir, filename);
       await writeFile(filePath, buffer);
 
+      if (process.env.VERCEL) {
+        console.warn("[apply] Resume written to ephemeral filesystem on Vercel — will be lost on next deployment. Consider migrating to cloud storage.");
+      }
+
       savedResumeUrl = `/data/resumes/${filename}`;
     }
 

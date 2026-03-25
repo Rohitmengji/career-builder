@@ -48,7 +48,9 @@ async function getAuthUser(req: NextRequest): Promise<{ id: string; role: string
     });
     const data = await res.json();
     if (data.authenticated && data.user) return data.user;
-  } catch {}
+  } catch (err) {
+    console.error("[SiteGen] Auth check failed:", err instanceof Error ? err.message : err);
+  }
   return null;
 }
 
@@ -124,7 +126,9 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
     if (session?.tenantId) input.tenantId = session.tenantId;
-  } catch {}
+  } catch (err) {
+    console.warn("[SiteGen] Failed to get session for tenantId:", err instanceof Error ? err.message : err);
+  }
 
   if (!input.companyName) {
     return NextResponse.json({ success: false, error: "Company name is required" }, { status: 400 });
@@ -154,7 +158,9 @@ export async function POST(req: NextRequest) {
         user.id, "", "site_generate",
         `pages: ${site.pages.length}, blocks: ${site.pages.reduce((s, p) => s + p.blocks.length, 0)}`,
       );
-    } catch {}
+    } catch (err) {
+      console.warn("[SiteGen] Audit log failed:", err instanceof Error ? err.message : err);
+    }
 
     return NextResponse.json({
       success: true,
@@ -168,7 +174,9 @@ export async function POST(req: NextRequest) {
         where: { id: user.id },
         data: { aiCredits: { increment: creditsDeducted } },
       });
-    } catch {}
+    } catch (refundErr) {
+      console.error("[SiteGen] CRITICAL: Credit refund failed for user", user.id, "credits:", creditsDeducted, refundErr);
+    }
 
     console.error("[SiteGen API] Error:", err.message);
     return NextResponse.json({
@@ -226,7 +234,9 @@ async function handleApply(
         session.userId, session.email, "site_apply",
         `pages: ${site.pages.map((p) => p.slug).join(", ")}`,
       );
-    } catch {}
+    } catch (err) {
+      console.warn("[SiteGen] Audit log (apply) failed:", err instanceof Error ? err.message : err);
+    }
 
     // Notify preview listeners
     for (const page of site.pages) {
@@ -243,7 +253,9 @@ async function handleApply(
     for (const backup of backups) {
       try {
         await savePage(backup.slug, backup.blocks, session.tenantId);
-      } catch {}
+      } catch (restoreErr) {
+        console.error("[SiteGen] CRITICAL: Backup restore failed for slug", backup.slug, restoreErr);
+      }
     }
 
     return NextResponse.json({
@@ -296,7 +308,9 @@ async function handleRegen(
         where: { id: user.id },
         data: { aiCredits: { increment: 1 } },
       });
-    } catch {}
+    } catch (refundErr) {
+      console.error("[SiteGen] CRITICAL: Regen credit refund failed for user", user.id, refundErr);
+    }
 
     return NextResponse.json({
       success: false,

@@ -93,8 +93,10 @@ export async function checkDbHealth(
   prisma: { $queryRawUnsafe: (query: string) => Promise<unknown> },
 ): Promise<DbHealthStatus> {
   const start = Date.now();
-  const dbUrl = process.env.DATABASE_URL || "";
-  const provider = detectProvider(dbUrl);
+  // Use the REAL database URL, not the swapped placeholder
+  // client.ts swaps DATABASE_URL to file:/tmp/... for Prisma 6 libsql compatibility
+  const realDbUrl = (globalThis as any).__REAL_DATABASE_URL || process.env.DATABASE_URL || "";
+  const provider = detectProvider(realDbUrl);
 
   try {
     // Use a lightweight query that works across SQLite and Postgres

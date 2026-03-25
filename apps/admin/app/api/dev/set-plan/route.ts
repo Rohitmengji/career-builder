@@ -28,8 +28,11 @@ const JOB_AI_CREDITS_PER_WEEK: Record<string, number> = {
 const VALID_PLANS = new Set(["free", "pro", "enterprise"]);
 
 export async function POST(req: NextRequest) {
-  // Hard block in production — also block on Vercel production deploys
-  if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") {
+  // Hard block in production — block on all Vercel deploys except preview
+  const isProduction = process.env.NODE_ENV === "production";
+  const isVercel = !!process.env.VERCEL;
+  const isPreview = process.env.VERCEL_ENV === "preview";
+  if (isProduction && (!isVercel || !isPreview)) {
     return NextResponse.json({ error: "Not available" }, { status: 404 });
   }
 

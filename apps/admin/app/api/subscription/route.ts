@@ -62,7 +62,9 @@ export async function GET() {
       nextReset.setDate(nextReset.getDate() + 7);
       jobResetAt = nextReset;
       // Update in background — don't block the response
-      subscriptionRepo.resetJobCredits(session.userId, weeklyJobLimit).catch(() => {});
+      subscriptionRepo.resetJobCredits(session.userId, weeklyJobLimit).catch((err) => {
+        console.error("[subscription] Failed to reset weekly job credits for user", session.userId, err);
+      });
     }
 
     return NextResponse.json({

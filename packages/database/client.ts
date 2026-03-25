@@ -26,6 +26,10 @@ const REAL_DATABASE_URL = process.env.DATABASE_URL ?? "";
 const IS_LIBSQL = REAL_DATABASE_URL.startsWith("libsql://");
 const PLACEHOLDER_URL = "file:/tmp/prisma-placeholder.db";
 
+// Expose the real URL for health checks (resilience.ts reads this)
+// This survives the process.env.DATABASE_URL swap below.
+(globalThis as any).__REAL_DATABASE_URL = REAL_DATABASE_URL;
+
 if (IS_LIBSQL) {
   process.env.DATABASE_URL = PLACEHOLDER_URL;
 }
