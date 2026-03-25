@@ -9,13 +9,18 @@
 
 import { NextResponse } from "next/server";
 import { loadTenant, saveTenant, listTenants, deleteTenant } from "@/lib/tenantStore";
-import { getSession, validateCsrf, writeAuditLog } from "@/lib/auth";
+import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
 import { mergeTenantConfig, type TenantConfig } from "@career-builder/tenant-config";
 import { saveTenantSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeTenantId, sanitizeString, sanitizeThemeColors } from "@career-builder/security/sanitize";
 
-/** GET /api/tenants */
+/** GET /api/tenants — list tenants (authenticated users only) */
 export async function GET(req: Request) {
+  const session = await getSessionReadOnly();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
 

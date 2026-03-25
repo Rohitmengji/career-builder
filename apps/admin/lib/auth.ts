@@ -176,10 +176,13 @@ export async function updateUser(
   id: string,
   updates: { name?: string; role?: UserRole; password?: string; department?: string },
 ): Promise<User | null> {
-  const data: { name?: string; role?: string; passwordHash?: string; department?: string } = {};
+  const data: { name?: string; role?: string; passwordHash?: string; department?: string; passwordChangedAt?: Date } = {};
   if (updates.name) data.name = updates.name;
   if (updates.role) data.role = updates.role;
-  if (updates.password) data.passwordHash = await hashPassword(updates.password);
+  if (updates.password) {
+    data.passwordHash = await hashPassword(updates.password);
+    data.passwordChangedAt = new Date();
+  }
   if (updates.department !== undefined) data.department = updates.department;
   return userRepo.update(id, data);
 }
@@ -350,6 +353,31 @@ export async function getSession(): Promise<SessionPayload | null> {
     return null;
   }
 
+  // Invalidate sessions issued before a password change.
+  // When a user changes their password (or an admin resets it), all
+  // pre-existing sessions must be invalidated to prevent stale access.
+  if (user.passwordChangedAt && session.issuedAt) {
+    const pwChangedMs = new Date(user.passwordChangedAt).getTime();
+    if (session.issuedAt < pwChangedMs) {
+      console.log(`[auth] Session invalidated for ${user.email}: issued before password change`);
+      session.destroy();
+      return null;
+    }
+  }
+
+  // Sync session with DB — if role, name, or email changed since session was issued,
+  // update the cookie so RBAC decisions always use the latest DB state.
+  // This prevents privilege escalation when a user's role is changed by an admin.
+  const dbRole = user.role as UserRole;
+  const dbName = user.name;
+  const dbEmail = user.email;
+  if (session.role !== dbRole || session.name !== dbName || session.email !== dbEmail) {
+    session.role = dbRole;
+    session.name = dbName;
+    session.email = dbEmail;
+    console.log(`[auth] Session synced for ${user.email}: role=${dbRole}, name=${dbName}`);
+  }
+
   // Sliding renewal — refresh issuedAt
   session.issuedAt = Date.now();
   await session.save();
@@ -387,11 +415,22 @@ export async function getSessionReadOnly(): Promise<SessionPayload | null> {
     return null;
   }
 
+  // Invalidate sessions issued before a password change
+  if (user.passwordChangedAt && session.issuedAt) {
+    const pwChangedMs = new Date(user.passwordChangedAt).getTime();
+    if (session.issuedAt < pwChangedMs) {
+      return null;
+    }
+  }
+
+  // Always return the role/name/email from DB, not the (possibly stale) session cookie.
+  // This ensures RBAC decisions in Server Components use the latest DB state even though
+  // we can't write an updated cookie here (read-only path).
   return {
     userId: session.userId,
-    email: session.email,
-    name: session.name,
-    role: session.role,
+    email: user.email,
+    name: user.name,
+    role: user.role as UserRole,
     tenantId: session.tenantId,
     timestamp: session.issuedAt,
   };

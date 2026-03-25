@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { AiRequest, AiResponse, AiAction } from "@/lib/ai/types";
 import { AI_LIMITS } from "@/lib/ai/types";
-import { validateCsrf } from "@/lib/auth";
+import { validateCsrf, getSession } from "@/lib/auth";
 import { buildPrompt } from "@/lib/ai/prompts";
 import { buildJobPrompt } from "@/lib/ai/prompts";
 import { validateAiOutput, validatePageOutput, validateJobOutput, parseAiJson } from "@/lib/ai/validator";
@@ -71,20 +71,10 @@ function cleanupRateLimits() {
 /*  Auth check helper                                                  */
 /* ================================================================== */
 
-async function getAuthenticatedUser(req: NextRequest): Promise<{ id: string; role: string } | null> {
-  try {
-    const cookieHeader = req.headers.get("cookie") || "";
-    const res = await fetch(new URL("/api/auth", req.url), {
-      headers: { cookie: cookieHeader },
-    });
-    const data = await res.json();
-    if (data.authenticated && data.user) {
-      return data.user;
-    }
-  } catch {
-    // ignore
-  }
-  return null;
+async function getAuthenticatedUser(_req: NextRequest): Promise<{ id: string; role: string; tenantId: string } | null> {
+  const session = await getSession();
+  if (!session) return null;
+  return { id: session.userId, role: session.role, tenantId: session.tenantId };
 }
 
 /* ================================================================== */

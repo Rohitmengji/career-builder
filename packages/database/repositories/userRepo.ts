@@ -19,6 +19,7 @@ export interface UpdateUserInput {
   role?: string;
   department?: string;
   passwordHash?: string;
+  passwordChangedAt?: Date;
   isActive?: boolean;
 }
 

@@ -13,11 +13,15 @@ import { updateApplicationSchema, paginationSchema, safeParse } from "@career-bu
 import { sanitizeString, sanitizeEmail } from "@career-builder/security/sanitize";
 import { emailService } from "@career-builder/email";
 
-/** GET /api/admin/applications — list applications */
+/** GET /api/admin/applications — list applications (recruiter+ only) */
 export async function GET(req: Request) {
   const session = await getSessionReadOnly();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  // Viewers cannot access application data
+  if (session.role === "viewer") {
+    return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);
@@ -75,7 +79,7 @@ export async function PATCH(req: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!["admin", "hiring_manager", "recruiter"].includes(session.role)) {
+  if (!["super_admin", "admin", "hiring_manager", "recruiter"].includes(session.role)) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 

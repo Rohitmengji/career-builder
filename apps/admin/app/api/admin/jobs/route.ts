@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!["admin", "hiring_manager"].includes(session.role)) {
+  if (!["super_admin", "admin", "hiring_manager"].includes(session.role)) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 
@@ -112,7 +112,7 @@ export async function PUT(req: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!["admin", "hiring_manager"].includes(session.role)) {
+  if (!["super_admin", "admin", "hiring_manager"].includes(session.role)) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 
@@ -193,7 +193,7 @@ export async function PATCH(req: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!["admin", "hiring_manager"].includes(session.role)) {
+  if (!["super_admin", "admin", "hiring_manager"].includes(session.role)) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 
