@@ -1,10 +1,10 @@
 # 🔍 Career Builder Platform — Full Audit Report
 
-**Date:** March 24, 2026 (Updated)  
-**Previous Audit:** March 23, 2026  
+**Date:** March 25, 2026 (Updated)  
+**Previous Audit:** March 24, 2026  
 **Auditor:** Senior Architecture Review (15+ year level)  
-**Codebase:** 165+ files · 34,000+ lines · Next.js 16 + GrapesJS + Prisma + Stripe  
-**Verdict:** Production-deployable MVP. All critical security blockers resolved. Zero-cost architecture validated.
+**Codebase:** 170+ files · 36,000+ lines · Next.js 16 + GrapesJS + Prisma 6 + Stripe + Turso  
+**Verdict:** Production-deployable MVP. All critical security blockers resolved. Zero-cost architecture validated. Prisma 6 driver adapter workaround documented and stable.
 
 ---
 
@@ -18,14 +18,15 @@
 | AI System | 9/10 | ✅ Solid | ⬆️ +1 (daily user cap, abuse prevention) |
 | Billing (Stripe) | 9/10 | ✅ Solid | ⬆️ +1 (live-key guard, CSRF, idempotency hardened) |
 | Job Platform | 7/10 | ⚠️ Partial | — |
-| Auth & Session | 9/10 | ✅ Solid | ⬆️ +3 (iron-session AES-256-GCM, bcrypt cost 12, getSessionReadOnly) |
+| Auth & Session | 9/10 | ✅ Solid | ⬆️ +3 (iron-session AES-256-GCM, bcrypt cost 12, getSessionReadOnly, RBAC with super_admin) |
 | Security | 9/10 | ✅ Solid | ⬆️ +1 (feature flags, env fail-fast) |
 | Observability | 9/10 | ✅ Solid | ⬆️ +1 (job queue handlers, periodic cleanup) |
 | Multi-Tenant | 7/10 | ⚠️ Partial | ⬆️ +1 (env-based URL resolution) |
 | Design System | 8/10 | ✅ Solid | — |
-| Testing | 2/10 | ❌ Critical Gap | — |
+| Testing | 3/10 | ❌ Critical Gap | ⬆️ +1 (CI/CD pipeline added) |
 | Performance | 7/10 | ⚠️ Partial | ⬆️ +1 (rate limiter tuning, cold start optimization) |
-| **Deployment Readiness** | **9/10** | ✅ **NEW** | Readiness probe, feature flags, env validation |
+| Database | 9/10 | ✅ Solid | **NEW** — Prisma 6 driver adapter, withDbRetry, Turso migration workflow |
+| **Deployment Readiness** | **9/10** | ✅ **Solid** | Readiness probe, feature flags, env validation, CI/CD |
 
 ---
 
@@ -63,8 +64,8 @@
   { "module": "Renderer (Web)", "status": "complete", "notes": "2,044-line renderer with 28 memo'd block components. Safe defaults for every block. Error boundary. Design token driven. Responsive. Accessible." },
   { "module": "AI Assistant", "status": "complete", "notes": "Full pipeline: types → prompts → validator → API route → UI. Dual API support (Responses + Chat). Schema validation. 5 actions: generate, improve, expand, generate-page, generate-job. Separate weekly job credits (25/week)." },
   { "module": "Stripe Billing", "status": "complete", "notes": "Checkout, webhook (5 events), portal, subscription lifecycle. Atomic credit decrement. Pre-pay model with refund on failure. Geo-pricing (4 regions)." },
-  { "module": "Auth System", "status": "partial", "notes": "Cookie-based sessions with RBAC (4 roles). CSRF double-submit. Rate limiting on login. BUT: SHA-256 password hashing (not bcrypt/argon2). Base64 session tokens (not signed JWT/encrypted). No email verification." },
-  { "module": "Database (Prisma)", "status": "complete", "notes": "8 models, all tenant-isolated. 10 repository files. Proper indexes. SQLite dev, PostgreSQL-ready. Comprehensive schema with ATS fields, analytics, webhooks, audit logs." },
+  { "module": "Auth System", "status": "complete", "notes": "iron-session (AES-256-GCM encrypted cookies) + bcrypt (cost 12) with transparent SHA-256 auto-migration. RBAC: super_admin/admin/hiring_manager/recruiter/viewer. CSRF double-submit cookie. Rate limiting on login (5 attempts → 60s lockout). getSession() for writes, getSessionReadOnly() for reads. See RBAC_RULES.md." },
+  { "module": "Database (Prisma)", "status": "complete", "notes": "9 models (including AppConfig), all tenant-isolated. 10 repository files. Prisma 6 with driver adapter: SQLite (dev) + Turso libsql (prod). withDbRetry() on all critical subscription ops. Comprehensive schema with ATS fields, billing, analytics, webhooks, audit logs." },
   { "module": "Security Package", "status": "complete", "notes": "1,930 lines across 9 modules: sanitize, validate (Zod), rate-limit, headers (CSP/HSTS), file-upload validation, URL (SSRF-safe), tenant isolation, crypto." },
   { "module": "Observability Package", "status": "complete", "notes": "3,878 lines across 16 modules: structured logger, correlation IDs, metrics, alerts, bot detection, anomaly detection, performance timers, API protection, tracing." },
   { "module": "Multi-Tenant Config", "status": "complete", "notes": "957 lines: theme types, design tokens, validation. Theme/branding stored per-tenant as JSON. ThemeProvider + design system on web app." },
@@ -373,15 +374,17 @@
 
 ## 🧪 11. TESTING COVERAGE
 
-### Current State: 🔴 CRITICAL GAP
+### Current State: 🟡 Improved (CI/CD added, unit tests still needed)
 
 | Type | Files Found | Coverage |
 |------|-------------|----------|
 | Unit Tests | 0 | 0% |
 | Integration Tests | 0 | 0% |
 | E2E (Playwright) | 1 (`ui-audit.spec.ts`) | UI visual audit only — not functional tests |
+| CI/CD Pipeline | 1 (`.github/workflows/ci.yml`) | ✅ Install → Type Check → Lint → Build on every PR |
 
 **What exists:**
+- ✅ **GitHub Actions CI/CD** — runs on every PR: install, type-check, lint, build
 - Playwright config and a UI audit spec for visual regression / accessibility
 - Scripts: `ui:audit`, `ui:fix`, `ui:heal` — automated UI quality checking
 - No Jest, Vitest, or any unit test framework configured
@@ -390,7 +393,7 @@
 - Zero unit tests for repositories, auth, validation, AI validator
 - Zero integration tests for API routes
 - Zero E2E tests for user flows (login → create job → publish → apply)
-- No CI/CD pipeline configuration (`.github/workflows/` doesn't exist)
+- ✅ CI/CD pipeline exists (`.github/workflows/ci.yml`) — catches build + lint + type errors
 
 ---
 
@@ -428,11 +431,11 @@
 ### ❌ MISSING (Critical)
 
 1. **Testing** → Zero unit/integration/E2E tests. Most critical gap. Any refactor or feature addition is risky without regression safety.
-2. **CI/CD Pipeline** → No GitHub Actions, no automated build/test/deploy. Manual deploys only.
+2. ~~**CI/CD Pipeline**~~ → ✅ RESOLVED: GitHub Actions CI/CD — Install → Type Check → Lint → Build on every PR.
 3. **Email System** → No transactional emails: no application confirmation, no password reset, no job alerts, no status change notifications.
 4. ~~**Signed Session Tokens**~~ → ✅ RESOLVED: iron-session AES-256-GCM encrypted cookies
 5. ~~**bcrypt/argon2 Passwords**~~ → ✅ RESOLVED: bcrypt cost 12 with auto-migration
-6. **Production Database** → SQLite only. No PostgreSQL migration path tested. No connection pooling config.
+6. **Production Database** → ✅ RESOLVED: Turso libsql via Prisma 6 driver adapter. `push-turso.ts` for migrations. `withDbRetry()` on critical paths. See `DATABASE.md`.
 7. **CDN / Asset Pipeline** → No image optimization, no CDN, no static asset caching strategy.
 8. ~~**Error Pages**~~ → ✅ RESOLVED: Both apps have `error.tsx`, `global-error.tsx`, `not-found.tsx`
 
@@ -443,12 +446,12 @@
 | ~~**Forgeable session tokens**~~ | ~~Anyone can become admin~~ | ~~2 hours~~ | ✅ Fixed (iron-session) |
 | ~~**Weak password hashing**~~ | ~~Leaked DB = compromised~~ | ~~1 hour~~ | ✅ Fixed (bcrypt cost 12) |
 | ~~**Hardcoded localhost:3001**~~ | ~~Web app broken in prod~~ | ~~30 min~~ | ✅ Fixed (env var chain) |
-| **Zero tests** | Every change is a gamble | Weeks (ongoing) | ❌ Not started |
+| **Zero tests** | Every change is a gamble | Weeks (ongoing) | ⚠️ CI/CD added, tests next |
 | **2,044-line renderer.tsx** | Hard to maintain | 2-3 hours | ❌ Not started |
 | **Plan field on both User and Tenant** | Billing confusion at scale | 1 hour | ❌ Not started |
 | **In-memory rate limits / metrics** | Reset on every deploy | Medium (add Redis) | ⚠️ Acceptable for MVP |
 | **No email system** | Candidates get zero feedback | Days (integrate Resend) | ❌ Not started |
-| **SQLite in production** | Ephemeral on Vercel | 1 day (Turso/Neon) | ❌ Migrate before launch |
+| ~~**SQLite in production**~~ | ~~Ephemeral on Vercel~~ | ~~1 day (Turso/Neon)~~ | ✅ Fixed (Turso libsql) |
 
 ---
 

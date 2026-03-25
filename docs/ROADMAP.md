@@ -39,6 +39,22 @@ These items from the original roadmap have been implemented:
 | 27 | **Background Job Handlers** | ✅ Done | `lib/jobs/handlers.ts` — audit-log-flush, webhook-retry, periodic-cleanup (90d audit, 180d analytics) |
 | 28 | **Readiness Probe** | ✅ Done | `/api/ready` — checks DB health + required env vars, returns 200/503 for deployment orchestration |
 | 29 | **Auth Session Safety** | ✅ Done | All GET handlers use `getSessionReadOnly()` (no cookie write), rate limits 30/min for auth, 429 retry in editor |
+| 30 | **Onboarding Wizard** | ✅ Done | `/onboarding` — 3-step setup: choose template → company details → generate site → redirect to editor |
+| 31 | **Site Generator (AI Full-Site)** | ✅ Done | `/api/ai/site` + `lib/ai/site-generator/` — generates multi-page career site from company description. Preview before apply. Page regeneration. 5 modules: generateSite, generatePage, generateBlocks, siteSchema, index |
+| 32 | **Demo Generator** | ✅ Done | `/demo-generator` (admin) + `/demo/[id]` (web) — generate + share demo career sites for prospects. Outreach template included. |
+| 33 | **Analytics Dashboard** | ✅ Done | `/analytics` — hiring funnel visualization, conversion rates, daily trends, top jobs by applications, traffic sources, search terms |
+| 34 | **Marketing Landing Page** | ✅ Done | `(marketing)/landing/` — 11-section Apple/Vercel-level design: Navbar, Hero, SocialProof, ProblemSolution, Features, DemoPreview, HowItWorks, PricingSection, Comparison, FinalCta, Footer |
+| 35 | **SEO: robots.txt + sitemap.xml** | ✅ Done | `robots.ts` (dynamic rules, disallow /api/) + `sitemap.ts` (published jobs + tenant pages, hourly revalidation) |
+| 36 | **OpenGraph Image** | ✅ Done | `opengraph-image.tsx` — Edge-runtime generated OG image for social sharing (1200×630, branded gradient) |
+| 37 | **Templates API** | ✅ Done | `/api/templates` — serves career page templates from `data/templates/` JSON files. Used by onboarding wizard. |
+| 38 | **useAuthGuard Hook** | ✅ Done | `lib/useAuthGuard.ts` — client-side auth guard for admin pages. Redirects to `/login` if unauthenticated. |
+| 39 | **ErrorBoundary Component** | ✅ Done | `components/ErrorBoundary.tsx` — class-based React error boundary, prevents blank screens, shows recovery UI |
+| 40 | **RBAC with Super Admin** | ✅ Done | `super_admin` role added. Protected accounts (`superadmin@company.com`, `admin@company.com`). Immutable role rules. See `RBAC_RULES.md`. |
+| 41 | **Site Generator UI** | ✅ Done | `components/ai/SiteGenerator.tsx` + `SitePreview.tsx` — full UI for AI site generation with preview |
+| 42 | **Marketing Components** | ✅ Done | 11 components in `apps/web/components/marketing/` — Navbar, Hero, SocialProof, ProblemSolution, Features, DemoPreview, HowItWorks, PricingSection, Comparison, FinalCta, Footer |
+| 43 | **Personalized Web Components** | ✅ Done | `PersonalizedSidebar.tsx`, `PersonalizedSuggestions.tsx`, `SiteHeader.tsx` on web app |
+| 44 | **Turso Production DB** | ✅ Done | Turso libsql setup with `push-turso.ts`, migration guide, absolute path fixes. See `TURSO_SETUP.md` + `TURSO_MIGRATION_GUIDE.md`. |
+| 45 | **CI/CD Pipeline** | ✅ Done | `.github/workflows/ci.yml` — Install → Type Check → Lint → Build on every PR |
 
 ---
 
@@ -54,7 +70,7 @@ These items from the original roadmap have been implemented:
 | 4 | **Resume files stored on local disk** | `api/jobs/apply/route.ts` | Lost on deploy; no CDN | ❌ Migrate to S3/R2 |
 | 5 | **Old `lib/jobs.ts` still exists** | `apps/web/lib/jobs.ts` | Confusion — legacy file | ❌ Delete |
 | 6 | **`renderer.tsx.bak` still exists** | `apps/web/lib/renderer.tsx.bak` | 1179-line backup | ❌ Delete |
-| 7 | **SQLite in production** | `packages/database/` | No concurrent writes, ephemeral | ❌ Migrate to Turso/Neon |
+| ~~7~~ | ~~**SQLite in production**~~ | ~~`packages/database/`~~ | ~~No concurrent writes, ephemeral~~ | ✅ Fixed (Turso libsql + driver adapter) |
 | 8 | **Observability data is in-memory** | `packages/observability/` | Resets on process restart | ⚠️ Acceptable for MVP |
 
 ### Important — Improve Quality
@@ -78,7 +94,7 @@ These items from the original roadmap have been implemented:
 
 | # | Feature | Description | Priority |
 |---|---------|-------------|----------|
-| 1 | **PostgreSQL migration** | Switch Prisma datasource from SQLite to PostgreSQL. Add connection pooling. Production-ready. | 🔴 Critical |
+| ~~1~~ | ~~**PostgreSQL migration**~~ | ~~Switch Prisma datasource from SQLite to PostgreSQL.~~ ✅ Done: Turso libsql via Prisma 6 driver adapter. See `DATABASE.md`. | ~~🔴 Critical~~ ✅ |
 | 2 | **Cloud file storage** | Upload resumes and media to S3/Cloudflare R2 instead of local disk. Signed URLs for private resumes. | 🔴 Critical |
 | 3 | **Test suite** | Unit tests for engine.ts, validation.ts, tokens.ts, repositories. Integration tests for API routes. E2E tests for editor flow. Use Vitest + Playwright. | 🔴 Critical |
 | 4 | **Error boundaries** | Wrap each block in `<ErrorBoundary>`. Show fallback UI instead of white screen. Log errors to observability. | 🟡 High |
@@ -114,10 +130,17 @@ These items from the original roadmap have been implemented:
 
 ## 🏗️ Implementation Notes for Key Features
 
-### PostgreSQL Migration (Feature #1)
+### ~~PostgreSQL Migration~~ → ✅ Turso libsql (Done)
 
-The Prisma schema is already PostgreSQL-compatible. Steps:
+Production database now uses Turso libsql via Prisma 6 driver adapter:
 
+1. `datasource db { provider = "sqlite" }` stays unchanged (Turso is SQLite-compatible)
+2. `DATABASE_URL` set to `libsql://career-builder-xxx.turso.io?authToken=...` on Vercel
+3. `packages/database/client.ts` auto-detects `libsql://` prefix → uses `@prisma/adapter-libsql`
+4. Schema migrations: manual `ALTER TABLE` via Turso CLI (see `TURSO_MIGRATION_GUIDE.md`)
+5. All critical subscription ops wrapped with `withDbRetry()` for resilience
+
+For future PostgreSQL migration (if needed):
 1. `datasource db { provider = "postgresql" }` in schema.prisma
 2. Set `DATABASE_URL` to PostgreSQL connection string
 3. `npx prisma migrate dev` to create migration
@@ -179,8 +202,8 @@ npm install -D vitest @testing-library/react @playwright/test
 ## 📋 Quick Wins (< 1 hour each)
 
 - [ ] Delete `apps/web/lib/jobs.ts` (legacy file)
-- [x] ~~Add `<ErrorBoundary>` wrapper in `renderer.tsx`~~ — Done (error.tsx + global-error.tsx)
-- [ ] Add `robots.txt` and basic `sitemap.xml`
+- [x] ~~Add `<ErrorBoundary>` wrapper in `renderer.tsx`~~ — Done (error.tsx + global-error.tsx + ErrorBoundary.tsx)
+- [x] ~~Add `robots.txt` and basic `sitemap.xml`~~ — Done (robots.ts + sitemap.ts with dynamic job/page entries)
 - [x] ~~Add `loading.tsx` for `/[slug]` route~~ — Done
 - [ ] Add `not-found.tsx` for custom 404 page on `/jobs/[id]`
 - [ ] Add `aria-label` to all icon-only buttons
@@ -194,7 +217,7 @@ npm install -D vitest @testing-library/react @playwright/test
 1. **Delete legacy `jobs.ts`** (5 min)
 2. **Error boundaries** (2 hours)
 3. **Test suite for engine.ts + validation.ts + sanitize.ts** (1 day)
-4. **PostgreSQL migration** (1 day)
+4. ~~**PostgreSQL migration**~~ ✅ Done (Turso libsql)
 5. **Cloud file storage** (1 day)
 6. **External metrics storage (Redis)** (1-2 days)
 7. **Themed job pages** (2 days)

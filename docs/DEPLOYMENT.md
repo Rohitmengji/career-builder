@@ -119,6 +119,8 @@ DATABASE_URL="libsql://..." npx prisma db push
 DATABASE_URL="libsql://..." npx tsx packages/database/seed.ts
 ```
 
+> **⚠️ Prisma 6 Driver Adapter Gotcha:** The schema still says `provider = "sqlite"` even when using Turso. This is correct — `packages/database/client.ts` automatically uses the `@prisma/adapter-libsql` driver adapter when `DATABASE_URL` starts with `libsql://`. Do NOT change the provider to "libsql" — Prisma doesn't support that. See `docs/TURSO_SETUP.md` for details.
+
 ### 6. Stripe Webhook
 Add endpoint in Stripe Dashboard:
 `https://admin.yourdomain.com/api/stripe/webhook`

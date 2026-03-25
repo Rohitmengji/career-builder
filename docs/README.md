@@ -11,9 +11,13 @@
 | [README.md](./README.md) | This file — project overview, setup, and quick start | Everyone |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture, data flow, and design decisions | Engineers |
 | [CODEBASE_GUIDE.md](./CODEBASE_GUIDE.md) | File-by-file walkthrough — what every module does and why | New developers |
+| [DATABASE.md](./DATABASE.md) | Prisma 6 driver adapter, schema, migration workflow, debugging | Engineers |
 | [ROADMAP.md](./ROADMAP.md) | Future features, known gaps, and improvement opportunities | Product & Engineering |
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | Production deployment guide, health checks, feature flags | DevOps & Engineering |
 | [PLATFORM_AUDIT.md](./PLATFORM_AUDIT.md) | Full production audit report — security, billing, resilience | Engineering Leadership |
+| [TURSO_SETUP.md](./TURSO_SETUP.md) | Turso database setup for Vercel deployment | DevOps |
+| [TURSO_MIGRATION_GUIDE.md](./TURSO_MIGRATION_GUIDE.md) | Schema change workflow for production Turso DB | Engineers |
+| [RBAC_RULES.md](./RBAC_RULES.md) | Role-based access control rules and protected accounts | Engineers |
 
 ---
 
@@ -25,16 +29,22 @@ Career Builder is a **monorepo-based career site platform** that lets non-techni
 
 - **Visual Editor** — GrapesJS-powered drag-and-drop page builder with 30+ block types
 - **AI Content Generation** — GPT-5.4-mini powered content creation, improvement, expansion, full page generation, and job posting generation with subscription gating
+- **AI Site Generator** — Generate a complete multi-page career site from a company description. Preview all pages before applying. Regenerate individual pages.
 - **Stripe Billing** — Production subscription system with checkout, webhooks, customer portal, credit-based AI usage, and geo-based pricing
 - **Live Preview** — Real-time SSE sync between editor and public site
 - **Multi-Tenant Theming** — Each company gets its own colors, fonts, and branding
 - **Job Data System** — Search, filter, facets, pagination, job details, and apply workflow
-- **Database Layer** — Prisma ORM + SQLite with 8 models, 9 repositories, and full seed data
-- **Authentication** — iron-session (AES-256-GCM) + bcrypt password hashing, DB-backed multi-user RBAC with admin/hiring_manager/recruiter/viewer roles
+- **Database Layer** — Prisma 6 ORM + SQLite (dev) / Turso libsql (prod) with driver adapter, 9 models, 10 repositories, `withDbRetry` resilience, and full seed data
+- **Authentication** — iron-session (AES-256-GCM) + bcrypt password hashing, DB-backed multi-user RBAC with super_admin/admin/hiring_manager/recruiter/viewer roles
 - **Security** — Input sanitization, Zod validation, CSP headers, rate limiting, CSRF protection, Stripe live key guard, feature flags
 - **Observability** — Structured logging, Prometheus-style metrics, alerting (Slack/Email/DB), bot detection, anomaly detection, distributed tracing, performance budgets, readiness probe, admin dashboard
 - **Design System** — Production-grade spacing, typography, a11y components, scroll reveal animations
 - **File Upload** — Resume upload (PDF/DOC/DOCX) with validation
+- **Onboarding Wizard** — 3-step new user setup: choose template → enter company details → AI generates site → redirects to editor
+- **Demo Generator** — Generate and share demo career sites for prospective customers with outreach templates
+- **Analytics Dashboard** — Hiring funnel visualization, conversion rates, daily trends, top jobs, traffic sources, search terms
+- **Marketing Landing Page** — Apple/Vercel-level conversion page with 11 sections, geo-aware pricing, social proof, competitor comparison
+- **SEO** — Dynamic `robots.ts`, `sitemap.ts` (published jobs + tenant pages), OpenGraph image generation (Edge runtime)
 
 ---
 
@@ -128,7 +138,8 @@ career-builder/
 | AI Provider | OpenAI (GPT-5.4-mini) | Responses API |
 | Billing | Stripe | 20.4.1 |
 | ORM | Prisma | 6.19.2 |
-| Database | SQLite (dev) / PostgreSQL (prod) | — |
+| Database | SQLite (dev) / Turso libsql (prod) | — |
+| Driver Adapter | @prisma/adapter-libsql | 6.19.2 |
 | Validation | Zod | 4.3.6 |
 | Build System | Turborepo | 2.8.17 |
 
@@ -161,7 +172,7 @@ cd apps/admin && npm run dev   # Just the admin editor
 
 ## 🗄️ Data Storage
 
-All persistent data is stored in a **SQLite database** at `packages/database/prisma/dev.db`:
+All persistent data is stored in a **SQLite database** (dev) or **Turso libsql** (prod) at `packages/database/prisma/dev.db`:
 
 | Model | Records (seeded) | Purpose |
 |-------|-----------------|---------|
@@ -173,6 +184,7 @@ All persistent data is stored in a **SQLite database** at `packages/database/pri
 | AuditLog | — | Login events, page saves, alert persistence |
 | AnalyticsEvent | — | Job views, searches, application tracking |
 | Webhook | — | Outbound webhook configurations |
+| AppConfig | — | Key-value dynamic application configuration |
 
 ### Billing Fields on User Model
 
@@ -185,6 +197,10 @@ subscriptionStatus    String    @default("none")        // none | active | past_
 aiCredits             Int       @default(0)             // remaining AI credits this cycle
 aiCreditsResetAt      DateTime?                         // when credits reset (next billing cycle)
 billingCycleStart     DateTime?                         // current billing cycle start
+jobAiCredits          Int       @default(0)             // weekly job AI credit pool (25/week)
+jobAiCreditsResetAt   DateTime?                         // when weekly job credits reset
+aiDailyUsed           Int       @default(0)             // server-enforced daily usage counter
+aiDailyResetAt        DateTime?                         // when daily counter resets (24h)
 ```
 
 **Additionally**, file-based storage exists for media:
@@ -201,7 +217,7 @@ data/
 
 | Variable | Where | Default | Description |
 |----------|-------|---------|-------------|
-| `DATABASE_URL` | All `.env` files | `file:/abs/path/dev.db` | **Must be absolute path** to SQLite DB |
+| `DATABASE_URL` | All `.env` files | `file:/abs/path/dev.db` | **Must be absolute path** to SQLite DB. For prod, use `libsql://...` (Turso). See below. |
 | `SESSION_SECRET` | `apps/admin/.env` | — | **REQUIRED in production.** Iron-session encryption secret. Generate with `openssl rand -base64 32` |
 | `AUTH_SECRET` | `apps/admin/.env` | `career-builder-secret-key` | Legacy session signing secret (superseded by SESSION_SECRET) |
 | `NEXT_PUBLIC_SITE_URL` | `apps/web/.env` | `http://localhost:3000` | Base URL for server-side API calls |
@@ -216,6 +232,78 @@ data/
 | `SENTRY_DSN` | Optional | — | Sentry error tracking (optional, degrades gracefully) |
 | `SLACK_WEBHOOK_URL` | Optional | — | Slack webhook for critical alerts |
 | `FEATURE_FLAG_*` | Optional | — | Override feature flags (e.g., `FEATURE_FLAG_AI_CONTENT_GENERATION=false`) |
+
+---
+
+## 🗄️ Prisma 6 + Database Architecture
+
+### The Driver Adapter Pattern
+
+This project uses **Prisma 6** with a **driver adapter** to support both local SQLite and production Turso (libsql). This is critical to understand because Prisma 6 has a **known design mismatch** between its engine and adapter system.
+
+### How It Works (`packages/database/client.ts`)
+
+```
+DATABASE_URL starts with "file:"      → Standard PrismaClient (local SQLite)
+DATABASE_URL starts with "libsql://"  → PrismaClient + @prisma/adapter-libsql (Turso)
+```
+
+**The Workaround:**
+
+Prisma 6 has a contradiction:
+- The **engine** requires a valid `file:` URL for the `sqlite` provider
+- The **driver adapter** rejects `datasourceUrl`/`datasources` overrides
+- Prisma **auto-loads `.env` files**, overriding runtime `process.env` changes
+
+Our `client.ts` solves this by:
+1. Capturing the real `DATABASE_URL` at module load time
+2. Swapping `process.env.DATABASE_URL` to a placeholder (`file:/tmp/prisma-placeholder.db`) for Turso
+3. Re-enforcing the swap right before `PrismaClient` instantiation (survives Prisma's .env auto-loading)
+4. Passing the real URL to `@prisma/adapter-libsql` via its config object
+
+### ⚠️ Critical Rules
+
+| Rule | Why |
+|------|-----|
+| **Always use absolute paths** for SQLite | `file:./dev.db` resolves differently between Prisma CLI and adapter. Use `file:/absolute/path/dev.db`. |
+| **Never add `datasourceUrl` to PrismaClient** | This breaks the adapter. Let `client.ts` handle URL routing. |
+| **Never add `datasources: { db: ... }` to PrismaClient** | Same issue — adapter rejects this. |
+| **Regenerate after schema changes** | `npx prisma generate` embeds env at generation time. Stale generation = stale URL. |
+| **Clean `.prisma` cache when debugging** | `rm -rf node_modules/.prisma && npx prisma generate` |
+
+### Dev vs Production
+
+| Environment | DATABASE_URL | Client |
+|-------------|-------------|--------|
+| **Local dev** | `file:/Users/.../prisma/dev.db` | Standard `PrismaClient` |
+| **Vercel production** | `libsql://career-builder-xxx.turso.io?authToken=...` | `PrismaClient` + `PrismaLibSQL` adapter |
+| **Vercel preview** | Same Turso URL (or separate preview DB) | Same as production |
+
+### Schema Change Workflow
+
+Every `schema.prisma` change requires **both** local and production migration:
+
+```bash
+# 1. Update schema.prisma
+# 2. Push to local SQLite
+npm run db:push
+
+# 3. Regenerate Prisma types
+npm run regen
+
+# 4. Migrate production Turso (MANUAL — not automatic!)
+echo 'ALTER TABLE "User" ADD COLUMN "newField" TEXT;' | turso db shell career-builder
+
+# 5. Update push-turso.ts (CREATE TABLE + MIGRATION_STATEMENTS)
+# 6. Verify build passes
+npm run build
+
+# 7. Deploy
+git push
+```
+
+> **⚠️ Skipping the Turso ALTER TABLE = production 500 errors for ALL users.**
+> See `docs/TURSO_MIGRATION_GUIDE.md` for the full guide.
 
 ---
 
@@ -443,16 +531,18 @@ IntersectionObserver-based scroll reveal animation hook. Respects `prefers-reduc
 
 - **4 shared packages** (database, security, observability, tenant-config)
 - **2 apps** (admin + web)
-- **8 Prisma models** with 9 repository modules (including subscriptionRepo with `withDbRetry`)
+- **9 Prisma models** (Tenant, User, Job, Application, Page, AuditLog, AnalyticsEvent, Webhook, AppConfig) with 10 repository modules (including subscriptionRepo with `withDbRetry`)
+- **Prisma 6 driver adapter** — dual-mode client: standard SQLite (dev) + @prisma/adapter-libsql (Turso prod)
 - **9 security modules** (sanitize, validate, rate-limit, headers, middleware, file-upload, url, tenant, crypto)
 - **16 observability modules** (logger, correlation, metrics, alerts, bot-detection, anomaly, request-logger, performance, api-protection, rate-limiter, rate-limiter-edge, persistence, tracing, edge, sentry, index)
 - **30+ block types** in the visual editor
 - **24 mock jobs** across 7 departments
 - **5 AI actions** (generate, improve, expand, generate-page, generate-job)
-- **5 Stripe webhook events** handled with 10-min idempotency
+- **5 Stripe webhook events** handled with 10-min idempotency + 5,000-entry cap
 - **22+ API routes** across admin + web apps (including `/api/ready` readiness probe)
 - **~592 lines** design system tokens + **~553 lines** design system components
 - **3 subscription plans** (Free, Pro, Enterprise) with credit-based AI usage
 - **4 supported pricing regions** (US, UK, EU, India) with geo-detection
 - **7 feature flags** (env-var overridable, deploy-environment scoped)
 - **3 background job handlers** (audit-log-flush, webhook-retry, periodic-cleanup)
+- **CI/CD pipeline** — GitHub Actions: Install → Type Check → Lint → Build on every PR

@@ -19,12 +19,12 @@ The database package provides the entire data access layer. All apps import from
 
 | File | What It Does |
 |------|-------------|
-| `prisma/schema.prisma` | **Prisma schema — 8 models.** Tenant, User, Job, Application, Page, AuditLog, AnalyticsEvent, Webhook. SQLite for dev, PostgreSQL-ready for prod. All entities have `tenantId` for multi-tenant isolation. Generator output: `../../../node_modules/.prisma/client`. |
-| `client.ts` | **Prisma client singleton.** Cached on `globalThis` to prevent connection exhaustion during Next.js HMR. |
+| `prisma/schema.prisma` | **Prisma schema — 9 models.** Tenant, User, Job, Application, Page, AuditLog, AnalyticsEvent, Webhook, AppConfig. SQLite for dev, Turso libsql for prod. All entities have `tenantId` for multi-tenant isolation. Generator output: `../../../node_modules/.prisma/client`. |
+| `client.ts` | **Prisma client singleton with driver adapter.** ~103 lines. Cached on `globalThis` to prevent connection exhaustion during Next.js HMR. **Dual-mode:** detects `DATABASE_URL` prefix — `file:` → standard PrismaClient (local SQLite), `libsql://` → PrismaClient + `@prisma/adapter-libsql` (Turso). Implements the Prisma 6 driver adapter workaround: swaps `process.env.DATABASE_URL` to a placeholder at module load time and re-enforces the swap before instantiation to survive Prisma's .env auto-loading. Fail-fast if `DATABASE_URL` missing. Warns if SQLite on Vercel. |
 | `types.ts` | **Domain types (~310 lines).** Canonical contract between DB, API routes, and frontend. Enum unions (`UserRole`, `EmploymentType`, `ExperienceLevel`, `ApplicationStatus`, `AuditAction`, `TenantPlan`), domain interfaces (`TenantRecord`, `UserRecord`, `SafeUser`, `JobRecord`, `ApplicationRecord`, `PageRecord`, etc.), and input/filter types. |
 | `index.ts` | **Barrel export.** Re-exports `prisma`, all 8 repositories, and all types. |
 | `seed.ts` | **Database seeder.** Creates 1 tenant, 3 users, 8 jobs, 5 applications, 1 page. Run with `npx tsx seed.ts`. |
-| `resilience.ts` | **DB retry & health.** `withDbRetry(fn, options?)` retries transient Prisma errors (P1001, P1002, P1008, P1017, P2024) with exponential backoff. `checkDbHealth()` runs a lightweight query to verify DB connectivity. Used by `subscriptionRepo` and `/api/ready`. |
+| `resilience.ts` | **DB retry & health (~189 lines).** `withDbRetry(fn, options?)` retries transient Prisma errors (SQLITE_BUSY, SQLITE_LOCKED, P2024, P2034) with exponential backoff (50→100→250→500→1000ms). `checkDbHealth()` runs a lightweight query to verify DB connectivity. `detectProvider()` identifies sqlite/libsql/postgresql from URL. `validateDatabaseUrl()` warns about SQLite on Vercel. Used by `subscriptionRepo` for all credit operations and `/api/ready` for readiness probes. |
 | `.env` | `DATABASE_URL` — must be **absolute** `file:` path to `prisma/dev.db`. |
 | `package.json` | v0.1.0. Scripts: `db:generate`, `db:push`, `db:migrate`, `db:seed`, `db:studio`, `db:reset`. |
 
