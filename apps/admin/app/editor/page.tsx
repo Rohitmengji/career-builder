@@ -963,6 +963,8 @@ export default function EditorPage() {
               <a href="/settings" className="text-blue-500 hover:text-blue-400 underline">⚙ Settings</a>
               {" · "}
               <a href="/theme" className="text-purple-500 hover:text-purple-400 underline">🎨 Theme</a>
+              {" · "}
+              <a href="/analytics" className="text-green-500 hover:text-green-400 underline">📊 Analytics</a>
             </p>
           )}
         </div>

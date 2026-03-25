@@ -257,6 +257,8 @@ const MIGRATION_STATEMENTS = [
   `ALTER TABLE "AnalyticsEvent" ADD COLUMN "type" TEXT`,
   `ALTER TABLE "AnalyticsEvent" ADD COLUMN "jobId" TEXT`,
   `ALTER TABLE "AnalyticsEvent" ADD COLUMN "pageSlug" TEXT`,
+  `ALTER TABLE "AnalyticsEvent" ADD COLUMN "sessionId" TEXT`,
+  `ALTER TABLE "AnalyticsEvent" ADD COLUMN "referrer" TEXT`,
   `ALTER TABLE "AnalyticsEvent" ADD COLUMN "utmSource" TEXT`,
   `ALTER TABLE "AnalyticsEvent" ADD COLUMN "utmMedium" TEXT`,
   `ALTER TABLE "AnalyticsEvent" ADD COLUMN "utmCampaign" TEXT`,
