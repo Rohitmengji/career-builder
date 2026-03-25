@@ -4,7 +4,6 @@ import {
   DEFAULT_BRANDING,
   mergeTenantConfig,
 } from "@career-builder/tenant-config";
-import SiteHeader from "@/components/SiteHeader";
 
 function getAdminApiUrl(): string {
   const serverOnly = process.env.ADMIN_API_URL;
