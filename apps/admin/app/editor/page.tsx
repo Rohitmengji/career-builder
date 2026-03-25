@@ -82,7 +82,7 @@ export default function EditorPage() {
   const router = useRouter();
 
   /* ── Subscription (for AI page gen in toolbar) ─────────────────── */
-  const { status: subscription, decrementCredit } = useSubscription();
+  const { status: subscription, decrementCredit, refresh: refreshSubscription } = useSubscription();
 
   /* ── Generate Page modal state ─────────────────────────────────── */
   const [showGenPageModal, setShowGenPageModal] = useState(false);
@@ -137,15 +137,50 @@ export default function EditorPage() {
   /* ── Handle Stripe Checkout redirect + deep links ───────────────── */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("checkout") === "success") {
-      // Clean URL without reload
+    const checkoutStatus = params.get("checkout");
+    const sessionId = params.get("session_id");
+
+    if (checkoutStatus === "success") {
+      // Always clean the URL immediately so the user doesn't see the params
       window.history.replaceState({}, "", "/editor");
+
+      // Sync subscription from Stripe — this is the fallback path for when
+      // the webhook didn't fire (wrong secret, unconfigured endpoint, etc.)
+      if (sessionId) {
+        fetch("/api/stripe/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ sessionId }),
+        })
+          .then(async (res) => {
+            if (res.ok) {
+              // Force all useSubscription instances to re-fetch from DB
+              await refreshSubscription();
+              console.log("[checkout] Subscription synced from Stripe ✅");
+            } else {
+              // Sync failed — still refresh the subscription state in case
+              // the webhook already fired and the DB is up-to-date
+              console.warn("[checkout] Sync endpoint returned", res.status, "— falling back to refresh");
+              await refreshSubscription();
+            }
+          })
+          .catch((err) => {
+            console.error("[checkout] Stripe sync error:", err);
+            // Even on network error, refresh in case webhook updated the DB
+            refreshSubscription();
+          });
+      } else {
+        // No session_id in URL — webhook may have already fired, just refresh
+        refreshSubscription();
+      }
     }
+
     if (params.get("openSiteGen") === "true") {
       setShowSiteGenerator(true);
       window.history.replaceState({}, "", "/editor");
     }
-  }, []);
+  }, [refreshSubscription]);
 
   /* ── Unsaved changes guard ─────────────────────────────────────── */
   useEffect(() => {
