@@ -10,6 +10,7 @@ import { notFound } from "next/navigation";
 import type { Job, JobDetailResponse } from "@/lib/jobs/types";
 import ApplyModal from "@/app/jobs/[id]/ApplyModal";
 import PersonalizedSidebar from "@/components/PersonalizedSidebar";
+import JobViewTracker from "@/app/jobs/[id]/JobViewTracker";
 
 /* ================================================================== */
 /*  Data fetching (server-side)                                        */
@@ -59,6 +60,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Client-side analytics tracker (renders null) */}
+      <JobViewTracker jobId={job.id} />
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

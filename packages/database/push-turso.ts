@@ -200,19 +200,22 @@ const SQL_STATEMENTS = [
   // AnalyticsEvent
   `CREATE TABLE IF NOT EXISTS "AnalyticsEvent" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "event" TEXT NOT NULL,
-    "page" TEXT,
-    "referrer" TEXT,
+    "type" TEXT NOT NULL,
+    "jobId" TEXT,
+    "pageSlug" TEXT,
     "metadata" TEXT,
     "sessionId" TEXT,
-    "ipHash" TEXT,
-    "userAgent" TEXT,
+    "referrer" TEXT,
+    "utmSource" TEXT,
+    "utmMedium" TEXT,
+    "utmCampaign" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "tenantId" TEXT NOT NULL,
     CONSTRAINT "AnalyticsEvent_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
   )`,
-  `CREATE INDEX IF NOT EXISTS "AnalyticsEvent_tenantId_idx" ON "AnalyticsEvent"("tenantId")`,
-  `CREATE INDEX IF NOT EXISTS "AnalyticsEvent_event_idx" ON "AnalyticsEvent"("event")`,
+  `CREATE INDEX IF NOT EXISTS "AnalyticsEvent_tenantId_type_idx" ON "AnalyticsEvent"("tenantId", "type")`,
+  `CREATE INDEX IF NOT EXISTS "AnalyticsEvent_tenantId_jobId_idx" ON "AnalyticsEvent"("tenantId", "jobId")`,
+  `CREATE INDEX IF NOT EXISTS "AnalyticsEvent_tenantId_createdAt_idx" ON "AnalyticsEvent"("tenantId", "createdAt")`,
   `CREATE INDEX IF NOT EXISTS "AnalyticsEvent_createdAt_idx" ON "AnalyticsEvent"("createdAt")`,
 
   // Webhook
@@ -249,6 +252,14 @@ const MIGRATION_STATEMENTS = [
   // Added in daily-credit-limit: daily AI usage tracking
   `ALTER TABLE "User" ADD COLUMN "aiDailyUsed" INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE "User" ADD COLUMN "aiDailyResetAt" DATETIME`,
+  // Added in analytics-funnel: rename old AnalyticsEvent columns to match Prisma schema
+  // These are safe no-ops on fresh deployments (CREATE TABLE IF NOT EXISTS already has new schema)
+  `ALTER TABLE "AnalyticsEvent" ADD COLUMN "type" TEXT`,
+  `ALTER TABLE "AnalyticsEvent" ADD COLUMN "jobId" TEXT`,
+  `ALTER TABLE "AnalyticsEvent" ADD COLUMN "pageSlug" TEXT`,
+  `ALTER TABLE "AnalyticsEvent" ADD COLUMN "utmSource" TEXT`,
+  `ALTER TABLE "AnalyticsEvent" ADD COLUMN "utmMedium" TEXT`,
+  `ALTER TABLE "AnalyticsEvent" ADD COLUMN "utmCampaign" TEXT`,
 ];
 
 async function main() {

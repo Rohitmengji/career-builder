@@ -8,6 +8,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import { trackApplyStart, trackApplyComplete } from "@/lib/analytics";
 
 interface ApplyModalProps {
   jobId: string;
@@ -57,7 +58,8 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
     setResumeFile(null);
     setResumeError("");
     setErrorMsg("");
-  }, []);
+    trackApplyStart(jobId);
+  }, [jobId]);
 
   const close = useCallback(() => {
     setIsOpen(false);
@@ -155,6 +157,7 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
 
         if (data.success) {
           setStatus("success");
+          trackApplyComplete(jobId);
         } else {
           setStatus("error");
           setErrorMsg(data.error || "Application failed. Please try again.");

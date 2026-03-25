@@ -214,6 +214,12 @@ export default function AdminDashboardPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
           <div className="flex flex-wrap gap-3">
             <Link
+              href="/analytics"
+              className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm"
+            >
+              📊 Analytics
+            </Link>
+            <Link
               href="/jobs"
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
             >

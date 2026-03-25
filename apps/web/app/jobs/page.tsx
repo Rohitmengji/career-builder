@@ -13,6 +13,7 @@ import { useJobSearch } from "@/lib/jobs/useJobSearch";
 import { useRecentSearches } from "@/lib/jobs/useRecentSearches";
 import PersonalizedSuggestions from "@/components/PersonalizedSuggestions";
 import type { Job, FacetBucket, EmploymentType, ExperienceLevel } from "@/lib/jobs/types";
+import { trackJobListView, trackSearch } from "@/lib/analytics";
 
 /* ================================================================== */
 /*  Wrapper — Suspense boundary for useSearchParams                    */
@@ -63,6 +64,15 @@ function JobsPageInner() {
   useEffect(() => {
     if (params.location) trackLocation(params.location);
   }, [params.location, trackLocation]);
+
+  // Analytics: fire job_list_view once on mount, track searches
+  useEffect(() => {
+    trackJobListView();
+  }, []);
+
+  useEffect(() => {
+    if (params.q) trackSearch(params.q);
+  }, [params.q]);
 
   const hasActiveFilters =
     !!params.q ||

@@ -25,6 +25,10 @@ export async function GET() {
     searchTerms,
     dailyApplications,
     eventCounts,
+    funnelData,
+    sourceBreakdown,
+    topJobsByConversion,
+    dailyTrend,
   ] = await Promise.all([
     tenantRepo.getStats(tenantId),
     applicationRepo.countByStatus(tenantId),
@@ -33,6 +37,10 @@ export async function GET() {
     analyticsRepo.getSearchTerms(tenantId, 30),
     analyticsRepo.getDailyApplications(tenantId, 30),
     analyticsRepo.getEventCounts(tenantId, 30),
+    analyticsRepo.getFunnelData(tenantId, 30),
+    analyticsRepo.getSourceBreakdown(tenantId, 30),
+    analyticsRepo.getTopJobsByConversion(tenantId, 30),
+    analyticsRepo.getDailyTrend(tenantId, 30),
   ]);
 
   return NextResponse.json({
@@ -43,5 +51,9 @@ export async function GET() {
     searchTerms,
     dailyApplications,
     eventCounts,
+    funnelData,
+    sourceBreakdown,
+    topJobsByConversion,
+    dailyTrend,
   });
 }

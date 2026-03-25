@@ -211,13 +211,17 @@ model AuditLog {
 // --- ANALYTICS EVENT ---
 
 model AnalyticsEvent {
-  id        String   @id @default(cuid())
-  type      String
-  jobId     String?
-  pageSlug  String?
-  metadata  String?
-  sessionId String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  type        String
+  jobId       String?
+  pageSlug    String?
+  metadata    String?
+  sessionId   String?
+  referrer    String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  createdAt   DateTime @default(now())
 
   // Tenant isolation
   tenantId String
@@ -225,6 +229,7 @@ model AnalyticsEvent {
 
   @@index([tenantId, type])
   @@index([tenantId, jobId])
+  @@index([tenantId, createdAt])
   @@index([createdAt])
 }
 
