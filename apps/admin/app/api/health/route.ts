@@ -25,7 +25,8 @@ export async function GET() {
   const httpStatus = dbHealth.healthy ? 200 : 503;
 
   // Database URL info (safe — never expose full URL, only provider type)
-  const rawDbUrl = process.env.DATABASE_URL || "";
+  // Use globalThis.__REAL_DATABASE_URL to get the real URL (client.ts swaps process.env.DATABASE_URL for Prisma 6 compatibility)
+  const rawDbUrl = (globalThis as any).__REAL_DATABASE_URL || process.env.DATABASE_URL || "";
   const dbUrlType = rawDbUrl.startsWith("libsql://") ? "turso"
     : rawDbUrl.startsWith("file:") ? "sqlite-file"
     : rawDbUrl.startsWith("postgres") ? "postgresql"
