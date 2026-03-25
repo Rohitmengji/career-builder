@@ -14,8 +14,11 @@ import {
 import { createUserSchema, updateUserSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeEmail, sanitizeString } from "@career-builder/security/sanitize";
 
-/** List of emails that are protected — cannot be deleted or have their role changed */
+/** List of emails that are protected — cannot be deleted or have their role changed by anyone */
 const PROTECTED_ACCOUNTS = new Set(["admin@company.com", "superadmin@company.com"]);
+
+/** Accounts whose roles are completely immutable (not even super_admin can change) */
+const ROLE_IMMUTABLE_ACCOUNTS = new Set(["superadmin@company.com"]);
 
 /** The root admin email — only this admin (and super_admin) can change roles */
 const ROOT_ADMIN_EMAIL = "admin@company.com";
@@ -26,10 +29,10 @@ function isAdminRole(role: string): boolean {
 }
 
 /** Check if the session user is allowed to manage roles.
- *  Only the root admin (admin@company.com) and super_admin can change other users' roles.
- *  Other admin-level users can view users but NOT change roles. */
-function canManageRoles(sessionEmail: string, sessionRole: string): boolean {
-  return sessionRole === "super_admin" || sessionEmail === ROOT_ADMIN_EMAIL;
+ *  All admin-level users (admin, super_admin) can change lower-level roles.
+ *  Only super_admin can assign admin-level roles — enforced separately in the PUT handler. */
+function canManageRoles(sessionRole: string): boolean {
+  return isAdminRole(sessionRole);
 }
 
 /** GET /api/users — list all users (admin/super_admin only) */
@@ -76,6 +79,11 @@ export async function POST(req: Request) {
   // Only super_admin can create super_admin users
   if (role === "super_admin" && session.role !== "super_admin") {
     return NextResponse.json({ error: "Only Super Admin can create Super Admin users." }, { status: 403 });
+  }
+
+  // Only super_admin can create admin users (consistent with role-change restriction)
+  if (role === "admin" && session.role !== "super_admin") {
+    return NextResponse.json({ error: "Only Super Admin can create Admin users." }, { status: 403 });
   }
 
   if (!email) {
@@ -135,30 +143,35 @@ export async function PUT(req: Request) {
 
   // PROTECTION: Protected accounts' roles are immutable.
   if (parsed.data.role) {
-    // Only root admin (admin@company.com) and super_admin can change roles
-    if (!canManageRoles(session.email, session.role)) {
-      console.warn(`[users] BLOCKED: ${session.email} (${session.role}) tried to change role — only root admin or super_admin can manage roles`);
+    // All admin-level users can manage roles (lower-level enforced below)
+    if (!canManageRoles(session.role)) {
+      console.warn(`[users] BLOCKED: ${session.email} (${session.role}) tried to change role — admin access required`);
       return NextResponse.json(
-        { error: "Only the root admin (admin@company.com) or Super Admin can change user roles." },
+        { error: "Admin access required to change user roles." },
         { status: 403 },
       );
     }
 
     const targetUser = await findUserById(id);
-    if (targetUser && PROTECTED_ACCOUNTS.has(targetUser.email)) {
-      console.warn(`[users] BLOCKED: ${session.email} tried to change protected account ${targetUser.email} role to ${parsed.data.role}`);
+    if (targetUser && ROLE_IMMUTABLE_ACCOUNTS.has(targetUser.email)) {
+      console.warn(`[users] BLOCKED: ${session.email} tried to change immutable account ${targetUser.email} role to ${parsed.data.role}`);
       return NextResponse.json(
         { error: "This account's role cannot be changed." },
         { status: 403 },
       );
     }
-    // Only super_admin can assign/change super_admin role
+    // admin@company.com can only be changed by super_admin
+    if (targetUser?.email === ROOT_ADMIN_EMAIL && session.role !== "super_admin") {
+      console.warn(`[users] BLOCKED: ${session.email} tried to change root admin role`);
+      return NextResponse.json({ error: "Only Super Admin can change the root admin's role." }, { status: 403 });
+    }
+    // Only super_admin can assign super_admin role
     if (parsed.data.role === "super_admin" && session.role !== "super_admin") {
       return NextResponse.json({ error: "Only Super Admin can assign the Super Admin role." }, { status: 403 });
     }
-    // Only super_admin can change an existing admin/super_admin's role
-    if (targetUser && isAdminRole(targetUser.role) && session.role !== "super_admin") {
-      return NextResponse.json({ error: "Only Super Admin can change admin-level roles." }, { status: 403 });
+    // Only super_admin can assign admin role
+    if (parsed.data.role === "admin" && session.role !== "super_admin") {
+      return NextResponse.json({ error: "Only Super Admin can assign the Admin role." }, { status: 403 });
     }
   }
 

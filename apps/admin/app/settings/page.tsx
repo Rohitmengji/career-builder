@@ -17,7 +17,7 @@ interface UserRecord {
   name: string;
   role: "super_admin" | "admin" | "hiring_manager" | "recruiter" | "viewer";
   createdAt: string;
-  lastLogin?: string;
+  lastLoginAt?: string | null;
 }
 
 interface AuditEntry {
@@ -83,7 +83,9 @@ export default function SettingsPage() {
         const data = await res.json();
         setUsers(data.users);
       }
-    } catch { /* */ }
+    } catch (err) {
+      console.error("[settings] Failed to load users:", err);
+    }
   }, []);
 
   /* ── Load audit (admin only) ──────────────────────────────────── */
@@ -94,7 +96,9 @@ export default function SettingsPage() {
         const data = await res.json();
         setAuditEntries(data.entries);
       }
-    } catch { /* */ }
+    } catch (err) {
+      console.error("[settings] Failed to load audit log:", err);
+    }
   }, []);
 
   useEffect(() => {
@@ -189,6 +193,22 @@ export default function SettingsPage() {
 
   /* ── Change role ──────────────────────────────────────────────── */
   const handleRoleChange = async (id: string, newRole: string) => {
+    // Safety: if admin is demoting themselves, confirm first
+    const isSelfDemotion = id === user?.id && newRole !== user?.role;
+    const isDemotion = isSelfDemotion && (
+      newRole === "viewer" || newRole === "recruiter" || newRole === "hiring_manager"
+    );
+    if (isDemotion) {
+      const confirmed = confirm(
+        `⚠️ You are about to change YOUR OWN role to "${newRole}". You will lose admin access and won't be able to undo this yourself. Continue?`
+      );
+      if (!confirmed) {
+        // Re-render to reset the select back to the original value
+        loadUsers();
+        return;
+      }
+    }
+
     const res = await fetch("/api/users", {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-csrf-token": getCsrfToken() },
@@ -196,11 +216,24 @@ export default function SettingsPage() {
     });
 
     if (res.ok) {
+      // If user changed their own role, update local state and redirect if demoted
+      if (id === user?.id) {
+        const newRoleTyped = newRole as SessionUser["role"];
+        setUser((prev) => prev ? { ...prev, role: newRoleTyped } : prev);
+        const isStillAdmin = newRole === "admin" || newRole === "super_admin";
+        if (!isStillAdmin) {
+          showToast("✅ Role updated — redirecting (you no longer have admin access)");
+          setTimeout(() => router.push("/editor"), 1500);
+          return;
+        }
+      }
       loadUsers();
       showToast("✅ Role updated");
     } else {
       const data = await res.json().catch(() => ({}));
       showToast(`❌ ${data.error || "Failed to update role"}`);
+      // Reset the select to the original value on failure
+      loadUsers();
     }
   };
 
@@ -245,8 +278,8 @@ export default function SettingsPage() {
 
   const isAdmin = user.role === "admin" || user.role === "super_admin";
   const isSuperAdmin = user.role === "super_admin";
-  /** Only root admin (admin@company.com) and super_admin can manage roles */
-  const canManageRoles = isSuperAdmin || user.email === "admin@company.com";
+  /** All admins can manage lower-level roles. Only super_admin can manage admin-level roles. */
+  const canManageRoles = isAdmin;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -442,7 +475,7 @@ export default function SettingsPage() {
                       <option value="viewer">Viewer</option>
                       <option value="recruiter">Recruiter</option>
                       <option value="hiring_manager">Hiring Manager</option>
-                      <option value="admin">Admin</option>
+                      {isSuperAdmin && <option value="admin">Admin</option>}
                       {isSuperAdmin && <option value="super_admin">Super Admin</option>}
                     </select>
                   </div>
@@ -483,22 +516,22 @@ export default function SettingsPage() {
                       </td>
                       <td className="px-4 py-3">
                         {(() => {
-                          /* Protected accounts: root admin + super admin — roles are immutable */
-                          const isProtectedAccount = u.email === "admin@company.com" || u.email === "superadmin@company.com";
-                          const isSelf = u.id === user.id;
-                          /* Only root admin (admin@company.com) and super_admin can change roles */
-                          const isTargetHigherRole = (u.role === "super_admin" || u.role === "admin") && user.role !== "super_admin";
-                          const isDisabled = isSelf || isProtectedAccount || isTargetHigherRole || !canManageRoles;
+                          /* superadmin@company.com role is always immutable — nobody can change it */
+                          const isSuperAdminAccount = u.email === "superadmin@company.com";
+                          /* admin@company.com can only be changed by super_admin */
+                          const isRootAdmin = u.email === "admin@company.com";
+                          const isRootAdminLocked = isRootAdmin && !isSuperAdmin;
+                          /* Disabled only for: immutable superadmin account, locked root admin, or non-admin users */
+                          const isDisabled = isSuperAdminAccount || isRootAdminLocked || !canManageRoles;
                           return (
                             <select
                               value={u.role}
                               onChange={(e) => handleRoleChange(u.id, e.target.value)}
                               disabled={isDisabled}
                               title={
-                                isProtectedAccount ? "Protected account — role cannot be changed" :
-                                isSelf ? "Cannot change your own role" :
-                                !canManageRoles ? "Only root admin or Super Admin can change roles" :
-                                isTargetHigherRole ? "Only Super Admin can change this role" :
+                                isSuperAdminAccount ? "Protected account — role cannot be changed" :
+                                isRootAdminLocked ? "Only Super Admin can change the root admin role" :
+                                !canManageRoles ? "Admin access required to change roles" :
                                 undefined
                               }
                               className={`text-xs font-semibold px-2 py-1 rounded-lg border ${
@@ -512,14 +545,15 @@ export default function SettingsPage() {
                               <option value="viewer">Viewer</option>
                               <option value="recruiter">Recruiter</option>
                               <option value="hiring_manager">Hiring Manager</option>
-                              <option value="admin">Admin</option>
+                              {/* Only super_admin can assign admin or super_admin roles; show if user already has that role */}
+                              {(isSuperAdmin || u.role === "admin") && <option value="admin">Admin</option>}
                               {(isSuperAdmin || u.role === "super_admin") && <option value="super_admin">Super Admin</option>}
                             </select>
                           );
                         })()}
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-500">
-                        {u.lastLogin ? new Date(u.lastLogin).toLocaleString() : "Never"}
+                        {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : "Never"}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {u.id !== user.id && u.email !== "admin@company.com" && u.email !== "superadmin@company.com" && (

@@ -95,7 +95,8 @@ export const POST = withRequestLogging(async (req: Request) => {
   clearAttempts(ip);
   try {
     await updateLastLogin(user.id);
-  } catch {
+  } catch (err) {
+    console.error("[auth] Failed to update lastLoginAt for user", user.id, err instanceof Error ? err.message : err);
     // non-fatal — don't block login if this fails
   }
   await setSession(user);
