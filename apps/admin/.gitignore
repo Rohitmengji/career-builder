@@ -48,3 +48,4 @@ next-env.d.ts
 # saved page data (user data)
 /data/pages/*
 !/data/pages/.gitkeep
+.env*.local

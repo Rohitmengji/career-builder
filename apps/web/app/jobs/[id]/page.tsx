@@ -6,11 +6,15 @@
 
 import React from "react";
 import Link from "next/link";
+import Script from "next/script";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import type { Job, JobDetailResponse } from "@/lib/jobs/types";
 import ApplyModal from "@/app/jobs/[id]/ApplyModal";
 import PersonalizedSidebar from "@/components/PersonalizedSidebar";
 import JobViewTracker from "@/app/jobs/[id]/JobViewTracker";
+import { fetchTenantConfig, getAdminApiUrl } from "@/lib/tenant";
+import { getSiteUrl } from "@/lib/env";
 
 /* ================================================================== */
 /*  Data fetching (server-side)                                        */
@@ -36,13 +40,37 @@ async function getJob(id: string): Promise<JobDetailResponse | null> {
 /*  Metadata                                                           */
 /* ================================================================== */
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const data = await getJob(id);
-  if (!data || !data.job) return { title: "Job Not Found" };
+  const [data, config] = await Promise.all([getJob(id), fetchTenantConfig()]);
+  if (!data?.job) return { title: "Job Not Found" };
+
+  const job = data.job;
+  const siteUrl = getSiteUrl();
+  const companyName = config.branding?.companyName || "Our Company";
+  const logoUrl = config.branding?.logoUrl;
+
+  const title = `${job.title} at ${companyName}`;
+  const description = `${job.title} — ${job.department} · ${job.location}. ${job.description.slice(0, 150)}`;
+
   return {
-    title: `${data.job.title} — ${data.job.department}`,
-    description: data.job.description.slice(0, 160),
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `${siteUrl}/jobs/${id}`,
+      type: "website",
+      ...(logoUrl ? { images: [{ url: logoUrl, alt: companyName }] } : {}),
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+    },
+    alternates: {
+      canonical: `${siteUrl}/jobs/${id}`,
+    },
   };
 }
 
@@ -52,14 +80,65 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const data = await getJob(id);
+  const [data, config] = await Promise.all([getJob(id), fetchTenantConfig()]);
   if (!data || !data.job) notFound();
 
   const job = data.job;
   const relatedJobs = data.relatedJobs;
+  const siteUrl = getSiteUrl();
+  const companyName = config.branding?.companyName || "Our Company";
+  const logoUrl = config.branding?.logoUrl;
+
+  /* ── JSON-LD: Schema.org JobPosting ──────────────────────────── */
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "JobPosting",
+    title: job.title,
+    description: job.description,
+    identifier: {
+      "@type": "PropertyValue",
+      name: companyName,
+      value: job.id,
+    },
+    datePosted: job.postedAt,
+    ...(job.closesAt ? { validThrough: job.closesAt } : {}),
+    employmentType: job.employmentType?.toUpperCase().replace("-", "_"),
+    hiringOrganization: {
+      "@type": "Organization",
+      name: companyName,
+      ...(logoUrl ? { logo: logoUrl } : {}),
+      url: siteUrl,
+    },
+    jobLocation: job.isRemote
+      ? { "@type": "Place", address: { "@type": "PostalAddress", addressCountry: "US" } }
+      : { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: job.location } },
+    ...(job.isRemote ? { jobLocationType: "TELECOMMUTE" } : {}),
+    url: `${siteUrl}/jobs/${job.id}`,
+    ...(job.salary?.min || job.salary?.max
+      ? {
+          baseSalary: {
+            "@type": "MonetaryAmount",
+            currency: job.salary.currency || "USD",
+            value: {
+              "@type": "QuantitativeValue",
+              ...(job.salary.min ? { minValue: job.salary.min } : {}),
+              ...(job.salary.max ? { maxValue: job.salary.max } : {}),
+              unitText: (job.salary.period || "YEAR").toUpperCase(),
+            },
+          },
+        }
+      : {}),
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* JSON-LD structured data for Google Jobs */}
+      <Script
+        id={`job-jsonld-${job.id}`}
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       {/* Client-side analytics tracker (renders null) */}
       <JobViewTracker jobId={job.id} />
 
