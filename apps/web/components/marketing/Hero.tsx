@@ -63,8 +63,8 @@ export default function Hero() {
         }}
       />
 
-      <div className="relative max-w-7xl mx-auto px-6">
-        <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-20">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
           {/* ── Left — Copy ──────────────────────────────────────── */}
           <div className="flex-1 max-w-2xl text-center lg:text-left">
             {/* Live badge */}
@@ -77,7 +77,7 @@ export default function Hero() {
             </div>
 
             {/* Headline */}
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-gray-900 tracking-tight leading-[1.05]">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 tracking-tight leading-[1.05]">
               Build your career{" "}
               <br className="hidden sm:block" />
               site in{" "}
@@ -89,7 +89,7 @@ export default function Hero() {
             </h1>
 
             {/* Sub-headline */}
-            <p className="mt-6 text-lg sm:text-xl text-gray-500 leading-relaxed max-w-xl mx-auto lg:mx-0">
+            <p className="mt-6 text-base sm:text-lg md:text-xl text-gray-500 leading-relaxed max-w-xl mx-auto lg:mx-0">
               AI-powered career pages, job listings, and hiring workflows — all
               in one platform. No developers needed.
             </p>
@@ -202,7 +202,7 @@ export default function Hero() {
               </div>
 
               {/* Floating badge — AI Generated */}
-              <div className="absolute -bottom-5 -right-3 sm:-right-5 bg-white rounded-xl border border-gray-200/80 shadow-lg shadow-gray-900/6 px-4 py-3 flex items-center gap-3 float">
+              <div className="hidden sm:flex absolute -bottom-5 -right-3 sm:-right-5 bg-white rounded-xl border border-gray-200/80 shadow-lg shadow-gray-900/6 px-4 py-3 items-center gap-3 float">
                 <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                   <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
@@ -215,7 +215,7 @@ export default function Hero() {
               </div>
 
               {/* Floating badge — top-left stat */}
-              <div className="absolute -top-3 -left-3 sm:-left-5 bg-white rounded-xl border border-gray-200/80 shadow-lg shadow-gray-900/6 px-4 py-2.5 float" style={{ animationDelay: "1.5s" }}>
+              <div className="hidden sm:block absolute -top-3 -left-3 sm:-left-5 bg-white rounded-xl border border-gray-200/80 shadow-lg shadow-gray-900/6 px-4 py-2.5 float" style={{ animationDelay: "1.5s" }}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-500" />
                   <p className="text-xs font-semibold text-gray-900">12 roles published</p>

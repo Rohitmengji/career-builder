@@ -26,31 +26,32 @@ const FEATURES = [
 
 export default function Comparison() {
   return (
-    <section id="comparison" className="py-24 sm:py-32 bg-gray-50/50">
-      <div className="max-w-4xl mx-auto px-6">
+    <section id="comparison" className="py-16 sm:py-24 lg:py-32 bg-gray-50/50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
         {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
+        <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
           <p className="text-sm font-semibold text-blue-600 uppercase tracking-wider mb-3">
             How we compare
           </p>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 tracking-tight">
             Built different
           </h2>
-          <p className="mt-4 text-lg text-gray-500">
+          <p className="mt-4 text-base sm:text-lg text-gray-500">
             See how HireBase stacks up against traditional ATS platforms.
           </p>
         </div>
 
-        {/* Table */}
+        {/* Table — horizontal scroll on mobile */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
-          <table className="w-full" aria-label="Feature comparison between HireBase, Workable, and Lever">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-125" aria-label="Feature comparison between HireBase, Workable, and Lever">
             {/* Header row */}
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left text-sm font-semibold text-gray-500 px-6 py-4">Feature</th>
-                <th className="text-center text-sm font-bold text-blue-600 px-4 py-4 bg-blue-50/50">HireBase</th>
-                <th className="text-center text-sm font-semibold text-gray-400 px-4 py-4">Workable</th>
-                <th className="text-center text-sm font-semibold text-gray-400 px-4 py-4">Lever</th>
+                <th className="text-left text-sm font-semibold text-gray-500 px-4 sm:px-6 py-4">Feature</th>
+                <th className="text-center text-sm font-bold text-blue-600 px-3 sm:px-4 py-4 bg-blue-50/50">HireBase</th>
+                <th className="text-center text-sm font-semibold text-gray-400 px-3 sm:px-4 py-4">Workable</th>
+                <th className="text-center text-sm font-semibold text-gray-400 px-3 sm:px-4 py-4">Lever</th>
               </tr>
             </thead>
 
@@ -61,32 +62,33 @@ export default function Comparison() {
                   key={f.name}
                   className={`hover:bg-gray-50/50 transition-colors ${i < FEATURES.length - 1 ? "border-b border-gray-100" : ""}`}
                 >
-                  <td className="text-sm text-gray-700 font-medium px-6 py-4">{f.name}</td>
-                  <td className="text-center px-4 py-4 bg-blue-50/30">
+                  <td className="text-sm text-gray-700 font-medium px-4 sm:px-6 py-4 whitespace-nowrap">{f.name}</td>
+                  <td className="text-center px-3 sm:px-4 py-4 bg-blue-50/30">
                     {typeof f.us === "boolean" ? (
                       <span className="inline-flex justify-center">{f.us ? CHECK : CROSS}</span>
                     ) : (
-                      <span className="text-sm font-bold text-blue-600">{f.us}</span>
+                      <span className="text-sm font-bold text-blue-600 whitespace-nowrap">{f.us}</span>
                     )}
                   </td>
-                  <td className="text-center px-4 py-4">
+                  <td className="text-center px-3 sm:px-4 py-4">
                     {typeof f.workable === "boolean" ? (
                       <span className="inline-flex justify-center">{f.workable ? CHECK : CROSS}</span>
                     ) : (
-                      <span className="text-sm text-gray-500">{f.workable}</span>
+                      <span className="text-sm text-gray-500 whitespace-nowrap">{f.workable}</span>
                     )}
                   </td>
-                  <td className="text-center px-4 py-4">
+                  <td className="text-center px-3 sm:px-4 py-4">
                     {typeof f.lever === "boolean" ? (
                       <span className="inline-flex justify-center">{f.lever ? CHECK : CROSS}</span>
                     ) : (
-                      <span className="text-sm text-gray-500">{f.lever}</span>
+                      <span className="text-sm text-gray-500 whitespace-nowrap">{f.lever}</span>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </section>

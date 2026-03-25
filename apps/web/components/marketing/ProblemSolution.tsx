@@ -62,10 +62,10 @@ const SOLUTIONS = [
 
 export default function ProblemSolution() {
   return (
-    <section className="py-24 sm:py-32">
-      <div className="max-w-7xl mx-auto px-6">
+    <section className="py-16 sm:py-24 lg:py-32">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Section header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
+        <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
           <p className="text-sm font-semibold text-blue-600 uppercase tracking-wider mb-3">
             Why HireBase
           </p>
@@ -74,7 +74,7 @@ export default function ProblemSolution() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-24 items-start">
           {/* Problems */}
           <div>
             <div className="inline-flex items-center gap-2 bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-semibold mb-6">

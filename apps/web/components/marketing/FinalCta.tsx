@@ -3,11 +3,11 @@ import { LOGIN_URL } from "@/lib/marketing-config";
 
 export default function FinalCta() {
   return (
-    <section className="py-24 sm:py-32">
-      <div className="max-w-4xl mx-auto px-6 text-center">
+    <section className="py-16 sm:py-24 lg:py-32">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
         {/* Gradient background card */}
         <div
-          className="relative overflow-hidden rounded-3xl p-12 sm:p-16"
+          className="relative overflow-hidden rounded-3xl p-8 sm:p-12 lg:p-16"
           style={{
             background: "linear-gradient(135deg, #1e3a5f 0%, #0f172a 50%, #1e1b4b 100%)",
           }}
@@ -31,20 +31,20 @@ export default function FinalCta() {
           />
 
           <div className="relative">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-4">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-4">
               Start building your career site today
             </h2>
-            <p className="text-lg text-blue-200 max-w-lg mx-auto mb-4">
+            <p className="text-base sm:text-lg text-blue-200 max-w-lg mx-auto mb-4">
               No engineering team needed. AI generates your career site in minutes.
               Free to start — no credit card required.
             </p>
             <p className="text-sm text-blue-300/70 mb-10">
               Join 500+ teams who launched their careers page this month
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4">
               <a
                 href={LOGIN_URL}
-                className="inline-flex items-center gap-2 bg-white text-gray-900 font-semibold px-8 py-4 rounded-xl text-base hover:bg-gray-100 transition-all shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+                className="inline-flex items-center justify-center gap-2 bg-white text-gray-900 font-semibold px-8 py-4 min-h-12 rounded-xl text-sm sm:text-base hover:bg-gray-100 transition-all shadow-lg hover:scale-[1.02] active:scale-[0.98]"
               >
                 Start Free
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -53,7 +53,7 @@ export default function FinalCta() {
               </a>
               <a
                 href="#demo"
-                className="inline-flex items-center gap-2 border border-white/20 text-white font-semibold px-8 py-4 rounded-xl text-base hover:bg-white/10 transition-all"
+                className="inline-flex items-center justify-center gap-2 border border-white/20 text-white font-semibold px-8 py-4 min-h-12 rounded-xl text-sm sm:text-base hover:bg-white/10 transition-all"
               >
                 See Preview
               </a>

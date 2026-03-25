@@ -66,8 +66,8 @@ export default function PricingSection() {
   }, []);
 
   return (
-    <section id="pricing" className="py-24 sm:py-32">
-      <div className="max-w-7xl mx-auto px-6">
+    <section id="pricing" className="py-16 sm:py-24 lg:py-32">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
           <p className="text-sm font-semibold text-blue-600 uppercase tracking-wider mb-3">
@@ -87,7 +87,7 @@ export default function PricingSection() {
         {/* Plans */}
         <div className={`grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}>
           {/* Free */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-8 hover:border-gray-300 hover:shadow-lg transition-all duration-300">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 hover:border-gray-300 hover:shadow-lg transition-all duration-300">
             <h3 className="text-lg font-semibold text-gray-900">Free</h3>
             <p className="text-sm text-gray-500 mt-1 mb-6">Perfect for trying things out</p>
             <div className="mb-6">
@@ -96,7 +96,7 @@ export default function PricingSection() {
             </div>
             <a
               href={LOGIN_URL}
-              className="block w-full text-center bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3 rounded-xl transition-colors text-sm"
+              className="flex items-center justify-center w-full text-center bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3 min-h-11 rounded-xl transition-colors text-sm"
             >
               Get Started
             </a>
@@ -116,7 +116,7 @@ export default function PricingSection() {
           </div>
 
           {/* Pro — highlighted */}
-          <div className="relative bg-white rounded-2xl border-2 border-blue-600 p-8 shadow-xl shadow-blue-600/10 hover:shadow-2xl hover:shadow-blue-600/15 hover:-translate-y-1 transition-all duration-300">
+          <div className="relative bg-white rounded-2xl border-2 border-blue-600 p-6 sm:p-8 shadow-xl shadow-blue-600/10 hover:shadow-2xl hover:shadow-blue-600/15 hover:-translate-y-1 transition-all duration-300">
             <div className="absolute -top-4 left-1/2 -translate-x-1/2">
               <span className="bg-blue-600 text-white text-xs font-bold px-4 py-1.5 rounded-full">
                 MOST POPULAR
@@ -133,7 +133,7 @@ export default function PricingSection() {
             </p>
             <a
               href={LOGIN_URL}
-              className="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors text-sm shadow-lg shadow-blue-600/25"
+              className="flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 min-h-11 rounded-xl transition-colors text-sm shadow-lg shadow-blue-600/25"
             >
               Start Free Trial
             </a>
@@ -160,7 +160,7 @@ export default function PricingSection() {
           </div>
 
           {/* Enterprise */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-8 hover:border-gray-300 hover:shadow-lg transition-all duration-300">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 hover:border-gray-300 hover:shadow-lg transition-all duration-300">
             <h3 className="text-lg font-semibold text-gray-900">Enterprise</h3>
             <p className="text-sm text-gray-500 mt-1 mb-6">For scaling organizations</p>
             <div className="mb-1">
@@ -172,7 +172,7 @@ export default function PricingSection() {
             </p>
             <a
               href="mailto:rohitmengji403@gmail.com?subject=Enterprise%20Plan%20Inquiry"
-              className="block w-full text-center bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+              className="flex items-center justify-center w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 min-h-11 rounded-xl transition-colors text-sm"
             >
               Contact Sales
             </a>

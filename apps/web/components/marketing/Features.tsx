@@ -74,8 +74,8 @@ const COLOR_MAP: Record<string, { bg: string; icon: string; border: string }> = 
 
 export default function Features() {
   return (
-    <section id="features" className="py-24 sm:py-32 bg-gray-50/50">
-      <div className="max-w-7xl mx-auto px-6">
+    <section id="features" className="py-16 sm:py-24 lg:py-32 bg-gray-50/50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
           <p className="text-sm font-semibold text-blue-600 uppercase tracking-wider mb-3">

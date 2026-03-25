@@ -26,8 +26,8 @@ export default function DemoPreview() {
   const activeTab = TABS.find((t) => t.id === active) || TABS[0];
 
   return (
-    <section id="demo" className="py-24 sm:py-32">
-      <div className="max-w-7xl mx-auto px-6">
+    <section id="demo" className="py-16 sm:py-24 lg:py-32">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-12">
           <p className="text-sm font-semibold text-blue-600 uppercase tracking-wider mb-3">
@@ -39,8 +39,8 @@ export default function DemoPreview() {
         </div>
 
         {/* Tab switcher */}
-        <div className="flex justify-center mb-8">
-          <div className="inline-flex bg-gray-100 rounded-xl p-1 gap-1" role="tablist" aria-label="Product demo tabs">
+        <div className="flex justify-center mb-8 overflow-x-auto pb-1">
+          <div className="inline-flex bg-gray-100 rounded-xl p-1 gap-1 shrink-0" role="tablist" aria-label="Product demo tabs">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -48,7 +48,7 @@ export default function DemoPreview() {
                 aria-selected={active === tab.id}
                 aria-controls={`panel-${tab.id}`}
                 onClick={() => setActive(tab.id)}
-                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                className={`px-4 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap min-h-11 ${
                   active === tab.id
                     ? "bg-white text-gray-900 shadow-sm"
                     : "text-gray-500 hover:text-gray-700"
@@ -80,7 +80,7 @@ export default function DemoPreview() {
             </div>
 
             {/* Tab content */}
-            <div className="p-8 min-h-105" role="tabpanel" id={`panel-${active}`} aria-label={activeTab.label}>
+            <div className="p-4 sm:p-8 min-h-64 sm:min-h-96 overflow-hidden" role="tabpanel" id={`panel-${active}`} aria-label={activeTab.label}>
               {active === "career-site" && <CareerSiteMock />}
               {active === "editor" && <EditorMock />}
               {active === "jobs" && <JobsMock />}

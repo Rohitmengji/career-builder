@@ -25,8 +25,8 @@ const LINKS = {
 export default function Footer() {
   return (
     <footer className="border-t border-gray-100 bg-gray-50/50">
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link href="/landing" className="flex items-center gap-2 mb-4">
@@ -70,7 +70,7 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 pt-8 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mt-10 sm:mt-12 pt-6 sm:pt-8 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-400">
             © {new Date().getFullYear()} HireBase. All rights reserved.
           </p>

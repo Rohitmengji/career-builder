@@ -12,10 +12,10 @@ const LOGOS = [
 export default function SocialProof() {
   return (
     <section className="py-16 border-t border-gray-100 bg-gray-50/30">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Top — trust line + rating */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
-          <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">
+          <p className="text-sm font-medium text-gray-400 uppercase tracking-wider text-center sm:text-left">
             Trusted by modern hiring teams
           </p>
           <div className="flex items-center gap-1.5">
@@ -32,7 +32,7 @@ export default function SocialProof() {
         </div>
 
         {/* Logos — grayscale, hover reveals */}
-        <div className="flex flex-wrap items-center justify-center gap-x-14 gap-y-6">
+        <div className="flex flex-wrap items-center justify-center gap-x-8 sm:gap-x-14 gap-y-6">
           {LOGOS.map((name) => (
             <div
               key={name}
