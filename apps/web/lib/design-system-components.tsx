@@ -166,57 +166,100 @@ export function ResponsiveDrawer({
   side?: "left" | "right";
   label?: string;
 }) {
-  // Prevent body scroll when open
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // ── Body scroll lock ─────────────────────────────────────────────
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    document.body.style.overflow = isOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  // ── ESC key + focus management ───────────────────────────────────
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Store element that opened the drawer so we can restore focus on close
+    previousFocusRef.current = document.activeElement as HTMLElement;
+
+    // Focus first focusable element inside drawer
+    const focusableSelector =
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const first = drawerRef.current?.querySelector<HTMLElement>(focusableSelector);
+    first?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === keys.Escape) {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key !== keys.Tab || !drawerRef.current) return;
+      const focusable = Array.from(
+        drawerRef.current.querySelectorAll<HTMLElement>(focusableSelector)
+      );
+      if (focusable.length === 0) return;
+      const firstEl = focusable[0];
+      const lastEl = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === firstEl) {
+        e.preventDefault();
+        lastEl.focus();
+      } else if (!e.shiftKey && document.activeElement === lastEl) {
+        e.preventDefault();
+        firstEl.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [isOpen, onClose]);
 
   const sideClass = side === "left" ? "left-0" : "right-0";
+  const translateClass = side === "left"
+    ? isOpen ? "translate-x-0" : "-translate-x-full"
+    : isOpen ? "translate-x-0" : "translate-x-full";
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — always rendered, visibility controlled via opacity */}
       <div
-        className="fixed inset-0 bg-black/50 transition-opacity"
+        className={`fixed inset-0 bg-black/50 transition-opacity duration-300 ${
+          isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
         style={{ zIndex: zIndex.overlay }}
         onClick={onClose}
         aria-hidden="true"
       />
-      {/* Drawer */}
-      <FocusTrap active={isOpen} onEscape={onClose}>
-        <div
-          className={`fixed top-0 ${sideClass} h-full w-80 max-w-[85vw] bg-white shadow-2xl transform transition-transform`}
-          style={{ zIndex: zIndex.modal }}
-          role="dialog"
-          aria-modal="true"
-          aria-label={label}
-        >
-          <div className="flex items-center justify-between p-4 border-b border-gray-100">
-            <span className="font-semibold text-gray-900">{label}</span>
-            <button
-              onClick={onClose}
-              className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-              aria-label={srText.collapseMenu}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="p-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 65px)" }}>
-            {children}
-          </div>
+
+      {/* Drawer panel — always in DOM, slides in/out via transform */}
+      <div
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        className={`fixed top-0 ${sideClass} h-full w-80 max-w-[85vw] bg-white shadow-2xl
+          flex flex-col transform transition-transform duration-300 ease-out ${translateClass}`}
+        style={{ zIndex: zIndex.modal }}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
+          <span className="font-semibold text-gray-900 text-sm">{label}</span>
+          <button
+            onClick={onClose}
+            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+            aria-label={srText.collapseMenu}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
-      </FocusTrap>
+        <div className="flex-1 p-4 overflow-y-auto">
+          {children}
+        </div>
+      </div>
     </>
   );
 }
