@@ -12,7 +12,7 @@
 
 import type { SiteGenerationInput, GeneratedSite, GeneratedPage, PageType, SitePagePlan } from "./siteSchema";
 import { PAGE_BLUEPRINTS, SITE_LIMITS } from "./siteSchema";
-import { generatePage } from "./generatePage";
+import { generatePage, generatePageV2 } from "./generatePage";
 import { getDefaultPageBlocks, fetchJobSummaries, buildJobContextString } from "./generateBlocks";
 
 /* ================================================================== */
@@ -137,12 +137,21 @@ async function generateInBatches(
   // Page types that benefit from job data
   const JOB_PAGES = new Set<PageType>(["jobs", "home", "careers"]);
 
+  // Use V2 (orchestrator pipeline) by default, fall back to V1 on error
+  const useV2 = process.env.AI_USE_ORCHESTRATOR !== "false";
+
   for (let i = 0; i < plans.length; i += batchSize) {
     const batch = plans.slice(i, i + batchSize);
 
     const batchResults = await Promise.allSettled(
       batch.map((plan) => {
         const pageJobCtx = JOB_PAGES.has(plan.pageType) ? jobContext : undefined;
+
+        if (useV2) {
+          // V2: Orchestrator pipeline (structure → content → validate → quality)
+          return generatePageV2(plan.pageType, input, pageJobCtx);
+        }
+        // V1: Legacy direct-prompt approach
         return generatePage(plan.pageType, plan.blockTypes, input, brandVoice, pageJobCtx);
       }),
     );

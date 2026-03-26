@@ -1,12 +1,14 @@
 /**
  * Site Generator — Single Page Generation
  *
- * Generates all blocks for one page by calling the AI provider.
- * Validates output against block schemas.
- * Falls back to defaults if AI fails.
+ * Two modes:
+ *   - generatePage()   → legacy direct-prompt approach
+ *   - generatePageV2() → NEW orchestrator pipeline (structure → content → validate → quality)
+ *
+ * generateSite() prefers V2 when available.
  */
 
-import type { AiPageBlock } from "../types";
+import type { AiPageBlock } from "@/lib/ai/types";
 import type { SiteGenerationInput, GeneratedPage, PageType } from "./siteSchema";
 import { PAGE_BLUEPRINTS, SITE_LIMITS } from "./siteSchema";
 import {
@@ -14,7 +16,8 @@ import {
   validatePageBlocks,
   getDefaultPageBlocks,
 } from "./generateBlocks";
-import { parseAiJson } from "../validator";
+import { parseAiJson } from "@/lib/ai/validator";
+import { orchestrate, type PageGenerationRequest } from "@/lib/ai/orchestrator";
 
 /* ================================================================== */
 /*  AI Provider caller — reuses the same config as /api/ai             */
@@ -167,6 +170,59 @@ export async function generatePage(
     title: blueprint.title,
     pageType,
     blocks,
+    description: blueprint.description,
+  };
+}
+
+/* ================================================================== */
+/*  V2: Orchestrator-powered page generation                           */
+/*  Uses 4-layer pipeline: Context → Structure → Content → Validate    */
+/* ================================================================== */
+
+export async function generatePageV2(
+  pageType: PageType,
+  input: SiteGenerationInput,
+  jobContext?: string,
+): Promise<GeneratedPage> {
+  const blueprint = PAGE_BLUEPRINTS[pageType] || PAGE_BLUEPRINTS.home;
+
+  const request: PageGenerationRequest = {
+    type: "page",
+    pageType,
+    companyName: input.companyName,
+    industry: input.industry,
+    companyType: input.companyType,
+    tone: input.tone,
+    audience: input.audience,
+    hiringGoals: input.hiringGoals,
+    tenantId: input.tenantId,
+    jobContext,
+  };
+
+  const result = await orchestrate(request);
+
+  if (result.success && result.blocks && result.blocks.length > 0) {
+    console.log(
+      `[SiteGen V2] Page "${pageType}": ${result.blocks.length} blocks, quality ${result.quality?.overall ?? "?"}/100 (${result.metadata.source})`,
+    );
+
+    return {
+      slug: blueprint.slug,
+      title: blueprint.title,
+      pageType,
+      blocks: result.blocks,
+      description: blueprint.description,
+    };
+  }
+
+  // Fallback — orchestrator already handles fallbacks internally,
+  // but if we still get nothing, use legacy defaults
+  console.warn(`[SiteGen V2] Page "${pageType}" orchestrator returned no blocks — using legacy defaults`);
+  return {
+    slug: blueprint.slug,
+    title: blueprint.title,
+    pageType,
+    blocks: getDefaultPageBlocks(pageType, blueprint.blockTypes, input.companyName),
     description: blueprint.description,
   };
 }

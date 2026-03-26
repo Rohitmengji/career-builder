@@ -5,7 +5,7 @@
  * Every generated site follows this schema exactly.
  */
 
-import type { AiTone, AiIndustry, AiCompanyType, AiAudience, AiPageBlock } from "../types";
+import type { AiTone, AiIndustry, AiCompanyType, AiAudience, AiPageBlock } from "@/lib/ai/types";
 
 /* ================================================================== */
 /*  Input — what the user provides                                     */

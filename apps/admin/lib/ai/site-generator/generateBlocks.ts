@@ -6,9 +6,9 @@
  */
 
 import { blockSchemas, getDefaultProps, type BlockSchema } from "@/lib/blockSchemas";
-import type { AiTone, AiIndustry, AiCompanyType, AiAudience, AiPageBlock } from "../types";
+import type { AiTone, AiIndustry, AiCompanyType, AiAudience, AiPageBlock } from "@/lib/ai/types";
 import type { SiteGenerationInput, PageType, PAGE_BLUEPRINTS } from "./siteSchema";
-import { validateAiOutput } from "../validator";
+import { validateAiOutput } from "@/lib/ai/validator";
 
 /* ================================================================== */
 /*  Job data helper (Feature 4: Job System Integration)                */

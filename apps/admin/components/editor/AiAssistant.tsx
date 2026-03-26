@@ -305,17 +305,33 @@ export default function AiAssistant({
       }
       onApply(propsToApply);
       setPreview(null);
+
+      // Record accepted feedback for AI memory (fire-and-forget)
+      fetch("/api/ai/memory", {
+        method: "POST",
+        headers: csrfHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ action: "accepted", blockTypes: [blockType] }),
+      }).catch(() => { /* non-fatal */ });
     }
     setShowReviewModal(false);
     setIsOpen(false);
     setCustomPrompt("");
     setSuccessToast(true);
     setTimeout(() => setSuccessToast(false), 3000);
-  }, [preview, editableProps, selectedFields, onApply]);
+  }, [preview, editableProps, selectedFields, onApply, blockType]);
 
   const handleAcceptPage = useCallback(() => {
     if (editablePageBlocks.length > 0 && onApplyPage) {
       onApplyPage(editablePageBlocks);
+
+      // Record accepted feedback for all block types (fire-and-forget)
+      const blockTypes = editablePageBlocks.map((b) => b.type);
+      fetch("/api/ai/memory", {
+        method: "POST",
+        headers: csrfHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ action: "accepted", blockTypes }),
+      }).catch(() => { /* non-fatal */ });
+
       setPageBlocks(null);
       setEditablePageBlocks([]);
       setShowReviewModal(false);
@@ -327,11 +343,27 @@ export default function AiAssistant({
   }, [editablePageBlocks, onApplyPage]);
 
   const handleReject = useCallback(() => {
+    // Record rejected feedback for AI memory (fire-and-forget)
+    if (preview) {
+      fetch("/api/ai/memory", {
+        method: "POST",
+        headers: csrfHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ action: "rejected", blockTypes: [blockType] }),
+      }).catch(() => { /* non-fatal */ });
+    } else if (editablePageBlocks.length > 0) {
+      const blockTypes = editablePageBlocks.map((b) => b.type);
+      fetch("/api/ai/memory", {
+        method: "POST",
+        headers: csrfHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ action: "rejected", blockTypes }),
+      }).catch(() => { /* non-fatal */ });
+    }
+
     setPreview(null);
     setPageBlocks(null);
     setEditablePageBlocks([]);
     setShowReviewModal(false);
-  }, []);
+  }, [preview, blockType, editablePageBlocks]);
 
   const handleRetry = useCallback(() => {
     setError(null);
@@ -1097,7 +1129,17 @@ function ReviewModal({
               </h2>
               <p className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-2">
                 {isPageMode
-                  ? `${editablePageBlocks.length} blocks generated`
+                  ? (
+                    <>
+                      <span>{editablePageBlocks.length} blocks generated</span>
+                      {editablePageBlocks.length >= 8 && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 text-[9px] font-bold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                          Good structure
+                        </span>
+                      )}
+                    </>
+                  )
                   : (
                     <>
                       <span>{preview?.explanation || `${changedFields.size} fields changed`}</span>

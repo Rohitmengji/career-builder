@@ -2,7 +2,7 @@
  * Site Generator — Public API
  */
 export { generateSite, regeneratePage, removePage, createSitePlan } from "./generateSite";
-export { generatePage } from "./generatePage";
+export { generatePage, generatePageV2 } from "./generatePage";
 export { buildPageBlocksPrompt, validatePageBlocks, getDefaultPageBlocks } from "./generateBlocks";
 export {
   type SiteGenerationInput,
