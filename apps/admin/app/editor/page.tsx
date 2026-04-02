@@ -75,6 +75,9 @@ export default function EditorPage() {
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [undoCount, setUndoCount] = useState(0);
   const [redoCount, setRedoCount] = useState(0);
+  const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
+  const [publishedVersion, setPublishedVersion] = useState(0);
+  const [publishStatus, setPublishStatus] = useState<"idle" | "publishing" | "published" | "error">("idle");
   const editorRef = useRef<HTMLDivElement | null>(null);
   const blockPanelRef = useRef<HTMLDivElement | null>(null);
   const editorInstance = useRef<any>(null);
@@ -296,6 +299,13 @@ export default function EditorPage() {
         pageVersionRef.current = data.version;
       }
 
+      // Track publish status — save always creates unpublished changes
+      if (data.hasUnpublishedChanges !== undefined) {
+        setHasUnpublishedChanges(data.hasUnpublishedChanges);
+      } else {
+        setHasUnpublishedChanges(true);
+      }
+
       setHasUnsaved(false);
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
@@ -465,6 +475,14 @@ export default function EditorPage() {
         pageVersionRef.current = data.version;
       }
 
+      // Track publish status
+      if (data.hasUnpublishedChanges !== undefined) {
+        setHasUnpublishedChanges(data.hasUnpublishedChanges);
+      }
+      if (typeof data.publishedVersion === "number") {
+        setPublishedVersion(data.publishedVersion);
+      }
+
       if (blocks.length === 0) return;
 
       blocks.forEach((b: { type: string; props: Record<string, any> }) => {
@@ -535,6 +553,14 @@ export default function EditorPage() {
         if (typeof data.version === "number") {
           setPageVersion(data.version);
           pageVersionRef.current = data.version;
+        }
+
+        // Track publish status
+        if (data.hasUnpublishedChanges !== undefined) {
+          setHasUnpublishedChanges(data.hasUnpublishedChanges);
+        }
+        if (typeof data.publishedVersion === "number") {
+          setPublishedVersion(data.publishedVersion);
         }
 
         for (const b of blocks) {
@@ -932,6 +958,51 @@ export default function EditorPage() {
     setShowVersionHistory(false);
   }, []);
 
+  /* ── Publish handler — push draft live ─────────────────────────── */
+  const handlePublish = useCallback(async () => {
+    if (user?.role === "viewer" || user?.role === "recruiter") return;
+
+    // If there are unsaved changes, save first
+    if (hasUnsaved) {
+      await handleSave(false);
+    }
+
+    setPublishStatus("publishing");
+
+    try {
+      const res = await fetch("/api/pages/publish", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": getCsrfToken(),
+        },
+        body: JSON.stringify({ slug: activePageRef.current }),
+      });
+
+      if (res.status === 401) {
+        setSaveStatus("expired");
+        setTimeout(() => router.push("/login"), 2500);
+        return;
+      }
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Publish failed");
+      }
+
+      const data = await res.json();
+
+      setHasUnpublishedChanges(false);
+      setPublishedVersion(data.version);
+      setPublishStatus("published");
+      setTimeout(() => setPublishStatus("idle"), 3000);
+    } catch (err: any) {
+      console.error("[Publish] Error:", err);
+      setPublishStatus("error");
+      setTimeout(() => setPublishStatus("idle"), 3000);
+    }
+  }, [user, hasUnsaved, handleSave, router]);
+
   /* ── Device switching ────────────────────────────────────────────── */
   const switchDevice = useCallback((device: DeviceType) => {
     const editor = editorInstance.current;
@@ -1226,31 +1297,98 @@ export default function EditorPage() {
               </div>
             </div>
           )}
+
+          {/* Publish toast */}
+          {publishStatus !== "idle" && saveStatus === "idle" && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+              <div
+                className={`px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium transition-all animate-fade-in
+                  ${publishStatus === "publishing" ? "bg-emerald-800 text-white" : ""}
+                  ${publishStatus === "published" ? "bg-emerald-600 text-white" : ""}
+                  ${publishStatus === "error" ? "bg-red-600 text-white" : ""}
+                `}
+              >
+                {publishStatus === "publishing" && "🚀 Publishing changes…"}
+                {publishStatus === "published" && `✅ Published! Changes are now live on /${activePage}`}
+                {publishStatus === "error" && "❌ Publish failed — please try again"}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* ── Right panel: Settings sidebar / Version History ────── */}
       <div className="w-80 border-l border-gray-200 bg-white flex flex-col overflow-hidden">
-        {/* Save + Preview buttons */}
-        <div className="px-4 py-3 border-b border-gray-100 flex gap-2">
+        {/* Save + Publish + Preview buttons */}
+        <div className="px-4 py-3 border-b border-gray-100 space-y-2">
           {!isViewer && (
-            <button
-              onClick={() => handleSave(false)}
-              disabled={saveStatus === "saving" || saveStatus === "autosaving"}
-              className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-400 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleSave(false)}
+                disabled={saveStatus === "saving" || saveStatus === "autosaving"}
+                className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-400 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+              >
+                {saveStatus === "saving" ? "Saving…" : "💾 Save"}
+              </button>
+              <a
+                href={`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/${activePage}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                title="Preview live site"
+              >
+                ↗
+              </a>
+            </div>
+          )}
+          {isViewer && (
+            <a
+              href={`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/${activePage}`}
+              target="_blank"
+              rel="noreferrer"
+              className="block w-full text-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+              title="Preview live site"
             >
-              {saveStatus === "saving" ? "Saving…" : `💾 Save /${activePage}`}
+              ↗ Preview Live
+            </a>
+          )}
+          {/* Publish button — only for admins/hiring managers */}
+          {!isViewer && user?.role !== "recruiter" && (
+            <button
+              onClick={handlePublish}
+              disabled={publishStatus === "publishing" || (!hasUnpublishedChanges && !hasUnsaved)}
+              className={`w-full text-sm font-semibold py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 ${
+                publishStatus === "published"
+                  ? "bg-green-600 text-white"
+                  : publishStatus === "error"
+                    ? "bg-red-600 text-white"
+                    : hasUnpublishedChanges || hasUnsaved
+                      ? "bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white shadow-sm"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              {publishStatus === "publishing" ? (
+                <>
+                  <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Publishing…
+                </>
+              ) : publishStatus === "published" ? (
+                <>✅ Published!</>
+              ) : publishStatus === "error" ? (
+                <>❌ Publish failed</>
+              ) : hasUnpublishedChanges || hasUnsaved ? (
+                <>🚀 Publish Changes</>
+              ) : (
+                <>✓ Up to date</>
+              )}
             </button>
           )}
-          <a
-            href={`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/${activePage}`}
-            target="_blank"
-            rel="noreferrer"
-            className={`${isViewer ? 'flex-1 text-center' : ''} px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors`}
-            title="Preview live site"
-          >
-            {isViewer ? "↗ Preview Live" : "↗"}
-          </a>
+          {/* Unpublished changes indicator */}
+          {!isViewer && hasUnpublishedChanges && publishStatus === "idle" && (
+            <p className="text-[10px] text-amber-600 font-medium text-center">
+              ⚠ Draft has unpublished changes{publishedVersion > 0 ? ` (live: v${publishedVersion})` : ""}
+            </p>
+          )}
         </div>
 
         {/* Version History panel */}

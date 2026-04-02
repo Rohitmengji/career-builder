@@ -170,9 +170,11 @@ const SQL_STATEMENTS = [
     "slug" TEXT NOT NULL,
     "title" TEXT NOT NULL DEFAULT '',
     "blocks" TEXT NOT NULL DEFAULT '[]',
+    "publishedBlocks" TEXT NOT NULL DEFAULT '[]',
     "isPublished" INTEGER NOT NULL DEFAULT 0,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "version" INTEGER NOT NULL DEFAULT 1,
+    "publishedVersion" INTEGER NOT NULL DEFAULT 0,
     "publishedAt" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
@@ -277,6 +279,12 @@ const MIGRATION_STATEMENTS = [
   `ALTER TABLE "Page" ADD COLUMN "version" INTEGER NOT NULL DEFAULT 1`,
   `ALTER TABLE "Page" ADD COLUMN "title" TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE "Page" ADD COLUMN "sortOrder" INTEGER NOT NULL DEFAULT 0`,
+  // Added in draft-publish: separate draft and published blocks
+  `ALTER TABLE "Page" ADD COLUMN "publishedBlocks" TEXT NOT NULL DEFAULT '[]'`,
+  `ALTER TABLE "Page" ADD COLUMN "publishedVersion" INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE "Page" ADD COLUMN "publishedAt" DATETIME`,
+  // Backfill: copy existing blocks to publishedBlocks so current live pages stay live
+  `UPDATE "Page" SET "publishedBlocks" = "blocks", "publishedVersion" = "version" WHERE "publishedBlocks" = '[]' AND "blocks" != '[]'`,
   // Added in analytics-funnel: rename old AnalyticsEvent columns to match Prisma schema
   // These are safe no-ops on fresh deployments (CREATE TABLE IF NOT EXISTS already has new schema)
   `ALTER TABLE "AnalyticsEvent" ADD COLUMN "type" TEXT`,

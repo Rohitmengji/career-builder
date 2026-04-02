@@ -169,15 +169,18 @@ model Application {
 // --- PAGE ---
 
 model Page {
-  id          String   @id @default(cuid())
-  slug        String
-  title       String   @default("")
-  blocks      String   @default("[]") // JSON array of block definitions
-  isPublished Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  version     Int      @default(1) // Incremented on every save — used for optimistic locking
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  slug            String
+  title           String   @default("")
+  blocks          String   @default("[]") // JSON — draft (editor working copy)
+  publishedBlocks String   @default("[]") // JSON — live (what the web app serves)
+  isPublished     Boolean  @default(true)
+  publishedAt     DateTime?              // Last publish timestamp
+  sortOrder       Int      @default(0)
+  version         Int      @default(1)   // Incremented on every save — optimistic locking
+  publishedVersion Int     @default(0)   // Version number that was last published
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Tenant isolation
   tenantId String

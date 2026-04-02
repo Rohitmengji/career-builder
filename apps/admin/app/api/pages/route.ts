@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { savePage, loadPage, listPages, deletePage } from "@/lib/store";
+import { savePage, loadPage, listPages, deletePage, publishPage, getPublishStatus } from "@/lib/store";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
 import { savePageSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeSlug, sanitizeBlockProps } from "@career-builder/security/sanitize";
 import { withRequestLogging } from "@career-builder/observability/request-logger";
 import { logger } from "@career-builder/observability/logger";
 import { metrics, METRIC } from "@career-builder/observability/metrics";
+import { pageRepo } from "@career-builder/database";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {
@@ -89,13 +90,15 @@ export const POST = withRequestLogging(async (req: Request) => {
       // non-fatal
     }
 
-    // Notify SSE listeners (preview sync)
-    globalThis.__previewListeners?.forEach((cb: (slug: string) => void) => cb(slug));
+    // Check if this page has unpublished changes
+    const pubStatus = await getPublishStatus(slug, session.tenantId);
+    const hasUnpublishedChanges = pubStatus?.hasUnpublishedChanges ?? true;
 
     return NextResponse.json({
       success: true,
       version: result.version,
       updatedAt: result.updatedAt.toISOString(),
+      hasUnpublishedChanges,
     });
   } catch (err) {
     log.error("page_save_failed", { slug, tenantId: session.tenantId, error: String(err) });
@@ -103,27 +106,68 @@ export const POST = withRequestLogging(async (req: Request) => {
   }
 });
 
-/** GET /api/pages — read a page (public — web app needs this) */
+/** GET /api/pages — read a page
+ *  - With session (admin editor): returns draft blocks + publish status
+ *  - Without session (web app / public): returns published blocks only
+ */
 export const GET = withRequestLogging(async (req: Request) => {
   const { searchParams } = new URL(req.url);
   const slug = searchParams.get("slug");
+  const source = searchParams.get("source"); // "published" for web app
 
   // Try to get tenant ID from session (admin), fall back to default for public access (web app)
   let tenantId: string | undefined;
+  let isAdmin = false;
   try {
     const session = await getSessionReadOnly();
     tenantId = session?.tenantId;
+    isAdmin = !!session;
   } catch {
     // Public access — use default tenant
   }
 
   if (slug) {
-    const result = await loadPage(slug, tenantId);
-    return NextResponse.json({
-      blocks: result.blocks,
-      version: result.version,
-      updatedAt: result.updatedAt.toISOString(),
-    });
+    // If request is from admin editor (has session and not requesting published), return draft
+    if (isAdmin && source !== "published") {
+      const result = await loadPage(slug, tenantId);
+      const pubStatus = await getPublishStatus(slug, tenantId);
+      return NextResponse.json({
+        blocks: result.blocks,
+        version: result.version,
+        updatedAt: result.updatedAt.toISOString(),
+        hasUnpublishedChanges: pubStatus?.hasUnpublishedChanges ?? false,
+        publishedVersion: pubStatus?.publishedVersion ?? 0,
+        publishedAt: pubStatus?.publishedAt?.toISOString() ?? null,
+      });
+    }
+
+    // Public / web app — serve published blocks only
+    const page = await pageRepo.findBySlug(slug, tenantId || process.env.TENANT_ID || "default");
+    if (!page) {
+      return NextResponse.json({ blocks: [] });
+    }
+
+    // Serve publishedBlocks if available, otherwise fall back to blocks
+    // (backward compat: pages published before this feature have publishedBlocks = "[]")
+    let publishedBlocks: unknown[] = [];
+    try {
+      const parsed = JSON.parse(page.publishedBlocks || "[]");
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        publishedBlocks = parsed;
+      } else {
+        // Fallback: if publishedBlocks is empty, serve draft blocks
+        // (backward compat for pages that existed before publish feature)
+        publishedBlocks = JSON.parse(page.blocks || "[]");
+      }
+    } catch {
+      try {
+        publishedBlocks = JSON.parse(page.blocks || "[]");
+      } catch {
+        publishedBlocks = [];
+      }
+    }
+
+    return NextResponse.json({ blocks: publishedBlocks });
   }
 
   // List all pages

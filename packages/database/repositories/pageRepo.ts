@@ -128,6 +128,68 @@ export const pageRepo = {
     });
   },
 
+  /**
+   * Publish a page — copies draft `blocks` → `publishedBlocks`.
+   * Returns the published version number and timestamp.
+   */
+  async publish(slug: string, tenantId: string): Promise<{
+    success: boolean;
+    version: number;
+    publishedAt: Date;
+    hasUnpublishedChanges: boolean;
+  }> {
+    const page = await prisma.page.findUnique({
+      where: { slug_tenantId: { slug, tenantId } },
+      select: { id: true, blocks: true, version: true, publishedVersion: true },
+    });
+
+    if (!page) {
+      return { success: false, version: 0, publishedAt: new Date(), hasUnpublishedChanges: false };
+    }
+
+    const now = new Date();
+    await prisma.page.update({
+      where: { slug_tenantId: { slug, tenantId } },
+      data: {
+        publishedBlocks: page.blocks,
+        publishedVersion: page.version,
+        publishedAt: now,
+        isPublished: true,
+      },
+    });
+
+    return {
+      success: true,
+      version: page.version,
+      publishedAt: now,
+      hasUnpublishedChanges: false,
+    };
+  },
+
+  /**
+   * Check if a page has unpublished changes (draft differs from published).
+   */
+  async getPublishStatus(slug: string, tenantId: string): Promise<{
+    version: number;
+    publishedVersion: number;
+    hasUnpublishedChanges: boolean;
+    publishedAt: Date | null;
+  } | null> {
+    const page = await prisma.page.findUnique({
+      where: { slug_tenantId: { slug, tenantId } },
+      select: { version: true, publishedVersion: true, publishedAt: true },
+    });
+
+    if (!page) return null;
+
+    return {
+      version: page.version,
+      publishedVersion: page.publishedVersion,
+      hasUnpublishedChanges: page.version !== page.publishedVersion,
+      publishedAt: page.publishedAt,
+    };
+  },
+
   async listSlugs(tenantId: string) {
     const pages = await prisma.page.findMany({
       where: { tenantId },

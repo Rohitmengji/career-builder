@@ -89,3 +89,22 @@ export async function deletePage(slug: string, tenantId?: string): Promise<void>
     // Page may not exist — non-fatal
   }
 }
+
+export interface PublishResult {
+  success: boolean;
+  version: number;
+  publishedAt: Date;
+}
+
+export async function publishPage(slug: string, tenantId?: string): Promise<PublishResult> {
+  const result = await pageRepo.publish(slug, tenantId || DEFAULT_TENANT_ID);
+  return {
+    success: result.success,
+    version: result.version,
+    publishedAt: result.publishedAt,
+  };
+}
+
+export async function getPublishStatus(slug: string, tenantId?: string) {
+  return pageRepo.getPublishStatus(slug, tenantId || DEFAULT_TENANT_ID);
+}
