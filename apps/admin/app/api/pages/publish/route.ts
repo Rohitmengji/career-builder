@@ -52,7 +52,7 @@ export const POST = withRequestLogging(async (req: Request) => {
   const sanitizedSlug = sanitizeSlug(slug);
 
   try {
-    const result = await publishPage(sanitizedSlug, session.tenantId);
+    const result = await publishPage(sanitizedSlug, session.tenantId, session.userId, session.email);
 
     if (!result.success) {
       return NextResponse.json({ error: "Page not found" }, { status: 404 });

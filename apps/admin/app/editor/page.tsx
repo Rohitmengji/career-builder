@@ -958,18 +958,58 @@ export default function EditorPage() {
     setShowVersionHistory(false);
   }, []);
 
-  /* ── Publish handler — push draft live ─────────────────────────── */
+  /* ── Publish handler — save draft then push live ────────────────── */
   const handlePublish = useCallback(async () => {
     if (user?.role === "viewer" || user?.role === "recruiter") return;
-
-    // If there are unsaved changes, save first
-    if (hasUnsaved) {
-      await handleSave(false);
-    }
 
     setPublishStatus("publishing");
 
     try {
+      // Always save current state first before publishing
+      const editor = editorInstance.current;
+      if (editor) {
+        const blocks = editor
+          .getComponents()
+          .toArray()
+          .map((comp: any) => {
+            const type = comp.get("type");
+            if (type === "text" || type === "textnode" || type === "default") return null;
+            return { type, props: comp.get("props") || {} };
+          })
+          .filter(Boolean);
+
+        const saveRes = await fetch("/api/pages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-csrf-token": getCsrfToken(),
+          },
+          body: JSON.stringify({
+            slug: activePageRef.current,
+            blocks,
+          }),
+        });
+
+        if (saveRes.status === 401) {
+          setSaveStatus("expired");
+          setTimeout(() => router.push("/login"), 2500);
+          setPublishStatus("idle");
+          return;
+        }
+
+        if (!saveRes.ok) {
+          throw new Error("Save before publish failed");
+        }
+
+        const saveData = await saveRes.json();
+        if (saveData.version) {
+          setPageVersion(saveData.version);
+          pageVersionRef.current = saveData.version;
+        }
+        setHasUnsaved(false);
+      }
+
+      // Now publish — this copies draft → publishedBlocks and creates a version snapshot
       const res = await fetch("/api/pages/publish", {
         method: "POST",
         headers: {
@@ -982,6 +1022,7 @@ export default function EditorPage() {
       if (res.status === 401) {
         setSaveStatus("expired");
         setTimeout(() => router.push("/login"), 2500);
+        setPublishStatus("idle");
         return;
       }
 
@@ -1001,7 +1042,7 @@ export default function EditorPage() {
       setPublishStatus("error");
       setTimeout(() => setPublishStatus("idle"), 3000);
     }
-  }, [user, hasUnsaved, handleSave, router]);
+  }, [user, router]);
 
   /* ── Device switching ────────────────────────────────────────────── */
   const switchDevice = useCallback((device: DeviceType) => {
@@ -1326,63 +1367,51 @@ export default function EditorPage() {
               <button
                 onClick={() => handleSave(false)}
                 disabled={saveStatus === "saving" || saveStatus === "autosaving"}
-                className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-400 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+                className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-400 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
               >
-                {saveStatus === "saving" ? "Saving…" : "💾 Save"}
+                {saveStatus === "saving" ? "Saving…" : "💾 Save Draft"}
               </button>
-              <a
-                href={`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/${activePage}`}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
-                title="Preview live site"
-              >
-                ↗
-              </a>
+              {/* Publish button — visible for admins/hiring managers */}
+              {user?.role !== "recruiter" && (
+                <button
+                  onClick={handlePublish}
+                  disabled={publishStatus === "publishing"}
+                  className={`flex-1 text-sm font-semibold py-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                    publishStatus === "published"
+                      ? "bg-green-600 text-white"
+                      : publishStatus === "error"
+                        ? "bg-red-600 text-white"
+                        : publishStatus === "publishing"
+                          ? "bg-emerald-700 text-white"
+                          : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm"
+                  }`}
+                >
+                  {publishStatus === "publishing" ? (
+                    <>
+                      <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Publishing…
+                    </>
+                  ) : publishStatus === "published" ? (
+                    <>✅ Published!</>
+                  ) : publishStatus === "error" ? (
+                    <>❌ Failed</>
+                  ) : (
+                    <>🚀 Publish</>
+                  )}
+                </button>
+              )}
             </div>
           )}
-          {isViewer && (
-            <a
-              href={`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/${activePage}`}
-              target="_blank"
-              rel="noreferrer"
-              className="block w-full text-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
-              title="Preview live site"
-            >
-              ↗ Preview Live
-            </a>
-          )}
-          {/* Publish button — only for admins/hiring managers */}
-          {!isViewer && user?.role !== "recruiter" && (
-            <button
-              onClick={handlePublish}
-              disabled={publishStatus === "publishing" || (!hasUnpublishedChanges && !hasUnsaved)}
-              className={`w-full text-sm font-semibold py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 ${
-                publishStatus === "published"
-                  ? "bg-green-600 text-white"
-                  : publishStatus === "error"
-                    ? "bg-red-600 text-white"
-                    : hasUnpublishedChanges || hasUnsaved
-                      ? "bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white shadow-sm"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              {publishStatus === "publishing" ? (
-                <>
-                  <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Publishing…
-                </>
-              ) : publishStatus === "published" ? (
-                <>✅ Published!</>
-              ) : publishStatus === "error" ? (
-                <>❌ Publish failed</>
-              ) : hasUnpublishedChanges || hasUnsaved ? (
-                <>🚀 Publish Changes</>
-              ) : (
-                <>✓ Up to date</>
-              )}
-            </button>
-          )}
+          {/* Preview link */}
+          <a
+            href={`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/${activePage}`}
+            target="_blank"
+            rel="noreferrer"
+            className="block w-full text-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded-lg transition-colors"
+            title="Preview live site"
+          >
+            ↗ Preview Live Site
+          </a>
           {/* Unpublished changes indicator */}
           {!isViewer && hasUnpublishedChanges && publishStatus === "idle" && (
             <p className="text-[10px] text-amber-600 font-medium text-center">

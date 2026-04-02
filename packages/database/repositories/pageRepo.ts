@@ -42,7 +42,9 @@ export const pageRepo = {
   },
 
   /**
-   * Save a page with version history and optional optimistic locking.
+   * Save a page draft with optional optimistic locking.
+   * This ONLY saves the draft — no version snapshot is created.
+   * Version snapshots are created on PUBLISH, not on save.
    *
    * @param slug - Page slug
    * @param tenantId - Tenant ID for multi-tenant isolation
@@ -51,8 +53,8 @@ export const pageRepo = {
    * @param expectedVersion - If provided, save is rejected if the current
    *   version doesn't match (concurrent edit detected). Pass `undefined`
    *   to skip conflict check (used by auto-save and initial creates).
-   * @param savedBy - User ID who saved (for version history)
-   * @param savedByEmail - User email (for version history display)
+   * @param savedBy - User ID who saved
+   * @param savedByEmail - User email
    */
   async upsert(
     slug: string,
@@ -97,23 +99,9 @@ export const pageRepo = {
       },
     });
 
-    // Create version snapshot (best-effort — don't block the save)
-    try {
-      await pageVersionRepo.createSnapshot(
-        page.id,
-        tenantId,
-        nextVersion,
-        blocks,
-        title || slug,
-        savedBy,
-        savedByEmail,
-      );
-      // Prune old versions to prevent unbounded growth
-      await pageVersionRepo.pruneOldVersions(page.id, tenantId);
-    } catch (err) {
-      // Non-fatal — version history is best-effort
-      console.error("[pageRepo] Failed to create version snapshot:", err);
-    }
+    // NOTE: Version snapshots are NOT created on save.
+    // Snapshots are only created on PUBLISH to avoid storing every minor edit.
+    // The `version` field still increments on every save for optimistic locking.
 
     return {
       success: true,
@@ -130,9 +118,10 @@ export const pageRepo = {
 
   /**
    * Publish a page — copies draft `blocks` → `publishedBlocks`.
+   * Also creates a version snapshot — versions are only stored on publish, not on every save.
    * Returns the published version number and timestamp.
    */
-  async publish(slug: string, tenantId: string): Promise<{
+  async publish(slug: string, tenantId: string, publishedBy?: string, publishedByEmail?: string): Promise<{
     success: boolean;
     version: number;
     publishedAt: Date;
@@ -140,7 +129,7 @@ export const pageRepo = {
   }> {
     const page = await prisma.page.findUnique({
       where: { slug_tenantId: { slug, tenantId } },
-      select: { id: true, blocks: true, version: true, publishedVersion: true },
+      select: { id: true, blocks: true, title: true, version: true, publishedVersion: true },
     });
 
     if (!page) {
@@ -157,6 +146,25 @@ export const pageRepo = {
         isPublished: true,
       },
     });
+
+    // Create a version snapshot on publish — this is the ONLY place versions are stored.
+    // Every publish captures the state so users can restore to any previously published version.
+    try {
+      await pageVersionRepo.createSnapshot(
+        page.id,
+        tenantId,
+        page.version,
+        page.blocks,
+        page.title || slug,
+        publishedBy,
+        publishedByEmail,
+      );
+      // Prune old versions to prevent unbounded growth
+      await pageVersionRepo.pruneOldVersions(page.id, tenantId);
+    } catch (err) {
+      // Non-fatal — version history is best-effort, don't break the publish
+      console.error("[pageRepo] Failed to create publish version snapshot:", err);
+    }
 
     return {
       success: true,

@@ -1,16 +1,19 @@
 /*
  * Page Version Repository — versioned snapshots for page history and rollback.
  *
- * Every save creates a new version snapshot. The repo supports:
- *   - Creating version snapshots
+ * Snapshots are ONLY created on PUBLISH — not on every save.
+ * This means version history shows published milestones, not every minor edit.
+ *
+ * The repo supports:
+ *   - Creating version snapshots (called by pageRepo.publish())
  *   - Listing version history (paginated)
  *   - Loading a specific version for rollback
  *   - Pruning old versions to prevent unbounded growth
  *
  * Design notes:
  *   - tenantId is denormalized on PageVersion for query efficiency
- *   - version number is monotonically increasing per page
- *   - Max 50 versions per page by default (configurable) — oldest pruned on save
+ *   - version number matches the Page.version at time of publish
+ *   - Max 50 versions per page by default (configurable) — oldest pruned on publish
  */
 
 import { prisma } from "../client";
@@ -44,7 +47,8 @@ export interface PageVersionDetail {
 export const pageVersionRepo = {
   /**
    * Create a new version snapshot for a page.
-   * Called internally by the save flow — not directly by API consumers.
+   * Called by pageRepo.publish() — NOT on every save.
+   * Only published states are stored as version history.
    */
   async createSnapshot(
     pageId: string,

@@ -96,8 +96,18 @@ export interface PublishResult {
   publishedAt: Date;
 }
 
-export async function publishPage(slug: string, tenantId?: string): Promise<PublishResult> {
-  const result = await pageRepo.publish(slug, tenantId || DEFAULT_TENANT_ID);
+export async function publishPage(
+  slug: string,
+  tenantId?: string,
+  publishedBy?: string,
+  publishedByEmail?: string,
+): Promise<PublishResult> {
+  const result = await pageRepo.publish(
+    slug,
+    tenantId || DEFAULT_TENANT_ID,
+    publishedBy,
+    publishedByEmail,
+  );
   return {
     success: result.success,
     version: result.version,
