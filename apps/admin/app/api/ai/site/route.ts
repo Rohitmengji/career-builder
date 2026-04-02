@@ -228,8 +228,8 @@ async function handleApply(
     for (const page of site.pages) {
       // Backup existing page
       const existing = await loadPage(page.slug, session.tenantId);
-      if (existing && existing.length > 0) {
-        backups.push({ slug: page.slug, blocks: existing });
+      if (existing && existing.blocks.length > 0) {
+        backups.push({ slug: page.slug, blocks: existing.blocks });
       }
 
       // Save new page

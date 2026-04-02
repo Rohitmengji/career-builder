@@ -168,8 +168,11 @@ const SQL_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS "Page" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "slug" TEXT NOT NULL,
+    "title" TEXT NOT NULL DEFAULT '',
     "blocks" TEXT NOT NULL DEFAULT '[]',
     "isPublished" INTEGER NOT NULL DEFAULT 0,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "version" INTEGER NOT NULL DEFAULT 1,
     "publishedAt" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
@@ -178,6 +181,24 @@ const SQL_STATEMENTS = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Page_slug_tenantId_key" ON "Page"("slug", "tenantId")`,
   `CREATE INDEX IF NOT EXISTS "Page_tenantId_idx" ON "Page"("tenantId")`,
+
+  // PageVersion (history / rollback)
+  `CREATE TABLE IF NOT EXISTS "PageVersion" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "version" INTEGER NOT NULL,
+    "blocks" TEXT NOT NULL DEFAULT '[]',
+    "title" TEXT NOT NULL DEFAULT '',
+    "savedBy" TEXT,
+    "savedByEmail" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "pageId" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    CONSTRAINT "PageVersion_pageId_fkey" FOREIGN KEY ("pageId") REFERENCES "Page" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "PageVersion_pageId_version_key" ON "PageVersion"("pageId", "version")`,
+  `CREATE INDEX IF NOT EXISTS "PageVersion_pageId_idx" ON "PageVersion"("pageId")`,
+  `CREATE INDEX IF NOT EXISTS "PageVersion_tenantId_idx" ON "PageVersion"("tenantId")`,
+  `CREATE INDEX IF NOT EXISTS "PageVersion_createdAt_idx" ON "PageVersion"("createdAt")`,
 
   // AuditLog
   `CREATE TABLE IF NOT EXISTS "AuditLog" (
@@ -252,6 +273,10 @@ const MIGRATION_STATEMENTS = [
   // Added in daily-credit-limit: daily AI usage tracking
   `ALTER TABLE "User" ADD COLUMN "aiDailyUsed" INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE "User" ADD COLUMN "aiDailyResetAt" DATETIME`,
+  // Added in version-history: version column for optimistic locking
+  `ALTER TABLE "Page" ADD COLUMN "version" INTEGER NOT NULL DEFAULT 1`,
+  `ALTER TABLE "Page" ADD COLUMN "title" TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE "Page" ADD COLUMN "sortOrder" INTEGER NOT NULL DEFAULT 0`,
   // Added in analytics-funnel: rename old AnalyticsEvent columns to match Prisma schema
   // These are safe no-ops on fresh deployments (CREATE TABLE IF NOT EXISTS already has new schema)
   `ALTER TABLE "AnalyticsEvent" ADD COLUMN "type" TEXT`,

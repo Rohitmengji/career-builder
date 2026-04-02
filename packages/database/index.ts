@@ -13,6 +13,7 @@ export {
   jobRepo,
   applicationRepo,
   pageRepo,
+  pageVersionRepo,
   analyticsRepo,
   auditRepo,
   webhookRepo,

@@ -29,7 +29,7 @@ export type AuditAction =
   | "login" | "logout"
   | "create_job" | "update_job" | "delete_job" | "publish_job" | "unpublish_job"
   | "create_application" | "update_application"
-  | "create_page" | "update_page" | "delete_page"
+  | "create_page" | "update_page" | "delete_page" | "page_restore"
   | "create_user" | "update_user" | "delete_user"
   | "update_tenant";
 
@@ -127,9 +127,22 @@ export interface PageRecord {
   blocks: unknown[];
   isPublished: boolean;
   sortOrder: number;
+  version: number;
   tenantId: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface PageVersionRecord {
+  id: string;
+  version: number;
+  blocks: string;
+  title: string;
+  savedBy: string | null;
+  savedByEmail: string | null;
+  pageId: string;
+  tenantId: string;
+  createdAt: Date;
 }
 
 export interface AuditLogRecord {

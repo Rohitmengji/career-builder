@@ -42,6 +42,7 @@ import { useSubscription } from "@/lib/ai/useSubscription";
 import type { GeneratedSite } from "@/lib/ai/site-generator/siteSchema";
 import dynamic from "next/dynamic";
 import SiteManager from "@/components/editor/SiteManager";
+import VersionHistory from "@/components/editor/VersionHistory";
 
 const SiteGenerator = dynamic(() => import("@/components/ai/SiteGenerator"), { ssr: false });
 
@@ -70,6 +71,10 @@ export default function EditorPage() {
   const [activeDevice, setActiveDevice] = useState<DeviceType>("desktop");
   const [activePage, setActivePage] = useState("careers");
   const [pageLoading, setPageLoading] = useState(false);
+  const [pageVersion, setPageVersion] = useState(0); // Track current version for optimistic locking
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [undoCount, setUndoCount] = useState(0);
+  const [redoCount, setRedoCount] = useState(0);
   const editorRef = useRef<HTMLDivElement | null>(null);
   const blockPanelRef = useRef<HTMLDivElement | null>(null);
   const editorInstance = useRef<any>(null);
@@ -79,6 +84,7 @@ export default function EditorPage() {
   const scheduleAutoSaveRef = useRef<() => void>(null!);
   const loadSavedPageRef = useRef<(editor: any) => Promise<void>>(null!);
   const activePageRef = useRef("careers");
+  const pageVersionRef = useRef(0); // Ref for use in callbacks
   const router = useRouter();
 
   /* ── Subscription (for AI page gen in toolbar) ─────────────────── */
@@ -247,7 +253,12 @@ export default function EditorPage() {
           "Content-Type": "application/json",
           "x-csrf-token": getCsrfToken(),
         },
-        body: JSON.stringify({ slug: activePageRef.current, blocks }),
+        body: JSON.stringify({
+          slug: activePageRef.current,
+          blocks,
+          // Send current version for optimistic locking (skip for auto-save to avoid false conflicts)
+          ...(isAutoSave ? {} : { expectedVersion: pageVersionRef.current || undefined }),
+        }),
       });
 
       if (res.status === 401) {
@@ -256,7 +267,34 @@ export default function EditorPage() {
         return;
       }
 
+      // Handle version conflict (409)
+      if (res.status === 409) {
+        const conflictData = await res.json();
+        setSaveStatus("error");
+        alert(
+          `⚠️ Save conflict detected!\n\n` +
+          `Another user has saved this page (version ${conflictData.currentVersion}).\n` +
+          `Your changes were NOT saved.\n\n` +
+          `Click OK to reload the latest version.`
+        );
+        // Reload the page from server to get latest version
+        const wrapper = editor.DomComponents.getWrapper();
+        wrapper.components([]);
+        setSelected(null);
+        await loadSavedPageRef.current(editor);
+        setSaveStatus("idle");
+        return;
+      }
+
       if (!res.ok) throw new Error("Save failed");
+
+      const data = await res.json();
+
+      // Update version tracking from server response
+      if (data.version) {
+        setPageVersion(data.version);
+        pageVersionRef.current = data.version;
+      }
 
       setHasUnsaved(false);
       setSaveStatus("saved");
@@ -277,7 +315,7 @@ export default function EditorPage() {
     }, 5000);
   }, [handleSave, user]);
 
-  /* ── Delete handler ────────────────────────────────────────────── */
+  /* ── Delete handler (with locked region protection) ──────────── */
   const handleDeleteBlock = useCallback(() => {
     const editor = editorInstance.current;
     if (!editor || !selected || user?.role === "viewer") return;
@@ -289,6 +327,16 @@ export default function EditorPage() {
       block = block.parent?.();
     }
     if (block) {
+      // Locked regions: navbar and footer cannot be deleted
+      const blockType = block.get("type");
+      const LOCKED_TYPES = new Set(["navbar", "footer"]);
+      if (LOCKED_TYPES.has(blockType)) {
+        // Show a brief visual indicator instead of a disruptive alert
+        setSaveStatus("error");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+        return;
+      }
+
       block.remove();
       setSelected(null);
       scheduleAutoSave();
@@ -410,6 +458,13 @@ export default function EditorPage() {
       const res = await fetch(`/api/pages?slug=${encodeURIComponent(activePageRef.current)}`);
       const data = await res.json();
       const blocks = data.blocks || [];
+
+      // Track version from server for optimistic locking
+      if (typeof data.version === "number") {
+        setPageVersion(data.version);
+        pageVersionRef.current = data.version;
+      }
+
       if (blocks.length === 0) return;
 
       blocks.forEach((b: { type: string; props: Record<string, any> }) => {
@@ -440,6 +495,7 @@ export default function EditorPage() {
   scheduleAutoSaveRef.current = scheduleAutoSave;
   loadSavedPageRef.current = loadSavedPage;
   activePageRef.current = activePage;
+  pageVersionRef.current = pageVersion;
 
   /* ── Multi-page management handlers ────────────────────────────── */
   const handleSwitchPage = useCallback((slug: string) => {
@@ -457,10 +513,15 @@ export default function EditorPage() {
     wrapper.components([]);
     setSelected(null);
     setHasUnsaved(false);
+    setShowVersionHistory(false);
 
     // Update state + ref BEFORE loading so save handler uses new slug
     setActivePage(slug);
     activePageRef.current = slug;
+
+    // Reset version tracking for the new page
+    setPageVersion(0);
+    pageVersionRef.current = 0;
 
     // Load the new page
     setPageLoading(true);
@@ -469,6 +530,13 @@ export default function EditorPage() {
         const res = await fetch(`/api/pages?slug=${encodeURIComponent(slug)}`);
         const data = await res.json();
         const blocks = data.blocks || [];
+
+        // Track version from server
+        if (typeof data.version === "number") {
+          setPageVersion(data.version);
+          pageVersionRef.current = data.version;
+        }
+
         for (const b of blocks) {
           const schema = blockSchemas[b.type];
           if (!schema) continue;
@@ -655,11 +723,13 @@ export default function EditorPage() {
         handleSaveRef.current();
       }
       // Delete/Backspace — delete selected block (unless focused on an input/textarea)
+      // Protected: navbar and footer blocks cannot be deleted
       if ((e.key === "Delete" || e.key === "Backspace") && !["INPUT", "TEXTAREA", "SELECT"].includes((e.target as HTMLElement)?.tagName)) {
         const sel = editor.getSelected?.();
         if (sel) {
           e.preventDefault();
           const KNOWN = new Set(Object.keys(blockSchemas));
+          const LOCKED_TYPES = new Set(["navbar", "footer"]);
           let block: any = sel;
           while (block) {
             const t = block.get?.("type");
@@ -667,6 +737,11 @@ export default function EditorPage() {
             block = block.parent?.() ?? null;
           }
           if (block) {
+            const blockType = block.get?.("type");
+            if (blockType && LOCKED_TYPES.has(blockType)) {
+              // Cannot delete locked block — show brief indicator
+              return;
+            }
             block.remove();
             setSelected(null);
             scheduleAutoSaveRef.current();
@@ -675,6 +750,21 @@ export default function EditorPage() {
       }
     };
     document.addEventListener("keydown", onKeyDown);
+
+    // Track undo/redo availability for toolbar buttons
+    const updateUndoRedo = () => {
+      if (!mountedRef.current) return;
+      const um = editor.UndoManager;
+      if (um) {
+        setUndoCount(um.hasUndo?.() ? um.getStack?.()?.length || 1 : 0);
+        setRedoCount(um.hasRedo?.() ? 1 : 0);
+      }
+    };
+    editor.on("component:add", updateUndoRedo);
+    editor.on("component:remove", updateUndoRedo);
+    editor.on("component:update", updateUndoRedo);
+    editor.on("undo", updateUndoRedo);
+    editor.on("redo", updateUndoRedo);
 
     // Register all blocks
     registerHeroBlock(editor);
@@ -808,6 +898,39 @@ export default function EditorPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authenticated]);
+
+  /* ── Version restore handler ─────────────────────────────────── */
+  const handleVersionRestore = useCallback((newVersion: number, blocks: Array<{ type: string; props: Record<string, unknown> }>) => {
+    const editor = editorInstance.current;
+    if (!editor) return;
+
+    // Clear canvas and apply restored blocks
+    const wrapper = editor.DomComponents.getWrapper();
+    wrapper.components([]);
+
+    for (const block of blocks) {
+      const schema = blockSchemas[block.type];
+      if (!schema) continue;
+      const defaults = getDefaultProps(block.type);
+      const mergedProps = { ...defaults, ...block.props };
+      editor.addComponents({ type: block.type, props: mergedProps });
+    }
+
+    // Force rebuild
+    requestAnimationFrame(() => {
+      const allComponents = editor.getComponents?.()?.toArray?.() ?? [];
+      for (const comp of allComponents) {
+        editor.trigger("component:update:props", comp);
+      }
+    });
+
+    // Update version tracking
+    setPageVersion(newVersion);
+    pageVersionRef.current = newVersion;
+    setSelected(null);
+    setHasUnsaved(false);
+    setShowVersionHistory(false);
+  }, []);
 
   /* ── Device switching ────────────────────────────────────────────── */
   const switchDevice = useCallback((device: DeviceType) => {
@@ -974,8 +1097,55 @@ export default function EditorPage() {
       <div className="flex-1 relative overflow-hidden flex flex-col">
         {/* Device switcher toolbar */}
         <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shrink-0">
-          {/* Left spacer */}
-          <div className="w-36" />
+          {/* Left: Undo/Redo + Version History */}
+          <div className="flex items-center gap-1 w-56">
+            {!isViewer && (
+              <>
+                <button
+                  onClick={() => editorInstance.current?.UndoManager?.undo?.()}
+                  disabled={undoCount === 0}
+                  className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    undoCount > 0
+                      ? "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+                      : "text-gray-300 cursor-not-allowed"
+                  }`}
+                  title="Undo (⌘Z)"
+                >
+                  ↩
+                </button>
+                <button
+                  onClick={() => editorInstance.current?.UndoManager?.redo?.()}
+                  disabled={redoCount === 0}
+                  className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    redoCount > 0
+                      ? "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+                      : "text-gray-300 cursor-not-allowed"
+                  }`}
+                  title="Redo (⇧⌘Z)"
+                >
+                  ↪
+                </button>
+                <div className="w-px h-5 bg-gray-200 mx-1" />
+                <button
+                  onClick={() => setShowVersionHistory(!showVersionHistory)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    showVersionHistory
+                      ? "bg-blue-100 text-blue-700 shadow-sm"
+                      : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                  }`}
+                  title="Version History"
+                >
+                  🕒
+                  <span className="hidden sm:inline">History</span>
+                  {pageVersion > 0 && (
+                    <span className="text-[9px] bg-gray-200 text-gray-600 px-1 rounded-full">
+                      v{pageVersion}
+                    </span>
+                  )}
+                </button>
+              </>
+            )}
+          </div>
 
           {/* Device buttons — centered */}
           <div className="flex items-center gap-1">
@@ -1050,7 +1220,7 @@ export default function EditorPage() {
               >
                 {saveStatus === "saving" && "⏳ Saving…"}
                 {saveStatus === "autosaving" && "💾 Auto-saving…"}
-                {saveStatus === "saved" && `✅ Page saved (/${activePage})`}
+                {saveStatus === "saved" && `✅ Page saved (/${activePage}) — v${pageVersion}`}
                 {saveStatus === "error" && "❌ Failed to save — please try again"}
                 {saveStatus === "expired" && "🔒 Session expired — redirecting to login…"}
               </div>
@@ -1059,7 +1229,7 @@ export default function EditorPage() {
         </div>
       </div>
 
-      {/* ── Right panel: Settings sidebar ─────────────────────────── */}
+      {/* ── Right panel: Settings sidebar / Version History ────── */}
       <div className="w-80 border-l border-gray-200 bg-white flex flex-col overflow-hidden">
         {/* Save + Preview buttons */}
         <div className="px-4 py-3 border-b border-gray-100 flex gap-2">
@@ -1083,34 +1253,53 @@ export default function EditorPage() {
           </a>
         </div>
 
-        {/* Settings */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {selected ? (
-            <>
-              <Sidebar component={selected} onApplyPage={handleAiApplyPage} />
-              {/* Delete block button */}
-              {!isViewer && (
-                <div className="mt-6 pt-4 border-t border-gray-100">
-                  <button
-                    onClick={handleDeleteBlock}
-                    className="w-full text-sm text-red-600 hover:text-white hover:bg-red-600 border border-red-200 hover:border-red-600 py-2 rounded-lg transition-all font-medium"
-                  >
-                    🗑 Delete This Block
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <div className="text-4xl mb-3">🎨</div>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                {isViewer
-                  ? "Click a block to view its settings."
-                  : "Drag a block from the left panel,\nthen click it to edit settings."}
-              </p>
-            </div>
-          )}
-        </div>
+        {/* Version History panel */}
+        {showVersionHistory && !isViewer ? (
+          <VersionHistory
+            slug={activePage}
+            currentVersion={pageVersion}
+            onRestore={handleVersionRestore}
+            onClose={() => setShowVersionHistory(false)}
+            csrfToken={getCsrfToken()}
+          />
+        ) : (
+          /* Settings */
+          <div className="flex-1 overflow-y-auto p-4">
+            {selected ? (
+              <>
+                <Sidebar component={selected} onApplyPage={handleAiApplyPage} />
+                {/* Delete block button — with locked region protection */}
+                {!isViewer && (
+                  <div className="mt-6 pt-4 border-t border-gray-100">
+                    {/* Locked indicator for navbar/footer */}
+                    {selected && ["navbar", "footer"].includes(selected.get?.("type")) ? (
+                      <div className="w-full text-center py-2 text-xs text-gray-400 flex items-center justify-center gap-1.5">
+                        <span>🔒</span>
+                        <span>This block is locked and cannot be deleted</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleDeleteBlock}
+                        className="w-full text-sm text-red-600 hover:text-white hover:bg-red-600 border border-red-200 hover:border-red-600 py-2 rounded-lg transition-all font-medium"
+                      >
+                        🗑 Delete This Block
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <div className="text-4xl mb-3">🎨</div>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  {isViewer
+                    ? "Click a block to view its settings."
+                    : "Drag a block from the left panel,\nthen click it to edit settings."}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Generate Page Modal ───────────────────────────────────── */}

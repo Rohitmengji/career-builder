@@ -53,25 +53,54 @@ export const POST = withRequestLogging(async (req: Request) => {
     return block;
   });
 
+  // Extract optional expectedVersion for conflict detection
+  const expectedVersion = typeof body.expectedVersion === "number" ? body.expectedVersion : undefined;
+
   try {
-    await savePage(slug, blocks, session.tenantId);
+    const result = await savePage(slug, blocks, session.tenantId, {
+      expectedVersion,
+      savedBy: session.userId,
+      savedByEmail: session.email,
+    });
+
+    // Conflict detected — another user saved since this client last loaded
+    if (result.conflict) {
+      log.warn("page_save_conflict", {
+        slug,
+        tenantId: session.tenantId,
+        expectedVersion,
+        currentVersion: result.version,
+        userId: session.userId,
+      });
+      return NextResponse.json({
+        error: "Conflict: This page was modified by another user. Please reload and try again.",
+        conflict: true,
+        currentVersion: result.version,
+        updatedAt: result.updatedAt.toISOString(),
+      }, { status: 409 });
+    }
+
     metrics.increment(METRIC.PAGE_SAVES, { tenantId: session.tenantId });
+
+    // Audit log is best-effort — don't block the save response
+    try {
+      await writeAuditLog(session.userId, session.email, "page_save", `slug: ${slug}, blocks: ${blocks.length}, version: ${result.version}`);
+    } catch {
+      // non-fatal
+    }
+
+    // Notify SSE listeners (preview sync)
+    globalThis.__previewListeners?.forEach((cb: (slug: string) => void) => cb(slug));
+
+    return NextResponse.json({
+      success: true,
+      version: result.version,
+      updatedAt: result.updatedAt.toISOString(),
+    });
   } catch (err) {
     log.error("page_save_failed", { slug, tenantId: session.tenantId, error: String(err) });
     return NextResponse.json({ error: "Failed to save page" }, { status: 500 });
   }
-
-  // Audit log is best-effort — don't block the save response
-  try {
-    await writeAuditLog(session.userId, session.email, "page_save", `slug: ${slug}, blocks: ${blocks.length}`);
-  } catch {
-    // non-fatal
-  }
-
-  // Notify SSE listeners (preview sync)
-  globalThis.__previewListeners?.forEach((cb: (slug: string) => void) => cb(slug));
-
-  return NextResponse.json({ success: true });
 });
 
 /** GET /api/pages — read a page (public — web app needs this) */
@@ -89,8 +118,12 @@ export const GET = withRequestLogging(async (req: Request) => {
   }
 
   if (slug) {
-    const blocks = await loadPage(slug, tenantId);
-    return NextResponse.json({ blocks });
+    const result = await loadPage(slug, tenantId);
+    return NextResponse.json({
+      blocks: result.blocks,
+      version: result.version,
+      updatedAt: result.updatedAt.toISOString(),
+    });
   }
 
   // List all pages

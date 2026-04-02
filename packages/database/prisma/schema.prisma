@@ -175,6 +175,7 @@ model Page {
   blocks      String   @default("[]") // JSON array of block definitions
   isPublished Boolean  @default(true)
   sortOrder   Int      @default(0)
+  version     Int      @default(1) // Incremented on every save — used for optimistic locking
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -182,8 +183,35 @@ model Page {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  // Relations
+  versions PageVersion[]
+
   @@unique([slug, tenantId])
   @@index([tenantId])
+}
+
+// --- PAGE VERSION (history / rollback) ---
+
+model PageVersion {
+  id        String   @id @default(cuid())
+  version   Int // Matches Page.version at the time of snapshot
+  blocks    String   @default("[]") // Snapshot of blocks JSON
+  title     String   @default("")
+  savedBy   String?  // userId who saved this version
+  savedByEmail String? // Email for display without user lookup
+  createdAt DateTime @default(now())
+
+  // Parent page
+  pageId   String
+  page     Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  // Tenant isolation (denormalized for query efficiency)
+  tenantId String
+
+  @@unique([pageId, version])
+  @@index([pageId])
+  @@index([tenantId])
+  @@index([createdAt])
 }
 
 // --- AUDIT LOG ---
