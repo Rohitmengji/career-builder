@@ -128,8 +128,14 @@ export default async function Home() {
             <Link href="/jobs" className="text-gray-700 hover:text-gray-900 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
               Jobs
             </Link>
-            <ButtonLink href="/careers" variant="secondary" size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
+            <Link href="/careers" className="text-gray-700 hover:text-gray-900 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
               Careers
+            </Link>
+            <Link href="/login" className="text-gray-700 hover:text-gray-900 font-medium transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+              Sign in
+            </Link>
+            <ButtonLink href="/register" variant="secondary" size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
+              Create account
             </ButtonLink>
           </nav>
         </Container>

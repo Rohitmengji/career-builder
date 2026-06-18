@@ -16,7 +16,22 @@ import { sanitizeTenantId, sanitizeString, sanitizeThemeColors } from "@career-b
 
 /** GET /api/tenants — list tenants (authenticated users only) */
 export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+
   const session = await getSessionReadOnly();
+
+  // Public access: allow fetching a specific tenant's public config (theme/branding)
+  // without auth — needed by the web app's server-side rendering
+  if (id && !session) {
+    const safeId = sanitizeTenantId(id);
+    if (!safeId) {
+      return NextResponse.json({ error: "Invalid tenant ID" }, { status: 400 });
+    }
+    const tenant = await loadTenant(safeId);
+    return NextResponse.json({ tenant });
+  }
+
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -24,9 +39,6 @@ export async function GET(req: Request) {
   // Only platform operators (super_admin) may see/manage tenants other than
   // their own. Everyone else is scoped to their session tenant.
   const isSuperAdmin = session.role === "super_admin";
-
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id");
 
   if (id) {
     const safeId = sanitizeTenantId(id);
