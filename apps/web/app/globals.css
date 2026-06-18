@@ -180,7 +180,11 @@ footer a:hover::after {
 }
 
 main > section,
-main > div,
+/* Exclude fixed overlays (a nav drawer's backdrop/panel render as `main > div`).
+   `animation: … both` retains the keyframe end state (opacity:1, translateY(0)),
+   which overrides even the overlay's inline hide styles and paints a full-page
+   scrim. Skip dialogs / aria-hidden / fixed-position children. */
+main > div:not(.fixed):not([role="dialog"]):not([aria-hidden="true"]),
 main > hr,
 main > nav,
 main > footer {
