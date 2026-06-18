@@ -1,6 +1,35 @@
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf } from "@/lib/auth";
 import { tenantRepo } from "@career-builder/database";
+import { stripHtml } from "@career-builder/security/sanitize";
+
+const MAX_CONTEXT_BYTES = 20_000; // cap stored AI context to prevent abuse
+
+/**
+ * Coerce arbitrary client input into a safe, bounded AI-context object:
+ * plain object only, string values stripped of HTML/scripts and length-capped.
+ * (The context is later injected into AI prompts, so it must be sanitized.)
+ */
+function sanitizeContext(input: unknown): Record<string, string | string[]> {
+  const out: Record<string, string | string[]> = {};
+  if (!input || typeof input !== "object" || Array.isArray(input)) return out;
+  for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+    if (typeof k !== "string" || k.length > 100) continue;
+    if (v == null) continue;
+    if (Array.isArray(v)) {
+      // String arrays (e.g. pageSlugs) — sanitize + cap count/length.
+      out[k] = v
+        .filter((x): x is string => typeof x === "string")
+        .slice(0, 100)
+        .map((x) => stripHtml(x).slice(0, 200));
+      continue;
+    }
+    const raw = typeof v === "string" ? v : typeof v === "number" || typeof v === "boolean" ? String(v) : "";
+    if (!raw) continue;
+    out[k] = stripHtml(raw).slice(0, 5000);
+  }
+  return out;
+}
 
 /**
  * /api/site-context — persist / retrieve AI site context per tenant.
@@ -56,10 +85,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid CSRF" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
+
+  // Reject oversized payloads before doing any work.
+  if (body == null || JSON.stringify(body).length > MAX_CONTEXT_BYTES) {
+    return NextResponse.json({ error: "Invalid or too-large context" }, { status: 400 });
+  }
+
   const key = session.tenantId || "default";
   const settings = await getSettings(key);
-  settings.aiSiteContext = body;
+  settings.aiSiteContext = sanitizeContext(body);
   await saveSettings(key, settings);
 
   return NextResponse.json({ ok: true });
