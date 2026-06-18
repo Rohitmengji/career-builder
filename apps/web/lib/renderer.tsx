@@ -27,7 +27,6 @@ import React, { memo, useState, useCallback, useId, useMemo, useRef, useEffect }
 import { useTheme } from "@/lib/ThemeProvider";
 import {
   darkenHex,
-  lightenHex,
   isLightColor,
 } from "@career-builder/tenant-config";
 import {
@@ -35,11 +34,13 @@ import {
   safeUrl,
   getReadableTextColor,
   srText,
+  keys,
   optimizeImageUrl,
 } from "@/lib/design-system";
 import {
   LazyImage,
   ResponsiveDrawer,
+  useReducedMotion,
 } from "@/lib/design-system-components";
 import { useScrollReveal, useNavbarShrink } from "@/lib/useScrollReveal";
 
@@ -482,25 +483,28 @@ function Btn({
         : tokens.button.primaryStyle as React.CSSProperties
       : tokens.button.secondaryStyle as React.CSSProperties;
 
+  // Hover/focus colors are applied via mirrored mouse + focus handlers so the
+  // effect is reachable by keyboard (focus parity), not mouse-only.
+  const restBg =
+    variant === "primary" ? (accent ? accent.hex : tokens.colors.primary) : "transparent";
+  const hoverBg =
+    variant === "primary"
+      ? accent
+        ? accent.btnHover
+        : tokens.button.primaryHoverBg
+      : tokens.button.secondaryHoverBg;
+  const applyHover = (el: HTMLElement) => { el.style.backgroundColor = hoverBg; };
+  const applyRest = (el: HTMLElement) => { el.style.backgroundColor = restBg; };
+
   return (
     <a
       href={href || "#"}
-      className={`inline-flex items-center justify-center ${tokens.button.sizeClass} ${tokens.button.radiusClass} font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${className}`}
+      className={`inline-flex items-center justify-center ${tokens.button.sizeClass} ${tokens.button.radiusClass} font-semibold transition-all duration-200 shadow-sm hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600 active:scale-[0.99] motion-reduce:active:scale-100 motion-reduce:transition-none ${className}`}
       style={{ ...baseStyle, ...styleProp }}
-      onMouseEnter={(e) => {
-        if (variant === "primary") {
-          e.currentTarget.style.backgroundColor = accent ? accent.btnHover : tokens.button.primaryHoverBg;
-        } else {
-          e.currentTarget.style.backgroundColor = tokens.button.secondaryHoverBg;
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (variant === "primary") {
-          e.currentTarget.style.backgroundColor = accent ? accent.hex : tokens.colors.primary;
-        } else {
-          e.currentTarget.style.backgroundColor = "transparent";
-        }
-      }}
+      onMouseEnter={(e) => applyHover(e.currentTarget)}
+      onMouseLeave={(e) => applyRest(e.currentTarget)}
+      onFocus={(e) => applyHover(e.currentTarget)}
+      onBlur={(e) => applyRest(e.currentTarget)}
     >
       {children}
     </a>
@@ -532,15 +536,15 @@ const Hero = memo((raw: any) => {
   return (
     <Section
       variant="gradient"
-      className="py-14! sm:py-16! md:py-20! bg-cover bg-center relative overflow-hidden"
+      className="py-14! sm:py-16! md:py-20! xl:py-28! bg-cover bg-center relative overflow-hidden"
       style={bgImage ? { backgroundImage: `url(${optimizeImageUrl(bgImage, { width: 1920, quality: 85 })})` } : undefined}
       ariaLabelledBy={`${heroId}-title`}
     >
       {bgImage && <div className="absolute inset-0 backdrop-blur-sm" style={{ backgroundColor: `${tokens.colors.background}b3` }} aria-hidden="true" />}
       <Container className="relative z-10">
         <div className="max-w-3xl mx-auto text-center flex flex-col items-center gap-4">
-          <h1 id={`${heroId}-title`} className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-[1.1]" style={{ color: tokens.colors.text, fontFamily: tokens.typography.headingFontFamilyCss, fontWeight: tokens.typography.headingWeight }}>{p.title}</h1>
-          {p.subtitle && <p className="text-base sm:text-lg leading-relaxed max-w-xl" style={{ color: tokens.colors.textMuted }}>{p.subtitle}</p>}
+          <h1 id={`${heroId}-title`} className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-semibold tracking-tight leading-[1.1] text-balance" style={{ color: tokens.colors.text, fontFamily: tokens.typography.headingFontFamilyCss, fontWeight: tokens.typography.headingWeight }}>{p.title}</h1>
+          {p.subtitle && <p className="text-base sm:text-lg xl:text-xl leading-relaxed max-w-xl text-balance" style={{ color: tokens.colors.textMuted }}>{p.subtitle}</p>}
           {p.ctaText && <Btn href={safeUrl(p.ctaLink, "#positions")} color={p.color}>{p.ctaText}</Btn>}
         </div>
       </Container>
@@ -584,7 +588,7 @@ const Features = memo((raw: any) => {
             {items.map((item: any, i: number) => (
               <li key={i}>
                 <Card className="text-center h-full">
-                  <span className="text-4xl block mb-4" role="img" aria-label={safeString(item.title, "Feature")}>{item.icon || "✨"}</span>
+                  <span className="text-4xl block mb-4" aria-hidden="true">{item.icon || "✨"}</span>
                   <h3 className="text-xl font-medium mb-2" style={{ color: tokens.colors.text }}>{item.title || "Feature"}</h3>
                   <p className="text-sm leading-relaxed" style={{ color: tokens.colors.textMuted }}>{item.desc || ""}</p>
                   {p.color && <div className="mt-4 h-0.5 w-12 mx-auto rounded-full" style={{ backgroundColor: accent.hex }} aria-hidden="true" />}
@@ -683,10 +687,10 @@ const Accordion = memo((raw: any) => {
       <Container className="max-w-3xl">
         <SectionHeader title={p.title} id={`${sectionId}-heading`} />
         {items.length > 0 ? (
-          <div className="divide-y" style={{ borderColor: tokens.colors.border }} role="list">
+          <div className="divide-y" style={{ borderColor: tokens.colors.border }}>
             {items.map((item: any, i: number) => (
-              <details key={i} className="group py-5" role="listitem">
-                <summary className="flex items-center justify-between cursor-pointer list-none font-medium text-base select-none" style={{ color: tokens.colors.text }}>
+              <details key={i} className="group py-5">
+                <summary className="flex items-center justify-between cursor-pointer list-none font-medium text-base select-none min-h-11 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600" style={{ color: tokens.colors.text }}>
                   <span>{item.question || "Question"}</span>
                   <svg className="w-5 h-5 shrink-0 ml-4 transition-transform duration-200 group-open:rotate-45" style={{ color: tokens.colors.textMuted }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
@@ -748,10 +752,12 @@ const SearchBar = memo((raw: any) => {
           />
           <button
             type="submit"
-            className="px-6 py-3 rounded-lg text-sm font-semibold transition shadow-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600"
+            className="px-6 py-3 min-h-11 rounded-lg text-sm font-semibold transition shadow-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600"
             style={{ backgroundColor: btnBg, color: btnText }}
             onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = darkenHex(btnBg, 0.12); }}
             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = btnBg; }}
+            onFocus={(e) => { e.currentTarget.style.backgroundColor = darkenHex(btnBg, 0.12); }}
+            onBlur={(e) => { e.currentTarget.style.backgroundColor = btnBg; }}
           >
             Search
           </button>
@@ -867,17 +873,18 @@ const SearchResults = memo((raw: any) => {
           <ul className="space-y-3 list-none p-0 m-0" role="list" aria-label="Job listings">
             {filtered.map((job: any) => (
               <li key={job.id}>
-                <a href={safeUrl(`/jobs/${job.id}`, "#")} className="block group focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 rounded-2xl">
+                <a
+                  href={safeUrl(`/jobs/${job.id}`, "#")}
+                  className="block group rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                  style={{ ["--cb-job-accent" as any]: tokens.colors.primary, ["--cb-job-text" as any]: tokens.colors.text }}
+                >
                   <div
-                    className="rounded-2xl border p-5 sm:p-6 shadow-sm transition-all duration-200 hover:shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    className="rounded-2xl border p-5 sm:p-6 shadow-sm transition-all duration-200 group-hover:shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                     style={{ borderColor: tokens.colors.border, backgroundColor: tokens.isDark ? "#1f2937" : "#ffffff" }}
                   >
                     <div className="flex-1 min-w-0">
                       <h3
-                        className="font-medium transition-colors truncate"
-                        style={{ color: tokens.colors.text }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = tokens.colors.primary; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = tokens.colors.text; }}
+                        className="font-medium transition-colors truncate text-(--cb-job-text) group-hover:text-(--cb-job-accent) group-focus-visible:text-(--cb-job-accent)"
                       >{job.title || "Untitled Role"}</h3>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-sm" style={{ color: tokens.colors.textMuted }}>
                         {job.department && <span>{job.department}</span>}
@@ -960,12 +967,12 @@ const JobCategory = memo((raw: any) => {
           <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 list-none p-0 m-0" role="list" aria-label="Job categories">
             {categories.map((cat: any, i: number) => (
               <li key={i}>
-                <Card className="cursor-pointer group h-full">
-                  <h3 className="font-medium transition-colors group-hover:underline" style={{ color: tokens.colors.text }}>
+                <Card className="h-full">
+                  <h3 className="font-medium" style={{ color: tokens.colors.text }}>
                     {cat.name || cat}
                   </h3>
                   <p className="text-sm mt-1" style={{ color: tokens.colors.textMuted }}>
-                    {cat.count != null ? `${cat.count} open roles →` : "Browse open roles →"}
+                    {cat.count != null ? `${cat.count} open roles` : "Browse open roles"}
                   </p>
                 </Card>
               </li>
@@ -999,7 +1006,7 @@ const JoinTalentNetwork = memo((raw: any) => {
     <Section variant="dark" ariaLabel={safeString(p.title, "Join talent network")}>
       <Container className="text-center max-w-xl">
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4" style={{ fontFamily: tokens.typography.headingFontFamilyCss }}>{p.title}</h2>
-        {p.subtitle && <p className="text-gray-400 mb-6 sm:mb-8 leading-relaxed">{p.subtitle}</p>}
+        {p.subtitle && <p className="text-gray-300 mb-6 sm:mb-8 leading-relaxed">{p.subtitle}</p>}
         {formState === "success" ? (
           <div className="text-center py-4" role="status" aria-live="polite">
             <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center bg-green-500/20">
@@ -1023,10 +1030,12 @@ const JoinTalentNetwork = memo((raw: any) => {
             <button
               type="submit"
               disabled={formState === "loading"}
-              className="px-6 py-3 rounded-lg text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600 disabled:opacity-50"
+              className="px-6 py-3 min-h-11 rounded-lg text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600 disabled:opacity-50"
               style={{ backgroundColor: btnBg, color: btnText }}
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = darkenHex(btnBg, 0.12); }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = btnBg; }}
+              onFocus={(e) => { e.currentTarget.style.backgroundColor = darkenHex(btnBg, 0.12); }}
+              onBlur={(e) => { e.currentTarget.style.backgroundColor = btnBg; }}
             >
               {formState === "loading" ? "Joining…" : p.buttonText}
             </button>
@@ -1070,7 +1079,7 @@ const VideoAndText = memo((raw: any) => {
                 loading="lazy"
               />
             ) : (
-              <span className="text-5xl" style={{ color: tokens.colors.border }} aria-hidden="true">▶</span>
+              <svg className="w-14 h-14" style={{ color: tokens.colors.border }} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
             )}
           </div>
           <div className="w-full md:flex-1">
@@ -1119,22 +1128,65 @@ const ShowHideTab = memo((raw: any) => {
   const { tokens } = useTheme();
   const tabs = safeList(p.tabs, DEFAULT_BLOCK_PROPS["show-hide-tab"].tabs);
   const sectionId = useId();
+  const [active, setActive] = useState(0);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Plain function — the React Compiler memoizes automatically; a manual
+  // useCallback here trips react-hooks/preserve-manual-memoization.
+  const onTabKeyDown = (e: React.KeyboardEvent, i: number) => {
+    let next = i;
+    if (e.key === keys.ArrowRight) next = (i + 1) % tabs.length;
+    else if (e.key === keys.ArrowLeft) next = (i - 1 + tabs.length) % tabs.length;
+    else if (e.key === keys.Home) next = 0;
+    else if (e.key === keys.End) next = tabs.length - 1;
+    else return;
+    e.preventDefault();
+    setActive(next);
+    tabRefs.current[next]?.focus();
+  };
+
   return (
     <Section variant="white" ariaLabelledBy={`${sectionId}-heading`}>
       <Container className="max-w-3xl">
         <SectionHeader title={p.title} id={`${sectionId}-heading`} />
         {tabs.length > 0 ? (
-          <div className="space-y-3">
+          <div>
+            <div role="tablist" aria-label={safeString(p.title, "Tabs")} className="flex flex-wrap gap-2 border-b" style={{ borderColor: tokens.colors.border }}>
+              {tabs.map((tab: any, i: number) => {
+                const selected = i === active;
+                return (
+                  <button
+                    key={i}
+                    ref={(el) => { tabRefs.current[i] = el; }}
+                    role="tab"
+                    id={`${sectionId}-tab-${i}`}
+                    aria-selected={selected}
+                    aria-controls={`${sectionId}-panel-${i}`}
+                    tabIndex={selected ? 0 : -1}
+                    onClick={() => setActive(i)}
+                    onKeyDown={(e) => onTabKeyDown(e, i)}
+                    className="-mb-px min-h-11 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-t-lg"
+                    style={selected
+                      ? { color: tokens.colors.primary, borderColor: tokens.colors.primary }
+                      : { color: tokens.colors.textMuted, borderColor: "transparent" }
+                    }
+                  >
+                    {tab.label || `Tab ${i + 1}`}
+                  </button>
+                );
+              })}
+            </div>
             {tabs.map((tab: any, i: number) => (
               <div
                 key={i}
-                className={`${tokens.card.radiusClass} p-6 transition-all duration-200`}
-                style={i === 0
-                  ? { backgroundColor: lightenHex(tokens.colors.primary, 0.92), border: `2px solid ${lightenHex(tokens.colors.primary, 0.7)}` }
-                  : { backgroundColor: tokens.colors.surface, border: `1px solid ${tokens.colors.border}` }
-                }
+                role="tabpanel"
+                id={`${sectionId}-panel-${i}`}
+                aria-labelledby={`${sectionId}-tab-${i}`}
+                tabIndex={0}
+                hidden={i !== active}
+                className={`${tokens.card.radiusClass} mt-4 p-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
+                style={{ backgroundColor: tokens.colors.surface, border: `1px solid ${tokens.colors.border}` }}
               >
-                <h3 className="font-medium mb-1" style={{ color: tokens.colors.text }}>{tab.label || "Tab"}</h3>
                 <p className="text-sm leading-relaxed" style={{ color: tokens.colors.textMuted }}>{tab.content || ""}</p>
               </div>
             ))}
@@ -1192,9 +1244,9 @@ const LightBox = memo((raw: any) => {
         {images.length > 0 ? (
           <ul className={`grid gap-6 ${gridCls} list-none p-0 m-0`} role="list" aria-label="Image gallery">
             {images.map((img: any, i: number) => (
-              <li key={i} className="group cursor-pointer">
+              <li key={i}>
                 <div className={`w-full aspect-square overflow-hidden ${tokens.card.radiusClass}`} style={{ backgroundColor: tokens.colors.surface }}>
-                  <LazyImage src={safeImg(img.url, i)} alt={safeString(img.caption, `Gallery image ${i + 1}`)} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                  <LazyImage src={safeImg(img.url, i)} alt={safeString(img.caption, `Gallery image ${i + 1}`)} className="w-full h-full object-cover" />
                 </div>
                 {img.caption && <p className="mt-2 text-sm text-center" style={{ color: tokens.colors.textMuted }}>{img.caption}</p>}
               </li>
@@ -1215,7 +1267,10 @@ const JobAlert = memo((raw: any) => {
   const accent = getAccent(p.color);
   const sectionBg = accent.hex;
   const sectionText = getReadableTextColor(sectionBg);
-  const subtitleColor = lightenHex(sectionBg, 0.5);
+  // Subtitle must stay readable on the accent background. lightenHex(bg) produced
+  // a tint of the same hue that failed AA; instead reuse the WCAG-derived readable
+  // text color (matches the heading) so contrast is guaranteed.
+  const subtitleColor = sectionText;
   const invertBg = isLightColor(sectionBg) ? "#111827" : "#ffffff";
   const invertText = isLightColor(sectionBg) ? "#ffffff" : sectionBg;
   const [modalOpen, setModalOpen] = useState(false);
@@ -1239,13 +1294,11 @@ const JobAlert = memo((raw: any) => {
       <section className="w-full py-8 sm:py-10 md:py-14" style={{ backgroundColor: sectionBg, color: sectionText }} aria-label={safeString(p.title, "Job alerts")}>
         <Container className="text-center max-w-2xl">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight mb-4" style={{ color: sectionText, fontFamily: tokens.typography.headingFontFamilyCss }}>{p.title}</h2>
-          {p.subtitle && <p className="mb-6 sm:mb-8 leading-relaxed" style={{ color: subtitleColor }}>{p.subtitle}</p>}
+          {p.subtitle && <p className="mb-6 sm:mb-8 leading-relaxed opacity-90" style={{ color: subtitleColor }}>{p.subtitle}</p>}
           <button
             onClick={() => setModalOpen(true)}
-            className="px-6 py-3 rounded-lg text-sm font-semibold transition shadow-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white"
+            className="px-6 py-3 min-h-11 rounded-lg text-sm font-semibold transition shadow-sm hover:opacity-90 focus-visible:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white"
             style={{ backgroundColor: invertBg, color: invertText }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
           >
             {p.buttonText}
           </button>
@@ -1320,9 +1373,11 @@ const NavigateBack = memo((raw: any) => {
     <Section variant="white" noPadding className="py-4!" as="div" ariaLabel="Navigation">
       <Container>
         <nav aria-label="Breadcrumb">
-          <a href={safeUrl(p.link, "/jobs")} className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 rounded" style={{ color: tokens.colors.textMuted }}
+          <a href={safeUrl(p.link, "/jobs")} className="inline-flex items-center gap-1.5 min-h-11 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 rounded" style={{ color: tokens.colors.textMuted }}
             onMouseEnter={(e) => { e.currentTarget.style.color = tokens.colors.text; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = tokens.colors.textMuted; }}
+            onFocus={(e) => { e.currentTarget.style.color = tokens.colors.text; }}
+            onBlur={(e) => { e.currentTarget.style.color = tokens.colors.textMuted; }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             {p.label}
@@ -1400,6 +1455,7 @@ function Modal({
   size?: "sm" | "md" | "lg";
 }) {
   const { tokens } = useTheme();
+  const reducedMotion = useReducedMotion();
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
 
@@ -1446,7 +1502,7 @@ function Modal({
       onClick={onClose}
     >
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" style={{ animation: "fadeIn 200ms ease-out" }} aria-hidden="true" />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" style={{ animation: reducedMotion ? undefined : "fadeIn 200ms ease-out" }} aria-hidden="true" />
       {/* Dialog */}
       <div
         ref={modalRef}
@@ -1455,14 +1511,14 @@ function Modal({
         aria-label={title}
         tabIndex={-1}
         className={`relative w-full ${sizeClass} rounded-2xl p-6 sm:p-8 shadow-2xl focus:outline-none`}
-        style={{ backgroundColor: tokens.colors.background, color: tokens.colors.text, animation: "modalSlideUp 250ms cubic-bezier(0.34, 1.56, 0.64, 1)" }}
+        style={{ backgroundColor: tokens.colors.background, color: tokens.colors.text, animation: reducedMotion ? undefined : "modalSlideUp 250ms cubic-bezier(0.34, 1.56, 0.64, 1)" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-6">
           <h2 className="text-xl font-semibold tracking-tight" style={{ color: tokens.colors.heading, fontFamily: tokens.typography.headingFontFamilyCss }}>{title}</h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-600"
+            className="w-11 h-11 -mr-2 flex items-center justify-center rounded-full transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-600"
             aria-label="Close dialog"
           >
             <svg className="w-4 h-4" style={{ color: tokens.colors.textMuted }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -1527,7 +1583,23 @@ function FormError({ message, onRetry }: { message: string; onRetry: () => void 
 
 const NotificationBanner = memo((raw: any) => {
   const p = withDefaults("notification-banner", raw);
+  // Persist dismissal so the banner stays closed across reloads. Keyed by the
+  // banner text so editing the message re-shows it.
+  const storageKey = useMemo(
+    () => `cb-banner-dismissed:${safeString(p.text).slice(0, 80)}`,
+    [p.text]
+  );
   const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (window.localStorage.getItem(storageKey) === "1") setDismissed(true);
+    } catch { /* storage unavailable */ }
+  }, [storageKey]);
+  const dismiss = useCallback(() => {
+    setDismissed(true);
+    try { window.localStorage.setItem(storageKey, "1"); } catch { /* ignore */ }
+  }, [storageKey]);
   if (dismissed) return null;
   const variantStyles: Record<string, React.CSSProperties> = {
     info: { backgroundColor: "#eff6ff", color: "#1e40af", borderColor: "#bfdbfe" },
@@ -1537,7 +1609,7 @@ const NotificationBanner = memo((raw: any) => {
   };
   const style = variantStyles[p.variant] || variantStyles.info;
   return (
-    <div className="w-full border-b" style={style} role="status" aria-live="polite">
+    <div className="w-full border-b" style={style}>
       <Container className="flex items-start sm:items-center justify-between py-3 gap-3 sm:gap-4">
         <p className="text-sm font-medium flex-1">
           {p.text}
@@ -1547,8 +1619,8 @@ const NotificationBanner = memo((raw: any) => {
         </p>
         {p.dismissible && (
           <button
-            onClick={() => setDismissed(true)}
-            className="w-6 h-6 flex items-center justify-center rounded-full transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-blue-600"
+            onClick={dismiss}
+            className="w-11 h-11 -my-2 -mr-2 shrink-0 flex items-center justify-center rounded-full transition-opacity hover:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
             aria-label="Dismiss notification"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -1579,7 +1651,7 @@ const StatsCounter = memo((raw: any) => {
             {items.map((item: any, i: number) => (
               <li key={i} className="text-center">
                 <span className="block text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">{item.value || "0"}</span>
-                <span className="block mt-1.5 sm:mt-2 text-xs sm:text-sm text-gray-400">{item.label || "Metric"}</span>
+                <span className="block mt-1.5 sm:mt-2 text-xs sm:text-sm text-gray-300">{item.label || "Metric"}</span>
               </li>
             ))}
           </ul>
@@ -1674,8 +1746,8 @@ const SocialProof = memo((raw: any) => {
                   />
                 ) : (
                   <span
-                    className="text-lg font-semibold tracking-wide opacity-40"
-                    style={{ color: p.variant === "dark" ? "#ffffff" : tokens.colors.text }}
+                    className="text-lg font-semibold tracking-wide"
+                    style={{ color: p.variant === "dark" ? "#d1d5db" : tokens.colors.textMuted }}
                   >
                     {logo.name || "Logo"}
                   </span>
@@ -1756,7 +1828,9 @@ const ApplicationStatus = memo((raw: any) => {
                       : { backgroundColor: tokens.colors.surface, color: tokens.colors.textMuted }
                     }
                   >
-                    {i < currentStep ? "✓" : i + 1}
+                    {i < currentStep ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7" /></svg>
+                    ) : i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium" style={{ color: i <= currentStep ? tokens.colors.text : tokens.colors.textMuted }}>{step.label}</p>
@@ -1927,7 +2001,7 @@ const Footer = memo((raw: any) => {
                     <a
                       key={i}
                       href={safeUrl(s.url, "#")}
-                      className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:opacity-80 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                      className="w-11 h-11 rounded-full flex items-center justify-center transition-colors hover:opacity-80 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                       style={{ backgroundColor: isDark ? "#1f2937" : tokens.colors.border }}
                       aria-label={`${companyName} on ${platform}`}
                       role="listitem"
@@ -1956,7 +2030,7 @@ const Footer = memo((raw: any) => {
           )}
         </div>
         <div className="mt-8 sm:mt-10 md:mt-12 pt-6" style={{ borderTop: `1px solid ${isDark ? "#1f2937" : tokens.colors.border}` }}>
-          <p className="text-xs" style={{ color: isDark ? "#4b5563" : tokens.colors.textMuted }}>
+          <p className="text-xs" style={{ color: isDark ? "#9ca3af" : tokens.colors.textMuted }}>
             {p.copyright || `© ${new Date().getFullYear()} ${companyName}. All rights reserved.`}
           </p>
         </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthShell, Field, ErrorBanner, SubmitButton } from "@/lib/authUi";
+import { PasswordField } from "@/components/ui";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -43,28 +44,33 @@ export default function RegisterPage() {
 
   return (
     <AuthShell title="Create your account" subtitle="Apply faster and track your applications.">
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
         {error && <ErrorBanner>{error}</ErrorBanner>}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="First name" value={form.firstName} onChange={set("firstName")} required autoComplete="given-name" placeholder="Jane" />
           <Field label="Last name" value={form.lastName} onChange={set("lastName")} required autoComplete="family-name" placeholder="Doe" />
         </div>
         <Field label="Email" type="email" value={form.email} onChange={set("email")} required autoComplete="email" placeholder="you@example.com" />
         <Field label="Phone" type="tel" value={form.phone} onChange={set("phone")} autoComplete="tel" placeholder="+1 (555) 000-0000" />
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Password *</label>
-          <input
-            type="password" required minLength={8} autoComplete="new-password" value={form.password}
-            onChange={(e) => set("password")(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
-            placeholder="At least 8 characters"
-          />
-        </div>
+        <PasswordField
+          label="Password"
+          required
+          minLength={8}
+          autoComplete="new-password"
+          placeholder="At least 8 characters"
+          value={form.password}
+          onChange={(e) => set("password")(e.target.value)}
+        />
         <SubmitButton submitting={status === "submitting"}>Create Account</SubmitButton>
       </form>
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p className="mt-6 text-center text-sm text-gray-600">
         Already have an account?{" "}
-        <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">Sign in</Link>
+        <Link
+          href="/login"
+          className="rounded font-medium text-blue-600 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+        >
+          Sign in
+        </Link>
       </p>
     </AuthShell>
   );

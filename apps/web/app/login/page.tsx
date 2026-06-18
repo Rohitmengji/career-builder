@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthShell, Field, ErrorBanner, SubmitButton } from "@/lib/authUi";
+import { PasswordField, Skeleton } from "@/components/ui";
 
 function LoginForm() {
   const router = useRouter();
@@ -40,34 +41,63 @@ function LoginForm() {
 
   return (
     <AuthShell title="Welcome back" subtitle="Sign in to your candidate account.">
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
         {error && <ErrorBanner>{error}</ErrorBanner>}
-        <Field label="Email" type="email" value={email} onChange={setEmail} required autoComplete="email" placeholder="you@example.com" />
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-sm font-medium text-gray-700">Password</label>
-            <Link href="/forgot-password" className="text-xs text-blue-600 hover:text-blue-700 font-medium">Forgot password?</Link>
-          </div>
-          <input
-            type="password" required autoComplete="current-password" value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
-            placeholder="••••••••"
-          />
-        </div>
+        <Field
+          label="Email"
+          type="email"
+          value={email}
+          onChange={setEmail}
+          required
+          autoComplete="email"
+          placeholder="you@example.com"
+        />
+        <PasswordField
+          label="Password"
+          required
+          autoComplete="current-password"
+          placeholder="Enter your password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          labelRight={
+            <Link
+              href="/forgot-password"
+              className="rounded text-xs font-medium text-blue-600 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+            >
+              Forgot password?
+            </Link>
+          }
+        />
         <SubmitButton submitting={status === "submitting"}>Sign In</SubmitButton>
       </form>
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p className="mt-6 text-center text-sm text-gray-600">
         Don&apos;t have an account?{" "}
-        <Link href="/register" className="text-blue-600 hover:text-blue-700 font-medium">Create one</Link>
+        <Link
+          href="/register"
+          className="rounded font-medium text-blue-600 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+        >
+          Create one
+        </Link>
       </p>
+    </AuthShell>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <AuthShell title="Welcome back" subtitle="Sign in to your candidate account.">
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-11 w-full" />
+      </div>
     </AuthShell>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<LoginFallback />}>
       <LoginForm />
     </Suspense>
   );

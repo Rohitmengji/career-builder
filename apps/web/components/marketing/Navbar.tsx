@@ -105,12 +105,12 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium" aria-label="Main navigation">
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium" aria-label="Primary">
             {NAV_LINKS.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                className="text-gray-500 hover:text-gray-900 transition-colors py-1"
+                className="text-gray-700 hover:text-gray-900 transition-colors py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
               >
                 {link.label}
               </a>
@@ -261,7 +261,7 @@ export default function Navbar() {
 
         {/* Drawer footer */}
         <div className="px-5 py-4 border-t border-gray-100 shrink-0">
-          <p className="text-xs text-gray-400 text-center">
+          <p className="text-xs text-gray-500 text-center">
             No credit card required · Free forever
           </p>
         </div>

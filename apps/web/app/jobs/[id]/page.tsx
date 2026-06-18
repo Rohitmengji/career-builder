@@ -13,8 +13,10 @@ import type { Job, JobDetailResponse } from "@/lib/jobs/types";
 import ApplyModal from "@/app/jobs/[id]/ApplyModal";
 import PersonalizedSidebar from "@/components/PersonalizedSidebar";
 import JobViewTracker from "@/app/jobs/[id]/JobViewTracker";
+import SiteHeader from "@/components/SiteHeader";
 import { fetchTenantConfig } from "@/lib/tenant";
 import { getSiteUrl } from "@/lib/env";
+import { Container, Card, Badge, CheckIcon, ArrowLeftIcon, MapPinIcon } from "@/components/ui";
 
 /* ================================================================== */
 /*  Data fetching (server-side)                                        */
@@ -142,103 +144,109 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       {/* Client-side analytics tracker (renders null) */}
       <JobViewTracker jobId={job.id} />
 
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Link
-            href="/jobs"
-            className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
-          >
-            ← Back to all jobs
-          </Link>
-        </div>
-      </header>
+      {/* Shared site navigation */}
+      <SiteHeader brand={companyName} />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+      <Container className="py-8 md:py-12 lg:py-14">
+        {/* Back link */}
+        <Link
+          href="/jobs"
+          className="mb-6 inline-flex items-center gap-1.5 rounded-lg text-sm font-medium text-blue-600 transition-colors hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          Back to all jobs
+        </Link>
+
+        <div className="flex flex-col gap-8 lg:flex-row">
           {/* Main content */}
-          <article className="flex-1 min-w-0">
+          <article className="min-w-0 flex-1 space-y-6">
             {/* Title + meta */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 sm:p-8 mb-6">
-              <div className="flex flex-wrap gap-2 mb-3">
-                <Badge color="blue">{job.department}</Badge>
-                <Badge color="green">{formatEmploymentType(job.employmentType)}</Badge>
-                <Badge color="purple">{formatExperienceLevel(job.experienceLevel)}</Badge>
-                {job.isRemote && <Badge color="emerald">Remote</Badge>}
+            <Card className="sm:p-8">
+              <div className="mb-4 flex flex-wrap gap-2">
+                <Badge tone="brand">{job.department}</Badge>
+                <Badge tone="neutral">{formatEmploymentType(job.employmentType)}</Badge>
+                <Badge tone="info">{formatExperienceLevel(job.experienceLevel)}</Badge>
+                {job.isRemote && (
+                  <Badge tone="success">
+                    <MapPinIcon className="h-3.5 w-3.5" />
+                    Remote
+                  </Badge>
+                )}
               </div>
 
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{job.title}</h1>
+              <h1 className="text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl text-balance">
+                {job.title}
+              </h1>
 
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-6">
-                <span className="flex items-center gap-1">
+              <div className="mt-4 mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-600">
+                <span className="flex items-center gap-1.5">
                   <LocationIcon /> {job.location}
                 </span>
                 {job.salary && (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1.5">
                     <SalaryIcon /> {formatSalary(job.salary)}
                   </span>
                 )}
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1.5">
                   <ClockIcon /> Posted {formatDate(job.postedAt)}
                 </span>
               </div>
 
-              <p className="text-gray-700 leading-relaxed">{job.description}</p>
-            </div>
+              <p className="max-w-[70ch] whitespace-pre-line text-base leading-relaxed text-gray-700">
+                {job.description}
+              </p>
+            </Card>
 
             {/* Requirements */}
             {job.requirements && job.requirements.length > 0 && (
-              <Section title="Requirements">
-                <ul className="space-y-2">
+              <ContentSection title="Requirements">
+                <ul className="space-y-2.5">
                   {job.requirements.map((req, i) => (
                     <ListItem key={i}>{req}</ListItem>
                   ))}
                 </ul>
-              </Section>
+              </ContentSection>
             )}
 
             {/* Nice to have */}
             {job.niceToHave && job.niceToHave.length > 0 && (
-              <Section title="Nice to Have">
-                <ul className="space-y-2">
+              <ContentSection title="Nice to Have">
+                <ul className="space-y-2.5">
                   {job.niceToHave.map((item, i) => (
                     <ListItem key={i}>{item}</ListItem>
                   ))}
                 </ul>
-              </Section>
+              </ContentSection>
             )}
 
             {/* Benefits */}
             {job.benefits && job.benefits.length > 0 && (
-              <Section title="Benefits & Perks">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <ContentSection title="Benefits & Perks">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                   {job.benefits.map((benefit, i) => (
                     <div
                       key={i}
-                      className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg text-sm text-green-800"
+                      className="flex items-center gap-2.5 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800"
                     >
-                      <span className="text-green-500">✓</span>
-                      {benefit}
+                      <CheckIcon className="h-4 w-4 shrink-0 text-emerald-600" />
+                      <span>{benefit}</span>
                     </div>
                   ))}
                 </div>
-              </Section>
+              </ContentSection>
             )}
 
             {/* Tags */}
             {job.tags && job.tags.length > 0 && (
-              <Section title="Skills & Tags">
+              <ContentSection title="Skills & Tags">
                 <div className="flex flex-wrap gap-2">
                   {job.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                    >
+                    <Badge key={tag} tone="neutral">
                       {tag}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
-              </Section>
+              </ContentSection>
             )}
           </article>
 
@@ -253,7 +261,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             applyModal={<ApplyModal jobId={job.id} jobTitle={job.title} />}
           />
         </div>
-      </main>
+      </Container>
     </div>
   );
 }
@@ -262,43 +270,21 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 /*  Section wrapper                                                    */
 /* ================================================================== */
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function ContentSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 sm:p-8 mb-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">{title}</h2>
+    <Card className="sm:p-8">
+      <h2 className="mb-4 text-lg font-semibold text-gray-900">{title}</h2>
       {children}
-    </div>
+    </Card>
   );
 }
 
 function ListItem({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2 text-gray-700">
-      <span className="text-blue-500 mt-1.5 shrink-0">•</span>
+    <li className="flex items-start gap-2.5 text-gray-700">
+      <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
       <span>{children}</span>
     </li>
-  );
-}
-
-/* ================================================================== */
-/*  Badge                                                              */
-/* ================================================================== */
-
-const BADGE_COLORS: Record<string, string> = {
-  blue: "bg-blue-50 text-blue-700",
-  green: "bg-green-50 text-green-700",
-  purple: "bg-purple-50 text-purple-700",
-  emerald: "bg-emerald-50 text-emerald-700",
-  gray: "bg-gray-100 text-gray-700",
-};
-
-function Badge({ children, color = "gray" }: { children: React.ReactNode; color?: string }) {
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${BADGE_COLORS[color] || BADGE_COLORS.gray}`}
-    >
-      {children}
-    </span>
   );
 }
 
@@ -356,12 +342,12 @@ function formatDate(dateStr: string): string {
 }
 
 /* ================================================================== */
-/*  Icons                                                              */
+/*  Icons (decorative — aria-hidden)                                   */
 /* ================================================================== */
 
 function LocationIcon() {
   return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
     </svg>
@@ -370,7 +356,7 @@ function LocationIcon() {
 
 function SalaryIcon() {
   return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
@@ -378,7 +364,7 @@ function SalaryIcon() {
 
 function ClockIcon() {
   return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );

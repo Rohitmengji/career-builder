@@ -2,6 +2,10 @@
 
 /**
  * Global error boundary for the web (public) app.
+ *
+ * This replaces the entire <html> document, so it cannot rely on the app's
+ * stylesheet or shared primitives. Styles are kept minimal and inline, mirroring
+ * the design-system token values used by the shared EmptyState elsewhere.
  */
 
 import { useEffect } from "react";
@@ -21,55 +25,75 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html>
-      <body>
+    <html lang="en">
+      <body
+        style={{
+          margin: 0,
+          backgroundColor: "#f9fafb",
+          color: "#111827",
+          fontFamily:
+            'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        }}
+      >
         <div
+          role="alert"
           style={{
             display: "flex",
-            flexDirection: "column",
+            minHeight: "100vh",
             alignItems: "center",
             justifyContent: "center",
-            minHeight: "100vh",
-            fontFamily: "system-ui, -apple-system, sans-serif",
-            padding: "2rem",
+            padding: "4rem 1rem",
             textAlign: "center",
-            backgroundColor: "#ffffff",
           }}
         >
-          <div style={{ maxWidth: "420px" }}>
+          <div style={{ maxWidth: "28rem" }}>
             <div
               style={{
                 width: "56px",
                 height: "56px",
                 backgroundColor: "#eff6ff",
-                borderRadius: "14px",
+                color: "#2563eb",
+                borderRadius: "16px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                margin: "0 auto 1.5rem",
-                fontSize: "28px",
+                margin: "0 auto 1.25rem",
               }}
+              aria-hidden="true"
             >
-              🔧
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 8v4M12 16h.01" />
+              </svg>
             </div>
 
-            <h2
+            <h1
               style={{
-                fontSize: "1.5rem",
-                fontWeight: 700,
+                fontSize: "1.25rem",
+                fontWeight: 600,
                 color: "#111827",
-                marginBottom: "0.75rem",
+                margin: 0,
               }}
             >
               We&apos;ll be right back
-            </h2>
+            </h1>
 
             <p
               style={{
-                fontSize: "1rem",
-                color: "#6b7280",
+                marginTop: "0.5rem",
+                marginBottom: "1.5rem",
+                fontSize: "0.875rem",
+                color: "#4b5563",
                 lineHeight: 1.6,
-                marginBottom: "2rem",
               }}
             >
               Something unexpected happened. Please try refreshing the page.
@@ -78,11 +102,15 @@ export default function GlobalError({
             <button
               onClick={reset}
               style={{
-                backgroundColor: "#111827",
-                color: "white",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "44px",
+                backgroundColor: "#2563eb",
+                color: "#ffffff",
                 border: "none",
-                borderRadius: "12px",
-                padding: "0.875rem 2.5rem",
+                borderRadius: "8px",
+                padding: "0 1.5rem",
                 fontSize: "0.9375rem",
                 fontWeight: 600,
                 cursor: "pointer",

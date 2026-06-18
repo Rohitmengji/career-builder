@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { validateEnv } from "@/lib/env";
 import { fetchTenantConfig } from "@/lib/tenant";
+import { SkipLink } from "@/lib/design-system-components";
 
 // Validate environment variables at startup (warns in dev, throws in prod)
 validateEnv();
@@ -59,7 +60,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased text-gray-900`}
       >
-        {children}
+        <SkipLink />
+        <main id="main-content">{children}</main>
       </body>
     </html>
   );

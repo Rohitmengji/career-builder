@@ -1,8 +1,8 @@
 import { RenderPage } from "@/lib/renderer";
-import Link from "next/link";
 import LiveReloader from "@/components/LiveReloader";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import { SkipLink, AnnouncementProvider } from "@/lib/design-system-components";
+import { Container, EmptyState, ButtonLink } from "@/components/ui";
 import {
   type TenantConfig,
   DEFAULT_THEME,
@@ -92,17 +92,23 @@ export default async function Page({
 
   if (blocks.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center">
-        <div className="text-5xl mb-4">🚧</div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Page Not Published Yet</h1>
-        <p className="text-gray-500 mb-6 max-w-md">
-          This career page hasn&apos;t been built yet. Visit the admin editor
-          to design and publish it.
-        </p>
-        <Link href="/" className="text-blue-600 font-medium hover:underline">
-          ← Back to Home
-        </Link>
-      </div>
+      <ThemeProvider theme={theme} branding={branding}>
+        <SkipLink />
+        <main id="main-content" className="min-h-screen flex items-center justify-center bg-gray-50">
+          <Container>
+            <EmptyState
+              icon={
+                <svg className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 20h9M12 4h9M3 8h4M3 16h4M5 4v16" />
+                </svg>
+              }
+              title="Page not published yet"
+              body="This career page hasn't been built yet. Visit the admin editor to design and publish it."
+              action={<ButtonLink href="/" variant="secondary">Back to home</ButtonLink>}
+            />
+          </Container>
+        </main>
+      </ThemeProvider>
     );
   }
 

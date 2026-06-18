@@ -7,8 +7,15 @@
 
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useId } from "react";
 import { trackApplyStart, trackApplyComplete } from "@/lib/analytics";
+import {
+  Button,
+  Field,
+  TextareaField,
+  CheckIcon,
+  XIcon,
+} from "@/components/ui";
 
 interface ApplyModalProps {
   jobId: string;
@@ -49,6 +56,9 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
   const [errorMsg, setErrorMsg] = useState("");
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const triggerWrapRef = useRef<HTMLDivElement>(null);
+  const headingId = useId();
+  const resumeErrId = useId();
 
   // Open / close
   const open = useCallback(() => {
@@ -63,18 +73,36 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
 
   const close = useCallback(() => {
     setIsOpen(false);
+    // Restore focus to the trigger that opened the dialog
+    requestAnimationFrame(() =>
+      triggerWrapRef.current?.querySelector<HTMLButtonElement>("button")?.focus(),
+    );
   }, []);
 
-  // Sync <dialog> with state
+  // Sync <dialog> with state + move initial focus to first field
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
     if (isOpen && !dialog.open) {
       dialog.showModal();
+      // Focus the first focusable field once the dialog is rendered
+      requestAnimationFrame(() =>
+        dialog.querySelector<HTMLInputElement>("input, textarea")?.focus(),
+      );
     } else if (!isOpen && dialog.open) {
       dialog.close();
     }
   }, [isOpen]);
+
+  // Native <dialog> dispatches a "cancel" event on Escape — keep state in sync
+  // (this also avoids a duplicate keydown listener).
+  const handleCancel = useCallback(
+    (e: React.SyntheticEvent<HTMLDialogElement>) => {
+      e.preventDefault();
+      close();
+    },
+    [close],
+  );
 
   // Close on backdrop click
   const handleBackdropClick = useCallback(
@@ -83,15 +111,6 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
     },
     [close],
   );
-
-  // Close on Escape
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-    };
-    if (isOpen) document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [isOpen, close]);
 
   // Field change handler
   const onChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -173,64 +192,75 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
   return (
     <>
       {/* Trigger button */}
-      <button
-        onClick={open}
-        className="w-full bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-      >
-        Apply for this position
-      </button>
+      <div ref={triggerWrapRef}>
+        <Button onClick={open} fullWidth size="lg">
+          Apply for this position
+        </Button>
+      </div>
 
       {/* Modal */}
       <dialog
         ref={dialogRef}
         onClick={handleBackdropClick}
-        className="fixed inset-0 z-50 p-0 m-0 w-full h-full max-w-none max-h-none bg-transparent backdrop:bg-black/50 backdrop:backdrop-blur-sm open:flex open:items-center open:justify-center"
+        onCancel={handleCancel}
+        aria-labelledby={headingId}
+        className="fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/50 backdrop:backdrop-blur-sm open:flex open:items-center open:justify-center"
       >
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+        <div className="mx-auto max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:p-8">
           {status === "success" ? (
             /* ──── Success state ──── */
-            <div className="text-center py-8">
-              <div className="text-5xl mb-4">🎉</div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Application Submitted!</h2>
-              <p className="text-gray-600 mb-6">
-                Thank you for applying to <strong>{jobTitle}</strong>. We&apos;ll review your application
-                and get back to you within 5 business days.
-              </p>
-              <button
-                onClick={close}
-                className="bg-gray-100 text-gray-700 font-medium py-2 px-6 rounded-xl hover:bg-gray-200 transition-colors"
+            <div className="py-8 text-center" role="status" aria-live="polite">
+              <div
+                className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600"
+                aria-hidden="true"
               >
-                Close
-              </button>
+                <CheckIcon className="h-7 w-7" />
+              </div>
+              <h2 id={headingId} className="text-xl font-semibold text-gray-900">
+                Application submitted
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                Thank you for applying to <strong className="font-semibold text-gray-900">{jobTitle}</strong>.
+                We&apos;ll review your application and get back to you within 5 business days.
+              </p>
+              <div className="mt-6">
+                <Button variant="secondary" onClick={close}>
+                  Close
+                </Button>
+              </div>
             </div>
           ) : (
             /* ──── Form ──── */
             <>
-              <div className="flex items-center justify-between mb-6">
+              <div className="mb-6 flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Apply Now</h2>
-                  <p className="text-sm text-gray-500 mt-0.5">{jobTitle}</p>
+                  <h2 id={headingId} className="text-xl font-semibold text-gray-900">
+                    Apply now
+                  </h2>
+                  <p className="mt-0.5 text-sm text-gray-600">{jobTitle}</p>
                 </div>
                 <button
+                  type="button"
                   onClick={close}
-                  className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-                  aria-label="Close"
+                  className="-mr-2 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                  aria-label="Close dialog"
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <XIcon className="h-5 w-5" />
                 </button>
               </div>
 
               {errorMsg && (
-                <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg mb-4">
+                <div
+                  role="alert"
+                  className="mb-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"
+                >
                   {errorMsg}
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Name row */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field
                     label="First name"
                     name="firstName"
@@ -278,25 +308,36 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
                 />
 
                 {/* Resume — file upload OR URL */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Resume <span className="text-red-500 ml-0.5">*</span>
-                  </label>
-                  <p className="text-xs text-gray-400 mb-2">Upload a file or paste a link — at least one is required</p>
+                <fieldset className="m-0 border-0 p-0">
+                  <legend className="mb-1.5 block text-sm font-medium text-gray-700">
+                    Resume
+                    <span className="text-red-600" aria-hidden="true"> *</span>
+                    <span className="sr-only"> (required)</span>
+                  </legend>
+                  <p className="mb-2 text-xs text-gray-500">
+                    Upload a file or paste a link — at least one is required
+                  </p>
 
                   {/* File upload */}
                   <div className="mb-2">
                     {resumeFile ? (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl text-sm">
+                      <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm">
                         <FileIcon />
-                        <span className="truncate flex-1 text-blue-800 font-medium">{resumeFile.name}</span>
-                        <span className="text-blue-500 text-xs shrink-0">{formatFileSize(resumeFile.size)}</span>
-                        <button type="button" onClick={clearResume} className="text-blue-400 hover:text-blue-600 ml-1 shrink-0">&times;</button>
+                        <span className="flex-1 truncate font-medium text-blue-800">{resumeFile.name}</span>
+                        <span className="shrink-0 text-xs text-blue-700">{formatFileSize(resumeFile.size)}</span>
+                        <button
+                          type="button"
+                          onClick={clearResume}
+                          aria-label={`Remove ${resumeFile.name}`}
+                          className="ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-blue-600 transition-colors hover:bg-blue-100 hover:text-blue-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                        >
+                          <XIcon className="h-4 w-4" />
+                        </button>
                       </div>
                     ) : (
-                      <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors">
+                      <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 transition-colors hover:border-blue-400 hover:bg-blue-50/50 focus-within:ring-2 focus-within:ring-blue-600">
                         <UploadIcon />
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-gray-600">
                           <span className="font-medium text-blue-600">Upload file</span> — PDF, DOC, DOCX (max {MAX_FILE_SIZE_MB}MB)
                         </span>
                         <input
@@ -304,6 +345,9 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
                           type="file"
                           accept={ACCEPTED_RESUME_TYPES}
                           onChange={onFileChange}
+                          aria-label="Upload resume file"
+                          aria-invalid={resumeError ? true : undefined}
+                          aria-describedby={resumeError ? resumeErrId : undefined}
                           className="sr-only"
                         />
                       </label>
@@ -311,10 +355,10 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
                   </div>
 
                   {/* OR divider */}
-                  <div className="flex items-center gap-3 my-2">
-                    <div className="flex-1 h-px bg-gray-200" />
-                    <span className="text-xs text-gray-400 uppercase">or</span>
-                    <div className="flex-1 h-px bg-gray-200" />
+                  <div className="my-2 flex items-center gap-3" aria-hidden="true">
+                    <div className="h-px flex-1 bg-gray-200" />
+                    <span className="text-xs uppercase text-gray-500">or</span>
+                    <div className="h-px flex-1 bg-gray-200" />
                   </div>
 
                   {/* Resume URL */}
@@ -324,50 +368,41 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
                     value={form.resumeUrl}
                     onChange={onChange}
                     placeholder="https://drive.google.com/... or link to your resume"
-                    className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    aria-label="Resume URL"
+                    aria-invalid={resumeError ? true : undefined}
+                    aria-describedby={resumeError ? resumeErrId : undefined}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-500 focus:outline-none focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600"
                   />
 
                   {resumeError && (
-                    <p className="text-xs text-red-600 mt-1">{resumeError}</p>
+                    <p id={resumeErrId} role="alert" className="mt-1.5 text-xs text-red-700">
+                      {resumeError}
+                    </p>
                   )}
-                </div>
+                </fieldset>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cover letter <span className="text-gray-400 font-normal">(optional)</span>
-                  </label>
-                  <textarea
-                    name="coverLetter"
-                    value={form.coverLetter}
-                    onChange={onChange}
-                    rows={4}
-                    placeholder="Tell us why you'd be a great fit…"
-                    className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  />
-                </div>
+                <TextareaField
+                  label="Cover letter"
+                  name="coverLetter"
+                  value={form.coverLetter}
+                  onChange={onChange}
+                  rows={4}
+                  placeholder="Tell us why you'd be a great fit…"
+                  hint="Optional"
+                />
 
                 <div className="flex items-center gap-3 pt-2">
-                  <button
+                  <Button
                     type="submit"
-                    disabled={status === "submitting"}
-                    className="flex-1 bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    size="lg"
+                    fullWidth
+                    loading={status === "submitting"}
                   >
-                    {status === "submitting" ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Spinner />
-                        Submitting…
-                      </span>
-                    ) : (
-                      "Submit Application"
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={close}
-                    className="py-3 px-4 text-sm text-gray-600 hover:text-gray-800 font-medium transition-colors"
-                  >
+                    {status === "submitting" ? "Submitting…" : "Submit application"}
+                  </Button>
+                  <Button type="button" variant="ghost" size="lg" onClick={close}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </form>
             </>
@@ -375,46 +410,6 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
         </div>
       </dialog>
     </>
-  );
-}
-
-/* ================================================================== */
-/*  Field component                                                    */
-/* ================================================================== */
-
-function Field({
-  label,
-  name,
-  type = "text",
-  value,
-  onChange,
-  required,
-  placeholder,
-}: {
-  label: string;
-  name: string;
-  type?: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  required?: boolean;
-  placeholder?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        required={required}
-        placeholder={placeholder}
-        className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-      />
-    </div>
   );
 }
 
@@ -429,12 +424,12 @@ function formatFileSize(bytes: number): string {
 }
 
 /* ================================================================== */
-/*  Icons                                                              */
+/*  Icons (decorative — aria-hidden)                                   */
 /* ================================================================== */
 
 function UploadIcon() {
   return (
-    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
     </svg>
   );
@@ -442,18 +437,8 @@ function UploadIcon() {
 
 function FileIcon() {
   return (
-    <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <svg className="h-4 w-4 shrink-0 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
     </svg>
-  );
-}
-
-/* ================================================================== */
-/*  Spinner                                                            */
-/* ================================================================== */
-
-function Spinner() {
-  return (
-    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
   );
 }
