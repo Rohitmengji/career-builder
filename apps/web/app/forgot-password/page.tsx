@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AuthShell, Field, ErrorBanner, SuccessBanner, SubmitButton } from "@/lib/authUi";
+import { AuthShell, Field, ErrorBanner, SubmitButton } from "@/lib/authUi";
+import { ButtonLink, CheckIcon, EmptyState } from "@/components/ui";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -31,29 +32,46 @@ export default function ForgotPasswordPage() {
     }
   };
 
+  if (status === "sent") {
+    return (
+      <AuthShell title="Check your email" subtitle="We'll email you a link to set a new password.">
+        <div role="status" aria-live="polite">
+          <EmptyState
+            icon={<CheckIcon className="h-6 w-6" />}
+            title="Reset link sent"
+            body={
+              <>
+                If an account exists for <strong className="font-medium text-gray-900">{email}</strong>, a reset link is on
+                its way. Check your inbox (and spam folder).
+              </>
+            }
+            action={
+              <ButtonLink href="/login" variant="secondary" size="lg">
+                Back to sign in
+              </ButtonLink>
+            }
+          />
+        </div>
+      </AuthShell>
+    );
+  }
+
   return (
     <AuthShell title="Reset your password" subtitle="We'll email you a link to set a new password.">
-      {status === "sent" ? (
-        <div className="space-y-6">
-          <SuccessBanner>
-            If an account exists for <strong>{email}</strong>, a reset link is on its way. Check your inbox (and spam).
-          </SuccessBanner>
-          <Link href="/login" className="block text-center text-sm text-blue-600 hover:text-blue-700 font-medium">
-            Back to sign in
-          </Link>
-        </div>
-      ) : (
-        <>
-          <form onSubmit={onSubmit} className="space-y-4">
-            {error && <ErrorBanner>{error}</ErrorBanner>}
-            <Field label="Email" type="email" value={email} onChange={setEmail} required autoComplete="email" placeholder="you@example.com" />
-            <SubmitButton submitting={status === "submitting"}>Send Reset Link</SubmitButton>
-          </form>
-          <p className="mt-6 text-center text-sm text-gray-500">
-            Remembered it? <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">Sign in</Link>
-          </p>
-        </>
-      )}
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        {error && <ErrorBanner>{error}</ErrorBanner>}
+        <Field label="Email" type="email" value={email} onChange={setEmail} required autoComplete="email" placeholder="you@example.com" />
+        <SubmitButton submitting={status === "submitting"}>Send Reset Link</SubmitButton>
+      </form>
+      <p className="mt-6 text-center text-sm text-gray-600">
+        Remembered it?{" "}
+        <Link
+          href="/login"
+          className="rounded font-medium text-blue-600 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+        >
+          Sign in
+        </Link>
+      </p>
     </AuthShell>
   );
 }

@@ -1,5 +1,38 @@
 import Link from "next/link";
 import { mergeTenantConfig } from "@career-builder/tenant-config";
+import {
+  Container,
+  Section,
+  Card,
+  ButtonLink,
+  Badge,
+  ArrowRightIcon,
+} from "@/components/ui";
+import { SkipLink } from "@/lib/design-system-components";
+
+const VALUE_PROPS = [
+  {
+    title: "Growth & Impact",
+    desc: "Work on problems that matter. Ship products used by thousands. Grow faster than you thought possible.",
+    icon: (
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+    ),
+  },
+  {
+    title: "Inclusive Culture",
+    desc: "A diverse team where every voice is heard. We hire for talent and potential, not just credentials.",
+    icon: (
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+    ),
+  },
+  {
+    title: "Work-Life Balance",
+    desc: "Flexible schedules, generous PTO, and a genuine commitment to your wellbeing — not just buzzwords.",
+    icon: (
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+    ),
+  },
+];
 
 function getAdminApiUrl(): string {
   const serverOnly = process.env.ADMIN_API_URL;
@@ -74,225 +107,199 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
+      <SkipLink />
+
       {/* ─── Nav ─────────────────────────────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <Container className="h-16 flex items-center justify-between">
           <span className="text-base font-semibold text-gray-900 tracking-tight">
             {companyName}
           </span>
-          <nav className="flex items-center gap-8 text-sm">
+          <nav className="flex items-center gap-6 sm:gap-8 text-sm" aria-label="Primary">
             {hasAbout && (
-              <Link href="/about" className="text-gray-500 hover:text-gray-900 transition-colors">About</Link>
+              <Link href="/about" className="text-gray-700 hover:text-gray-900 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">About</Link>
             )}
             {hasCulture && (
-              <Link href="/culture" className="text-gray-500 hover:text-gray-900 transition-colors">Culture</Link>
+              <Link href="/culture" className="text-gray-700 hover:text-gray-900 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Culture</Link>
             )}
             {hasBenefits && (
-              <Link href="/benefits" className="text-gray-500 hover:text-gray-900 transition-colors">Benefits</Link>
+              <Link href="/benefits" className="text-gray-700 hover:text-gray-900 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Benefits</Link>
             )}
-            <Link
-              href="/jobs"
-              className="text-gray-500 hover:text-gray-900 transition-colors"
-            >
+            <Link href="/jobs" className="text-gray-700 hover:text-gray-900 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
               Jobs
             </Link>
-            <Link
-              href="/careers"
-              className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
+            <ButtonLink href="/careers" variant="secondary" size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
               Careers
-            </Link>
+            </ButtonLink>
           </nav>
-        </div>
+        </Container>
       </header>
 
-      {/* ─── Hero ────────────────────────────────────────────────── */}
-      <section className="relative pt-32 pb-24 px-6 overflow-hidden">
-        {/* Subtle gradient background */}
-        <div className="absolute inset-0 bg-linear-to-br from-blue-50/80 via-white to-indigo-50/60" />
-        <div className="absolute top-0 right-0 w-125 h-125 bg-blue-100/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-        <div className="absolute bottom-0 left-0 w-100 h-100 bg-indigo-100/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
+      <main id="main-content" className="flex-1">
+        {/* ─── Hero ──────────────────────────────────────────────── */}
+        <section className="relative pt-32 pb-20 md:pb-24 xl:pt-44 xl:pb-28 overflow-hidden">
+          {/* Subtle gradient background */}
+          <div className="absolute inset-0 bg-linear-to-br from-blue-50/80 via-white to-indigo-50/60" aria-hidden="true" />
+          <div className="absolute top-0 right-0 w-125 h-125 bg-blue-100/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" aria-hidden="true" />
+          <div className="absolute bottom-0 left-0 w-100 h-100 bg-indigo-100/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" aria-hidden="true" />
 
-        <div className="relative max-w-3xl mx-auto text-center flex flex-col items-center gap-6">
-          <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full text-xs font-medium border border-blue-100">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-            {totalJobs > 0
-              ? `${totalJobs} open position${totalJobs !== 1 ? "s" : ""} across ${jobSummary.length} team${jobSummary.length !== 1 ? "s" : ""}`
-              : "We're hiring across all teams"}
-          </div>
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-gray-900 tracking-tight leading-[1.08]">
-            Build what
-            <span className="bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"> matters</span>.
-          </h1>
-          <p className="text-lg sm:text-xl text-gray-500 leading-relaxed max-w-xl">
-            Join {companyName} and help shape the future.
-            We&apos;re looking for talented people who want to do their best work.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
-            <Link
-              href="/careers"
-              className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-3.5 rounded-xl transition-all shadow-lg shadow-gray-900/10 text-sm hover:shadow-xl hover:-translate-y-0.5"
-            >
-              View Open Positions →
-            </Link>
-            {hasCulture ? (
-              <Link
-                href="/culture"
-                className="border border-gray-200 text-gray-700 font-medium px-8 py-3.5 rounded-xl hover:bg-gray-50 transition-all text-sm"
-              >
-                Our Culture
-              </Link>
-            ) : hasAbout ? (
-              <Link
-                href="/about"
-                className="border border-gray-200 text-gray-700 font-medium px-8 py-3.5 rounded-xl hover:bg-gray-50 transition-all text-sm"
-              >
-                About Us
-              </Link>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Stats ───────────────────────────────────────────────── */}
-      {totalJobs > 0 && (
-        <section className="border-y border-gray-100 bg-gray-50/50">
-          <div className="max-w-5xl mx-auto px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <p className="text-3xl font-bold text-gray-900">{totalJobs}</p>
-              <p className="text-sm text-gray-500 mt-1">Open Roles</p>
+          <Container className="relative">
+            <div className="max-w-3xl mx-auto text-center flex flex-col items-center gap-6">
+              <Badge tone="brand" className="px-4 py-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" aria-hidden="true" />
+                {totalJobs > 0
+                  ? `${totalJobs} open position${totalJobs !== 1 ? "s" : ""} across ${jobSummary.length} team${jobSummary.length !== 1 ? "s" : ""}`
+                  : "We're hiring across all teams"}
+              </Badge>
+              <h1 className="text-5xl sm:text-6xl xl:text-7xl font-bold text-gray-900 tracking-tight leading-[1.08] text-balance">
+                Build what
+                <span className="bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"> matters</span>.
+              </h1>
+              <p className="text-lg sm:text-xl text-gray-600 leading-relaxed max-w-xl text-balance">
+                Join {companyName} and help shape the future.
+                We&apos;re looking for talented people who want to do their best work.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
+                <ButtonLink href="/careers" size="lg" className="bg-gray-900 text-white hover:bg-gray-800">
+                  View Open Positions
+                  <ArrowRightIcon className="h-4 w-4" />
+                </ButtonLink>
+                {hasCulture ? (
+                  <ButtonLink href="/culture" variant="secondary" size="lg" className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                    Our Culture
+                  </ButtonLink>
+                ) : hasAbout ? (
+                  <ButtonLink href="/about" variant="secondary" size="lg" className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                    About Us
+                  </ButtonLink>
+                ) : null}
+              </div>
             </div>
-            <div>
-              <p className="text-3xl font-bold text-gray-900">{jobSummary.length}</p>
-              <p className="text-sm text-gray-500 mt-1">Teams Hiring</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-gray-900">100%</p>
-              <p className="text-sm text-gray-500 mt-1">Remote Friendly</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-gray-900">4.8★</p>
-              <p className="text-sm text-gray-500 mt-1">Employee Rating</p>
-            </div>
-          </div>
+          </Container>
         </section>
-      )}
 
-      {/* ─── Departments ─────────────────────────────────────────── */}
-      {jobSummary.length > 0 && (
-        <section className="py-20 px-6">
-          <div className="max-w-5xl mx-auto">
+        {/* ─── Stats ─────────────────────────────────────────────── */}
+        {totalJobs > 0 && (
+          <section className="border-y border-gray-100 bg-gray-50/50">
+            <Container className="py-12">
+              <dl className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center max-w-5xl mx-auto">
+                {[
+                  { value: String(totalJobs), label: "Open Roles" },
+                  { value: String(jobSummary.length), label: "Teams Hiring" },
+                  { value: "100%", label: "Remote Friendly" },
+                  { value: "4.8★", label: "Employee Rating" },
+                ].map((stat) => (
+                  <div key={stat.label}>
+                    <dd className="text-3xl font-bold text-gray-900">{stat.value}</dd>
+                    <dt className="text-sm text-gray-600 mt-1">{stat.label}</dt>
+                  </div>
+                ))}
+              </dl>
+            </Container>
+          </section>
+        )}
+
+        {/* ─── Departments ───────────────────────────────────────── */}
+        {jobSummary.length > 0 && (
+          <Section>
+            <Container className="max-w-5xl">
+              <div className="text-center mb-12">
+                <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight text-balance">Explore teams</h2>
+                <p className="text-gray-600 mt-3 max-w-md mx-auto text-balance">
+                  Find the right team for you. We&apos;re growing across every department.
+                </p>
+              </div>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {jobSummary.map(({ department, count }) => (
+                  <li key={department}>
+                    <Link
+                      href={`/jobs?department=${encodeURIComponent(department)}`}
+                      data-card="interactive"
+                      className="group flex items-center justify-between gap-3 p-5 rounded-2xl border border-gray-200/80 bg-white shadow-xs transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    >
+                      <span>
+                        <span className="block font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
+                          {department}
+                        </span>
+                        <span className="block text-sm text-gray-600 mt-0.5">
+                          {count} open role{count !== 1 ? "s" : ""}
+                        </span>
+                      </span>
+                      <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Container>
+          </Section>
+        )}
+
+        {/* ─── Value Props ───────────────────────────────────────── */}
+        <Section muted>
+          <Container className="max-w-5xl">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Explore Teams</h2>
-              <p className="text-gray-500 mt-3 max-w-md mx-auto">
-                Find the right team for you. We&apos;re growing across every department.
+              <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight text-balance">
+                Why {companyName}?
+              </h2>
+              <p className="text-gray-600 mt-3 max-w-md mx-auto text-balance">
+                More than a job — a place to grow, learn, and make an impact.
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {jobSummary.map(({ department, count }) => (
-                <Link
-                  key={department}
-                  href={`/jobs?department=${encodeURIComponent(department)}`}
-                  className="group flex items-center justify-between p-5 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all bg-white"
-                >
-                  <div>
-                    <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                      {department}
-                    </h3>
-                    <p className="text-sm text-gray-500 mt-0.5">
-                      {count} open role{count !== 1 ? "s" : ""}
-                    </p>
+            <ul className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {VALUE_PROPS.map((item) => (
+                <Card as="li" key={item.title} className="p-8">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600" aria-hidden="true">
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      {item.icon}
+                    </svg>
                   </div>
-                  <span className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all text-lg">
-                    →
-                  </span>
-                </Link>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">{item.desc}</p>
+                </Card>
               ))}
-            </div>
-          </div>
-        </section>
-      )}
+            </ul>
+          </Container>
+        </Section>
 
-      {/* ─── Value Props ─────────────────────────────────────────── */}
-      <section className="py-20 px-6 bg-gray-50/50">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
-              Why {companyName}?
+        {/* ─── CTA ───────────────────────────────────────────────── */}
+        <Section>
+          <Container className="max-w-3xl text-center">
+            <h2 className="text-2xl sm:text-3xl xl:text-4xl font-semibold text-gray-900 tracking-tight text-balance">
+              Ready to build something great?
             </h2>
-            <p className="text-gray-500 mt-3 max-w-md mx-auto">
-              More than a job — a place to grow, learn, and make an impact.
+            <p className="text-gray-600 mt-4 max-w-lg mx-auto text-lg text-balance">
+              Browse our open roles and find your next chapter.
+              We can&apos;t wait to hear from you.
             </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: "🚀",
-                title: "Growth & Impact",
-                desc: "Work on problems that matter. Ship products used by thousands. Grow faster than you thought possible.",
-              },
-              {
-                icon: "🤝",
-                title: "Inclusive Culture",
-                desc: "A diverse team where every voice is heard. We hire for talent and potential, not just credentials.",
-              },
-              {
-                icon: "⚖️",
-                title: "Work-Life Balance",
-                desc: "Flexible schedules, generous PTO, and a genuine commitment to your wellbeing — not just buzzwords.",
-              },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="bg-white rounded-2xl p-8 border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all"
-              >
-                <div className="text-3xl mb-4">{item.icon}</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── CTA ─────────────────────────────────────────────────── */}
-      <section className="py-24 px-6">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
-            Ready to build something great?
-          </h2>
-          <p className="text-gray-500 mt-4 max-w-lg mx-auto text-lg">
-            Browse our open roles and find your next chapter.
-            We can&apos;t wait to hear from you.
-          </p>
-          <Link
-            href="/careers"
-            className="inline-block mt-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-10 py-4 rounded-xl transition-all shadow-lg shadow-blue-600/20 hover:shadow-xl hover:-translate-y-0.5 text-sm"
-          >
-            See All Open Positions →
-          </Link>
-        </div>
-      </section>
+            <div className="mt-8">
+              <ButtonLink href="/careers" size="lg">
+                See All Open Positions
+                <ArrowRightIcon className="h-4 w-4" />
+              </ButtonLink>
+            </div>
+          </Container>
+        </Section>
+      </main>
 
       {/* ─── Footer ──────────────────────────────────────────────── */}
       <footer className="border-t border-gray-100 bg-gray-50/30">
-        <div className="max-w-6xl mx-auto px-6 py-12">
+        <Container className="py-12">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="text-sm font-semibold text-gray-900">{companyName}</div>
-            <nav className="flex items-center gap-6 text-sm text-gray-500">
-              <Link href="/careers" className="hover:text-gray-900 transition-colors">Careers</Link>
-              <Link href="/jobs" className="hover:text-gray-900 transition-colors">Jobs</Link>
-              {hasAbout && <Link href="/about" className="hover:text-gray-900 transition-colors">About</Link>}
-              {hasCulture && <Link href="/culture" className="hover:text-gray-900 transition-colors">Culture</Link>}
-              {hasBenefits && <Link href="/benefits" className="hover:text-gray-900 transition-colors">Benefits</Link>}
+            <nav className="flex items-center gap-2 text-sm" aria-label="Footer">
+              <Link href="/careers" className="px-2 py-2 text-gray-600 hover:text-gray-900 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Careers</Link>
+              <Link href="/jobs" className="px-2 py-2 text-gray-600 hover:text-gray-900 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Jobs</Link>
+              {hasAbout && <Link href="/about" className="px-2 py-2 text-gray-600 hover:text-gray-900 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">About</Link>}
+              {hasCulture && <Link href="/culture" className="px-2 py-2 text-gray-600 hover:text-gray-900 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Culture</Link>}
+              {hasBenefits && <Link href="/benefits" className="px-2 py-2 text-gray-600 hover:text-gray-900 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Benefits</Link>}
             </nav>
           </div>
           <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               © {new Date().getFullYear()} {companyName}. All rights reserved.
             </p>
           </div>
-        </div>
+        </Container>
       </footer>
     </div>
   );

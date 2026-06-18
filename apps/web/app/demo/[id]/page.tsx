@@ -1,6 +1,15 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
+import {
+  Badge,
+  ButtonLink,
+  Card,
+  Container,
+  EmptyState,
+  ArrowRightIcon,
+  MapPinIcon,
+} from "@/components/ui";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -76,140 +85,188 @@ export default async function DemoPage({
     notFound();
   }
 
+  const teams = [...new Set(data.jobs.map((j) => j.department))].length;
+  const locations = [...new Set(data.jobs.map((j) => j.location))].length;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Demo banner */}
-      <div className="bg-blue-600 text-white text-center py-3 px-4 text-sm font-medium">
-        🚀 This is an AI-generated demo for <strong>{data.companyName}</strong>.{" "}
-        <Link href="/landing" className="underline hover:text-blue-100">
-          Build yours free →
-        </Link>
+      <div className="bg-blue-600 px-4 py-3 text-center text-sm font-medium text-white">
+        <span className="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+          <Badge tone="neutral" className="bg-white/20 text-white">
+            DEMO
+          </Badge>
+          <span>
+            This is an AI-generated demo for{" "}
+            <strong className="font-semibold">{data.companyName}</strong>.
+          </span>
+          <Link
+            href="/landing"
+            className="inline-flex items-center gap-1 font-semibold underline underline-offset-2 hover:text-white/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-white rounded-sm"
+          >
+            Build yours free
+            <ArrowRightIcon className="h-4 w-4" />
+          </Link>
+        </span>
       </div>
 
       {/* Hero */}
-      <section className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-6 py-20 text-center">
-          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-tight mb-4">
+      <section className="border-b border-gray-200 bg-white">
+        <Container className="py-16 text-center md:py-20 lg:py-24">
+          <h1 className="mx-auto max-w-3xl text-4xl font-bold tracking-tight text-gray-900 text-balance sm:text-5xl">
             {data.companyName} — Join Our Team
           </h1>
-          <p className="text-lg text-gray-500 max-w-2xl mx-auto mb-8">
+          <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-gray-600 text-balance">
             Explore open positions at {data.companyName} and help us shape the
             future of {data.industry}.
           </p>
-          <div className="flex items-center justify-center gap-6 text-sm text-gray-500">
-            <span className="font-semibold text-blue-600">{data.jobs.length} open roles</span>
-            <span>·</span>
-            <span>
-              {[...new Set(data.jobs.map((j) => j.department))].length} teams
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-gray-600">
+            <span className="font-semibold text-blue-600">
+              {data.jobs.length} open roles
             </span>
-            <span>·</span>
+            <span aria-hidden="true" className="text-gray-300">
+              ·
+            </span>
             <span>
-              {[...new Set(data.jobs.map((j) => j.location))].length} locations
+              {teams} {teams === 1 ? "team" : "teams"}
+            </span>
+            <span aria-hidden="true" className="text-gray-300">
+              ·
+            </span>
+            <span>
+              {locations} {locations === 1 ? "location" : "locations"}
             </span>
           </div>
-        </div>
+        </Container>
       </section>
 
       {/* Pages preview */}
-      <section className="max-w-6xl mx-auto px-6 py-16">
-        <h2 className="text-2xl font-bold text-gray-900 mb-8">
-          Site Pages ({data.pages.length})
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {data.pages.map((page) => (
-            <div
-              key={page.slug}
-              className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                  /{page.slug}
-                </span>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                {page.title}
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">{page.description}</p>
-              <ul className="space-y-1.5">
-                {page.sections.map((s, i) => (
-                  <li
-                    key={i}
-                    className="text-xs text-gray-400 flex items-center gap-2"
-                  >
-                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full shrink-0" />
-                    {s}
-                  </li>
-                ))}
-              </ul>
+      <section>
+        <Container className="py-16">
+          <h2 className="mb-8 text-2xl font-semibold tracking-tight text-gray-900">
+            Site Pages ({data.pages.length})
+          </h2>
+          {data.pages.length === 0 ? (
+            <Card>
+              <EmptyState
+                title="No pages generated"
+                body="This demo doesn't include any site pages yet."
+              />
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {data.pages.map((page) => (
+                <Card key={page.slug} as="article">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs text-blue-700">
+                      /{page.slug}
+                    </span>
+                  </div>
+                  <h3 className="mb-1 text-lg font-semibold text-gray-900">
+                    {page.title}
+                  </h3>
+                  <p className="mb-4 text-sm leading-relaxed text-gray-600">
+                    {page.description}
+                  </p>
+                  <ul className="space-y-1.5">
+                    {page.sections.map((s, i) => (
+                      <li
+                        key={i}
+                        className="flex items-center gap-2 text-xs text-gray-600"
+                      >
+                        <span
+                          className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
+                          aria-hidden="true"
+                        />
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </Container>
       </section>
 
       {/* Jobs listing */}
-      <section className="max-w-6xl mx-auto px-6 pb-16">
-        <h2 className="text-2xl font-bold text-gray-900 mb-8">
-          Open Positions ({data.jobs.length})
-        </h2>
-        <div className="space-y-3">
-          {data.jobs.map((job, i) => (
-            <div
-              key={i}
-              className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-200 hover:shadow-sm transition-all"
-            >
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base font-semibold text-gray-900">
-                  {job.title}
-                </h3>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {job.department} · {job.location} · {job.type}
-                </p>
-              </div>
-              <span className="inline-flex items-center text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full w-fit">
-                {job.type}
-              </span>
-            </div>
-          ))}
-        </div>
+      <section>
+        <Container className="pb-16">
+          <h2 className="mb-8 text-2xl font-semibold tracking-tight text-gray-900">
+            Open Positions ({data.jobs.length})
+          </h2>
+          {data.jobs.length === 0 ? (
+            <Card>
+              <EmptyState
+                icon={<MapPinIcon className="h-6 w-6" />}
+                title="No open positions"
+                body={`There are no roles listed for ${data.companyName} right now.`}
+              />
+            </Card>
+          ) : (
+            <ul className="space-y-3">
+              {data.jobs.map((job, i) => (
+                <li key={i}>
+                  <Card
+                    as="article"
+                    className="flex min-h-[44px] flex-col gap-3 p-5 sm:flex-row sm:items-center sm:gap-4"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base font-semibold text-gray-900">
+                        {job.title}
+                      </h3>
+                      <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-gray-600">
+                        <span>{job.department}</span>
+                        <span aria-hidden="true" className="text-gray-300">
+                          ·
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <MapPinIcon className="h-3.5 w-3.5 text-gray-500" />
+                          {job.location}
+                        </span>
+                      </p>
+                    </div>
+                    <Badge tone="brand" className="w-fit">
+                      {job.type}
+                    </Badge>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Container>
       </section>
 
       {/* CTA */}
-      <section className="bg-gray-900 text-center py-16 px-6">
-        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-          Build a site like this in minutes
-        </h2>
-        <p className="text-gray-400 mb-8 max-w-md mx-auto">
-          HireBase generates career sites with AI. Free to start.
-        </p>
-        <Link
-          href="/landing"
-          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl text-base transition-all shadow-lg"
-        >
-          Start Free
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
-            />
-          </svg>
-        </Link>
+      <section className="bg-gray-900">
+        <Container className="py-16 text-center md:py-20">
+          <h2 className="text-2xl font-semibold tracking-tight text-white text-balance sm:text-3xl">
+            Build a site like this in minutes
+          </h2>
+          <p className="mx-auto mt-3 max-w-md leading-relaxed text-gray-300">
+            HireBase generates career sites with AI. Free to start.
+          </p>
+          <div className="mt-8 flex justify-center">
+            <ButtonLink href="/landing" size="lg">
+              Start Free
+              <ArrowRightIcon className="h-4 w-4" />
+            </ButtonLink>
+          </div>
+        </Container>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 bg-gray-50 py-8 px-6 text-center">
-        <p className="text-xs text-gray-400">
+      <footer className="border-t border-gray-200 bg-gray-50 px-6 py-8 text-center">
+        <p className="text-xs text-gray-600">
           Powered by{" "}
-          <Link href="/landing" className="text-blue-600 hover:underline">
+          <Link
+            href="/landing"
+            className="font-medium text-blue-600 hover:underline"
+          >
             HireBase
           </Link>{" "}
-          — AI-powered career site platform · Generated{" "}
+          — AI-powered career site platform{" "}
+          <span aria-hidden="true">·</span> Generated{" "}
           {new Date(data.generatedAt).toLocaleDateString()}
         </p>
       </footer>

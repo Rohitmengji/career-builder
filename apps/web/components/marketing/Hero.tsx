@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { LOGIN_URL } from "@/lib/marketing-config";
+import { useReducedMotion } from "@/lib/design-system-components";
+import { keys } from "@/lib/design-system";
 
 /* ── Animated product preview tabs ────────────────────────────────── */
 const PREVIEW_TABS = ["Career Site", "Editor", "Jobs"] as const;
@@ -9,9 +11,12 @@ const PREVIEW_TABS = ["Career Site", "Editor", "Jobs"] as const;
 export default function Hero() {
   const glowRef = useRef<HTMLDivElement>(null);
   const [previewTab, setPreviewTab] = useState(0);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const reducedMotion = useReducedMotion();
 
-  // Mouse-following glow (throttled via rAF)
+  // Mouse-following glow (throttled via rAF) — skipped when reduced motion.
   useEffect(() => {
+    if (reducedMotion) return;
     let raf = 0;
     const handleMouseMove = (e: MouseEvent) => {
       cancelAnimationFrame(raf);
@@ -24,13 +29,26 @@ export default function Hero() {
     };
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
     return () => { window.removeEventListener("mousemove", handleMouseMove); cancelAnimationFrame(raf); };
-  }, []);
+  }, [reducedMotion]);
 
-  // Auto-cycle preview tabs
+  // Auto-cycle preview tabs — paused when reduced motion is preferred.
   useEffect(() => {
+    if (reducedMotion) return;
     const timer = setInterval(() => setPreviewTab((p) => (p + 1) % 3), 4000);
     return () => clearInterval(timer);
-  }, []);
+  }, [reducedMotion]);
+
+  const onTabKeyDown = (e: React.KeyboardEvent) => {
+    let next = previewTab;
+    if (e.key === keys.ArrowRight) next = (previewTab + 1) % PREVIEW_TABS.length;
+    else if (e.key === keys.ArrowLeft) next = (previewTab - 1 + PREVIEW_TABS.length) % PREVIEW_TABS.length;
+    else if (e.key === keys.Home) next = 0;
+    else if (e.key === keys.End) next = PREVIEW_TABS.length - 1;
+    else return;
+    e.preventDefault();
+    setPreviewTab(next);
+    tabRefs.current[next]?.focus();
+  };
 
   return (
     <section
@@ -77,26 +95,23 @@ export default function Hero() {
             </div>
 
             {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 tracking-tight leading-[1.05]">
-              Build your career{" "}
-              <br className="hidden sm:block" />
-              site in{" "}
+            <h1 className="text-5xl sm:text-6xl xl:text-7xl font-bold text-gray-900 tracking-tight leading-[1.05] text-balance">
+              Build your career site in{" "}
               <span className="bg-clip-text text-transparent bg-linear-to-r from-blue-600 via-indigo-500 to-violet-600 gradient-text-animate">
                 minutes.
-              </span>
-              <br />
-              <span className="text-gray-300 font-bold">Not weeks.</span>
+              </span>{" "}
+              <span className="text-gray-500 font-bold">Not weeks.</span>
             </h1>
 
             {/* Sub-headline */}
-            <p className="mt-6 text-base sm:text-lg md:text-xl text-gray-500 leading-relaxed max-w-xl mx-auto lg:mx-0">
+            <p className="mt-6 text-base sm:text-lg md:text-xl text-gray-600 leading-relaxed max-w-xl mx-auto lg:mx-0 text-balance">
               AI-powered career pages, job listings, and hiring workflows — all
               in one platform. No developers needed.
             </p>
 
             {/* Social proof line */}
-            <p className="mt-3 text-sm font-medium text-gray-400">
-              Used by teams to launch hiring pages <span className="text-blue-600 font-bold">10× faster</span>
+            <p className="mt-3 text-sm font-medium text-gray-600">
+              Used by teams to launch hiring pages <span className="text-blue-700 font-bold">10× faster</span>
             </p>
 
             {/* CTA — email capture */}
@@ -109,17 +124,18 @@ export default function Hero() {
                 }}
                 className="flex flex-col sm:flex-row w-full max-w-md gap-3"
               >
+                <label htmlFor="hero-email" className="sr-only">Work email address</label>
                 <input
+                  id="hero-email"
                   name="email"
                   type="email"
                   required
                   placeholder="Enter your work email"
-                  aria-label="Work email address"
-                  className="flex-1 min-w-0 px-5 py-4 rounded-xl border border-gray-200 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
+                  className="flex-1 min-w-0 px-5 py-4 rounded-lg border border-gray-300 text-base text-gray-900 placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-blue-600 bg-white"
                 />
                 <button
                   type="submit"
-                  className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 h-14 rounded-xl text-base transition-all shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/30 hover:scale-[1.02] active:scale-[0.98] shrink-0 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 h-14 rounded-lg text-base transition-colors shadow-sm active:scale-[0.99] shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                 >
                   Start Free
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
@@ -129,7 +145,7 @@ export default function Hero() {
               </form>
               <a
                 href="#demo"
-                className="inline-flex items-center gap-2 text-gray-500 hover:text-blue-600 font-medium text-sm transition-colors group"
+                className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-700 font-medium text-sm transition-colors group rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
               >
                 <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
@@ -139,27 +155,27 @@ export default function Hero() {
             </div>
 
             {/* Trust badges */}
-            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 justify-center lg:justify-start text-sm text-gray-400">
-              <span className="inline-flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+            <ul className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 justify-center lg:justify-start text-sm text-gray-600">
+              <li className="inline-flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
                 No code required
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.58-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg>
+              </li>
+              <li className="inline-flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.58-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg>
                 Launch in minutes
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+              </li>
+              <li className="inline-flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                 Used by hiring teams
-              </span>
-            </div>
+              </li>
+            </ul>
           </div>
 
-          {/* ── Right — Animated product preview ─────────────────── */}
+          {/* ── Right — Animated product preview (decorative) ────── */}
           <div className="flex-1 max-w-xl w-full">
             <div className="relative">
               {/* Browser chrome */}
-              <div className="bg-white rounded-2xl border border-gray-200/80 shadow-2xl shadow-gray-900/8 overflow-hidden">
+              <div className="bg-white rounded-2xl border border-gray-200/80 shadow-md overflow-hidden">
                 {/* Title bar */}
                 <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 border-b border-gray-100">
                   <div className="flex gap-1.5" aria-hidden="true">
@@ -168,32 +184,52 @@ export default function Hero() {
                     <div className="w-3 h-3 rounded-full bg-[#28c840]" />
                   </div>
                   <div className="flex-1 flex justify-center">
-                    <div className="bg-white rounded-lg border border-gray-200 px-4 py-1 text-xs text-gray-400 font-mono">
+                    <div className="bg-white rounded-lg border border-gray-200 px-4 py-1 text-xs text-gray-600 font-mono">
                       {previewTab === 1 ? "app.hirebase.dev/editor" : previewTab === 2 ? "acme.hirebase.dev/jobs" : "acme.hirebase.dev"}
                     </div>
                   </div>
                 </div>
 
                 {/* Tab switcher inside preview */}
-                <div className="flex gap-1 px-4 pt-3 pb-2 border-b border-gray-100 bg-gray-50/50">
-                  {PREVIEW_TABS.map((tab, i) => (
-                    <button
-                      key={tab}
-                      onClick={() => setPreviewTab(i)}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
-                        previewTab === i
-                          ? "bg-white text-gray-900 shadow-sm border border-gray-200"
-                          : "text-gray-400 hover:text-gray-600"
-                      }`}
-                    >
-                      {tab}
-                    </button>
-                  ))}
+                <div
+                  className="flex gap-1 px-4 pt-3 pb-2 border-b border-gray-100 bg-gray-50/50"
+                  role="tablist"
+                  aria-label="Product preview"
+                  onKeyDown={onTabKeyDown}
+                >
+                  {PREVIEW_TABS.map((tab, i) => {
+                    const selected = previewTab === i;
+                    return (
+                      <button
+                        key={tab}
+                        ref={(el) => { tabRefs.current[i] = el; }}
+                        id={`hero-preview-tab-${i}`}
+                        type="button"
+                        role="tab"
+                        aria-selected={selected}
+                        aria-controls="hero-preview-panel"
+                        tabIndex={selected ? 0 : -1}
+                        onClick={() => setPreviewTab(i)}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                          selected
+                            ? "bg-white text-gray-900 shadow-sm border border-gray-200"
+                            : "text-gray-600 hover:text-gray-900"
+                        }`}
+                      >
+                        {tab}
+                      </button>
+                    );
+                  })}
                 </div>
 
-                {/* Preview content */}
-                <div className="p-6 min-h-72 relative">
-                  <div key={previewTab} className="animate-in">
+                {/* Preview content (illustrative mock) */}
+                <div
+                  className="p-6 min-h-72 relative"
+                  role="tabpanel"
+                  id="hero-preview-panel"
+                  aria-labelledby={`hero-preview-tab-${previewTab}`}
+                >
+                  <div key={previewTab} className="animate-in" aria-hidden="true">
                     {previewTab === 0 && <PreviewCareerSite />}
                     {previewTab === 1 && <PreviewEditor />}
                     {previewTab === 2 && <PreviewJobs />}

@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { LOGIN_URL } from "@/lib/marketing-config";
+import { Container, Section, SectionHeader } from "@/components/ui";
+import { keys } from "@/lib/design-system";
 
 const TABS = [
   {
@@ -22,68 +24,94 @@ const TABS = [
 ];
 
 export default function DemoPreview() {
-  const [active, setActive] = useState("career-site");
-  const activeTab = TABS.find((t) => t.id === active) || TABS[0];
+  const [active, setActive] = useState(0);
+  const activeTab = TABS[active];
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    let next = active;
+    if (e.key === keys.ArrowRight) next = (active + 1) % TABS.length;
+    else if (e.key === keys.ArrowLeft) next = (active - 1 + TABS.length) % TABS.length;
+    else if (e.key === keys.Home) next = 0;
+    else if (e.key === keys.End) next = TABS.length - 1;
+    else return;
+    e.preventDefault();
+    setActive(next);
+    tabRefs.current[next]?.focus();
+  };
 
   return (
-    <section id="demo" className="py-16 sm:py-24 lg:py-32">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <p className="text-sm font-semibold text-blue-600 uppercase tracking-wider mb-3">
-            See it in action
-          </p>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 tracking-tight">
-            From idea to live site in minutes
-          </h2>
-        </div>
+    <Section id="demo">
+      <Container>
+        <SectionHeader
+          eyebrow="See it in action"
+          title="From idea to live site in minutes"
+        />
 
         {/* Tab switcher */}
         <div className="flex justify-center mb-8 overflow-x-auto pb-1">
-          <div className="inline-flex bg-gray-100 rounded-xl p-1 gap-1 shrink-0" role="tablist" aria-label="Product demo tabs">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                role="tab"
-                aria-selected={active === tab.id}
-                aria-controls={`panel-${tab.id}`}
-                onClick={() => setActive(tab.id)}
-                className={`px-4 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap min-h-11 ${
-                  active === tab.id
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div
+            className="inline-flex bg-gray-100 rounded-xl p-1 gap-1 shrink-0"
+            role="tablist"
+            aria-label="Product demo"
+            onKeyDown={onKeyDown}
+          >
+            {TABS.map((tab, i) => {
+              const selected = active === i;
+              return (
+                <button
+                  key={tab.id}
+                  ref={(el) => { tabRefs.current[i] = el; }}
+                  id={`demo-tab-${tab.id}`}
+                  role="tab"
+                  type="button"
+                  aria-selected={selected}
+                  aria-controls={`demo-panel-${tab.id}`}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => setActive(i)}
+                  className={`px-4 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap min-h-11 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                    selected
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <p className="text-center text-gray-500 mb-8 text-base">{activeTab.description}</p>
+        <p className="text-center text-gray-600 mb-8 text-base">{activeTab.description}</p>
 
         {/* Device mock */}
         <div className="max-w-5xl mx-auto">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl shadow-gray-200/40 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-md overflow-hidden">
             {/* Browser chrome */}
             <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 border-b border-gray-100">
               <div className="flex gap-1.5" aria-hidden="true">
-                <div className="w-3 h-3 rounded-full bg-red-400" />
-                <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                <div className="w-3 h-3 rounded-full bg-green-400" />
+                <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+                <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
+                <div className="w-3 h-3 rounded-full bg-[#28c840]" />
               </div>
               <div className="flex-1 flex justify-center">
-                <div className="bg-white rounded-md border border-gray-200 px-4 py-1 text-xs text-gray-400 font-mono">
-                  {active === "editor" ? "app.hirebase.dev/editor" : active === "jobs" ? "careers.acme.com/jobs" : "careers.acme.com"}
+                <div className="bg-white rounded-md border border-gray-200 px-4 py-1 text-xs text-gray-600 font-mono">
+                  {activeTab.id === "editor" ? "app.hirebase.dev/editor" : activeTab.id === "jobs" ? "careers.acme.com/jobs" : "careers.acme.com"}
                 </div>
               </div>
             </div>
 
             {/* Tab content */}
-            <div className="p-4 sm:p-8 min-h-64 sm:min-h-96 overflow-hidden" role="tabpanel" id={`panel-${active}`} aria-label={activeTab.label}>
-              {active === "career-site" && <CareerSiteMock />}
-              {active === "editor" && <EditorMock />}
-              {active === "jobs" && <JobsMock />}
+            <div
+              className="p-4 sm:p-8 min-h-64 sm:min-h-96 overflow-hidden focus:outline-none"
+              role="tabpanel"
+              id={`demo-panel-${activeTab.id}`}
+              aria-labelledby={`demo-tab-${activeTab.id}`}
+              tabIndex={0}
+            >
+              {activeTab.id === "career-site" && <CareerSiteMock />}
+              {activeTab.id === "editor" && <EditorMock />}
+              {activeTab.id === "jobs" && <JobsMock />}
             </div>
           </div>
         </div>
@@ -92,17 +120,17 @@ export default function DemoPreview() {
         <div className="text-center mt-10">
           <a
             href={LOGIN_URL}
-            className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-4 rounded-xl text-base transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-gray-900/10"
+            className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-4 rounded-lg text-base transition-colors active:scale-[0.99] shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
           >
             Try this yourself
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
             </svg>
           </a>
-          <p className="mt-3 text-sm text-gray-400">Free to start · No credit card required</p>
+          <p className="mt-3 text-sm text-gray-500">Free to start · No credit card required</p>
         </div>
-      </div>
-    </section>
+      </Container>
+    </Section>
   );
 }
 
@@ -211,7 +239,7 @@ function JobsMock() {
       {/* Search bar */}
       <div className="flex gap-3">
         <div className="flex-1 h-10 bg-gray-50 rounded-lg border border-gray-200 flex items-center px-3 gap-2">
-          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
           <div className="h-2.5 w-40 bg-gray-200 rounded" />
@@ -227,7 +255,7 @@ function JobsMock() {
         {jobs.map((job) => (
           <div key={job.title} className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 bg-white hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer group">
             <div className="w-10 h-10 bg-blue-50 rounded-lg shrink-0 flex items-center justify-center">
-              <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0" />
               </svg>
             </div>
@@ -236,7 +264,7 @@ function JobsMock() {
               <p className="text-xs text-gray-500">{job.dept} · {job.loc}</p>
             </div>
             <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">{job.type}</span>
-            <svg className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <svg className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
           </div>

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AuthShell, ErrorBanner, SuccessBanner, SubmitButton } from "@/lib/authUi";
+import { AuthShell, ErrorBanner, SubmitButton } from "@/lib/authUi";
+import { Button, ButtonLink, PasswordField, Skeleton, CheckIcon, EmptyState } from "@/components/ui";
 
 function ResetForm() {
   const router = useRouter();
@@ -40,10 +40,15 @@ function ResetForm() {
   if (!token) {
     return (
       <AuthShell title="Invalid link">
-        <ErrorBanner>This password reset link is missing or invalid.</ErrorBanner>
-        <Link href="/forgot-password" className="mt-6 block text-center text-sm text-blue-600 hover:text-blue-700 font-medium">
-          Request a new link
-        </Link>
+        <EmptyState
+          title="This link is invalid"
+          body="This password reset link is missing or invalid. Request a new one to continue."
+          action={
+            <ButtonLink href="/forgot-password" variant="secondary" size="lg">
+              Request a new link
+            </ButtonLink>
+          }
+        />
       </AuthShell>
     );
   }
@@ -51,48 +56,65 @@ function ResetForm() {
   if (status === "done") {
     return (
       <AuthShell title="Password updated">
-        <SuccessBanner>Your password has been reset and you&apos;re signed in.</SuccessBanner>
-        <button
-          onClick={() => { router.push("/profile"); router.refresh(); }}
-          className="mt-6 w-full inline-flex items-center justify-center px-6 py-3 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition"
-        >
-          Go to your profile
-        </button>
+        <div role="status" aria-live="polite">
+          <EmptyState
+            icon={<CheckIcon className="h-6 w-6" />}
+            title="You're all set"
+            body="Your password has been reset and you're signed in."
+            action={
+              <Button size="lg" onClick={() => { router.push("/profile"); router.refresh(); }}>
+                Go to your profile
+              </Button>
+            }
+          />
+        </div>
       </AuthShell>
     );
   }
 
   return (
-    <AuthShell title="Choose a new password">
-      <form onSubmit={onSubmit} className="space-y-4">
+    <AuthShell title="Choose a new password" subtitle="Pick a strong password you don't use elsewhere.">
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
         {error && <ErrorBanner>{error}</ErrorBanner>}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">New password *</label>
-          <input
-            type="password" required minLength={8} autoComplete="new-password" value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
-            placeholder="At least 8 characters"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm password *</label>
-          <input
-            type="password" required minLength={8} autoComplete="new-password" value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
-            placeholder="Re-enter password"
-          />
-        </div>
+        <PasswordField
+          label="New password"
+          required
+          minLength={8}
+          autoComplete="new-password"
+          placeholder="At least 8 characters"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <PasswordField
+          label="Confirm password"
+          required
+          minLength={8}
+          autoComplete="new-password"
+          placeholder="Re-enter password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+        />
         <SubmitButton submitting={status === "submitting"}>Reset Password</SubmitButton>
       </form>
     </AuthShell>
   );
 }
 
+function ResetFallback() {
+  return (
+    <AuthShell title="Choose a new password" subtitle="Pick a strong password you don't use elsewhere.">
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-11 w-full" />
+      </div>
+    </AuthShell>
+  );
+}
+
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<ResetFallback />}>
       <ResetForm />
     </Suspense>
   );

@@ -1,15 +1,22 @@
 import React from "react";
+import { Container, Section, SectionHeader, Card } from "@/components/ui";
 
 const CHECK = (
-  <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-  </svg>
+  <span className="inline-flex items-center justify-center">
+    <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+    </svg>
+    <span className="sr-only">Included</span>
+  </span>
 );
 
 const CROSS = (
-  <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-  </svg>
+  <span className="inline-flex items-center justify-center">
+    <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+    <span className="sr-only">Not available</span>
+  </span>
 );
 
 const FEATURES = [
@@ -24,73 +31,54 @@ const FEATURES = [
   { name: "Starting price", us: "Free", workable: "$299/mo", lever: "Custom" },
 ];
 
+function cell(value: boolean | string, accent = false) {
+  if (typeof value === "boolean") return value ? CHECK : CROSS;
+  return (
+    <span className={`text-sm font-${accent ? "bold" : "medium"} whitespace-nowrap ${accent ? "text-blue-700" : "text-gray-600"}`}>
+      {value}
+    </span>
+  );
+}
+
 export default function Comparison() {
   return (
-    <section id="comparison" className="py-16 sm:py-24 lg:py-32 bg-gray-50/50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
-          <p className="text-sm font-semibold text-blue-600 uppercase tracking-wider mb-3">
-            How we compare
-          </p>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 tracking-tight">
-            Built different
-          </h2>
-          <p className="mt-4 text-base sm:text-lg text-gray-500">
-            See how HireBase stacks up against traditional ATS platforms.
-          </p>
-        </div>
+    <Section id="comparison" muted>
+      <Container className="max-w-4xl">
+        <SectionHeader
+          eyebrow="How we compare"
+          title="Built different"
+          subtitle="See how HireBase stacks up against traditional ATS platforms."
+        />
 
         {/* Table — horizontal scroll on mobile */}
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
+        <Card className="overflow-hidden p-0">
           <div className="overflow-x-auto">
-          <table className="w-full min-w-125" aria-label="Feature comparison between HireBase, Workable, and Lever">
-            {/* Header row */}
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left text-sm font-semibold text-gray-500 px-4 sm:px-6 py-4">Feature</th>
-                <th className="text-center text-sm font-bold text-blue-600 px-3 sm:px-4 py-4 bg-blue-50/50">HireBase</th>
-                <th className="text-center text-sm font-semibold text-gray-400 px-3 sm:px-4 py-4">Workable</th>
-                <th className="text-center text-sm font-semibold text-gray-400 px-3 sm:px-4 py-4">Lever</th>
-              </tr>
-            </thead>
-
-            {/* Rows */}
-            <tbody>
-              {FEATURES.map((f, i) => (
-                <tr
-                  key={f.name}
-                  className={`hover:bg-gray-50/50 transition-colors ${i < FEATURES.length - 1 ? "border-b border-gray-100" : ""}`}
-                >
-                  <td className="text-sm text-gray-700 font-medium px-4 sm:px-6 py-4 whitespace-nowrap">{f.name}</td>
-                  <td className="text-center px-3 sm:px-4 py-4 bg-blue-50/30">
-                    {typeof f.us === "boolean" ? (
-                      <span className="inline-flex justify-center">{f.us ? CHECK : CROSS}</span>
-                    ) : (
-                      <span className="text-sm font-bold text-blue-600 whitespace-nowrap">{f.us}</span>
-                    )}
-                  </td>
-                  <td className="text-center px-3 sm:px-4 py-4">
-                    {typeof f.workable === "boolean" ? (
-                      <span className="inline-flex justify-center">{f.workable ? CHECK : CROSS}</span>
-                    ) : (
-                      <span className="text-sm text-gray-500 whitespace-nowrap">{f.workable}</span>
-                    )}
-                  </td>
-                  <td className="text-center px-3 sm:px-4 py-4">
-                    {typeof f.lever === "boolean" ? (
-                      <span className="inline-flex justify-center">{f.lever ? CHECK : CROSS}</span>
-                    ) : (
-                      <span className="text-sm text-gray-500 whitespace-nowrap">{f.lever}</span>
-                    )}
-                  </td>
+            <table className="w-full min-w-125" aria-label="Feature comparison between HireBase, Workable, and Lever">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th scope="col" className="text-left text-sm font-semibold text-gray-600 px-4 sm:px-6 py-4">Feature</th>
+                  <th scope="col" className="text-center text-sm font-bold text-blue-700 px-3 sm:px-4 py-4 bg-blue-50/60">HireBase</th>
+                  <th scope="col" className="text-center text-sm font-semibold text-gray-600 px-3 sm:px-4 py-4">Workable</th>
+                  <th scope="col" className="text-center text-sm font-semibold text-gray-600 px-3 sm:px-4 py-4">Lever</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {FEATURES.map((f, i) => (
+                  <tr
+                    key={f.name}
+                    className={`transition-colors hover:bg-gray-50 ${i < FEATURES.length - 1 ? "border-b border-gray-100" : ""}`}
+                  >
+                    <th scope="row" className="text-left text-sm text-gray-700 font-medium px-4 sm:px-6 py-4 whitespace-nowrap">{f.name}</th>
+                    <td className="text-center px-3 sm:px-4 py-4 bg-blue-50/40">{cell(f.us, true)}</td>
+                    <td className="text-center px-3 sm:px-4 py-4">{cell(f.workable)}</td>
+                    <td className="text-center px-3 sm:px-4 py-4">{cell(f.lever)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
-      </div>
-    </section>
+        </Card>
+      </Container>
+    </Section>
   );
 }
