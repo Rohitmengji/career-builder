@@ -5,8 +5,18 @@
  * and provides theme/branding via context to all client components below.
  */
 
+import type { Metadata } from "next";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import { fetchTenantConfig } from "@/lib/tenant";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await fetchTenantConfig();
+  const company = config.branding?.companyName || "Our Company";
+  return {
+    title: `Open Positions — ${company} Careers`,
+    description: `Browse open jobs at ${company}. Find your next role and apply today.`,
+  };
+}
 
 export default async function JobsLayout({
   children,

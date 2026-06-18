@@ -11,6 +11,7 @@ import { getCandidateSession } from "@/lib/candidateAuth";
 import { candidateRepo } from "@career-builder/database";
 import { sanitizeString } from "@career-builder/security/sanitize";
 import { validateUrl } from "@career-builder/security/url";
+import { getRateLimiter, getClientIp } from "@career-builder/security/rate-limit";
 
 function publicProfile(c: {
   id: string; email: string; firstName: string; lastName: string;
@@ -46,6 +47,13 @@ export async function PATCH(request: Request) {
   const session = await getCandidateSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Rate limit profile updates
+  const limiter = getRateLimiter("api");
+  const ip = getClientIp(request) || "unknown";
+  if (!limiter.check(`profile:${session.candidateId}:${ip}`).allowed) {
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) {
@@ -73,7 +81,8 @@ export async function PATCH(request: Request) {
       ...(d.linkedinUrl !== undefined ? { linkedinUrl: d.linkedinUrl?.trim() || null } : {}),
     });
     return NextResponse.json({ success: true, profile: publicProfile(updated) });
-  } catch {
+  } catch (err) {
+    console.error("[api/profile] update failed:", err);
     return NextResponse.json({ error: "Failed to update profile" }, { status: 400 });
   }
 }

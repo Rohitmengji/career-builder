@@ -5,6 +5,7 @@ import path from "path";
 import { validateUpload, UPLOAD_PRESETS } from "@career-builder/security/file-upload";
 import { isPathSafe } from "@career-builder/security/file-upload";
 import { createStorage } from "@career-builder/shared/storage";
+import { getRateLimiter, getClientIp } from "@career-builder/security/rate-limit";
 
 const MEDIA_DIR = path.join(process.cwd(), "data", "media");
 const PUBLIC_PATH = "/api/media/file"; // served via GET (local driver only)
@@ -40,6 +41,13 @@ export async function POST(req: Request) {
   const csrfValid = await validateCsrf(req);
   if (!csrfValid) {
     return NextResponse.json({ error: "Invalid CSRF token" }, { status: 403 });
+  }
+
+  // Rate limit uploads per user
+  const limiter = getRateLimiter("api");
+  const ip = getClientIp(req) || "unknown";
+  if (!limiter.check(`media-upload:${session.userId}:${ip}`).allowed) {
+    return NextResponse.json({ error: "Upload rate limit exceeded. Please try again later." }, { status: 429 });
   }
 
   const formData = await req.formData();

@@ -115,7 +115,7 @@ export default async function Home() {
           <span className="text-base font-semibold text-gray-900 tracking-tight">
             {companyName}
           </span>
-          <nav className="flex items-center gap-6 sm:gap-8 text-sm" aria-label="Primary">
+          <nav className="hidden sm:flex items-center gap-6 sm:gap-8 text-sm" aria-label="Primary">
             {hasAbout && (
               <Link href="/about" className="text-gray-700 hover:text-gray-900 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">About</Link>
             )}
@@ -138,6 +138,17 @@ export default async function Home() {
               Create account
             </ButtonLink>
           </nav>
+          <div className="flex sm:hidden items-center gap-3">
+            <Link href="/jobs" className="text-gray-700 hover:text-gray-900 text-sm font-medium transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+              Jobs
+            </Link>
+            <Link href="/login" className="text-gray-700 hover:text-gray-900 text-sm font-medium transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+              Sign in
+            </Link>
+            <ButtonLink href="/register" variant="secondary" size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
+              Join
+            </ButtonLink>
+          </div>
         </Container>
       </header>
 

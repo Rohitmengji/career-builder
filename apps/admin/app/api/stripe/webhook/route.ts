@@ -22,6 +22,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe, PLAN_PRICE_MAP, PLAN_CREDITS, JOB_AI_CREDITS_PER_WEEK, WEBHOOK_SECRET } from "@/lib/stripe/config";
 import { subscriptionRepo } from "@career-builder/database";
 import { getKV } from "@career-builder/shared/kv";
+import { logger } from "@career-builder/observability/logger";
+
+const log = logger.admin;
 
 /* ================================================================== */
 /*  Idempotency — prevent duplicate event processing                   */
@@ -43,7 +46,7 @@ async function isDuplicate(eventId: string): Promise<boolean> {
     return count > 1;
   } catch (err) {
     // Fail-open: never drop a real Stripe event because the KV is unavailable.
-    console.error("[stripe/webhook] idempotency check failed (processing anyway):", err);
+    log.error("stripe_idempotency_check_failed", { error: String(err) });
     return false;
   }
 }
@@ -56,7 +59,7 @@ export async function POST(req: NextRequest) {
   const signature = req.headers.get("stripe-signature");
 
   if (!signature || !WEBHOOK_SECRET) {
-    console.error("[stripe/webhook] Missing signature or webhook secret");
+    log.error("stripe_missing_signature", { hasSignature: !!signature, hasSecret: !!WEBHOOK_SECRET });
     return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
@@ -65,17 +68,17 @@ export async function POST(req: NextRequest) {
     const rawBody = await req.text();
     event = stripe.webhooks.constructEvent(rawBody, signature, WEBHOOK_SECRET);
   } catch (err: any) {
-    console.error("[stripe/webhook] Signature verification failed:", err.message);
+    log.error("stripe_webhook_signature_failed", { error: err.message });
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
   // Idempotency check — skip duplicate events
   if (await isDuplicate(event.id)) {
-    console.log(`[stripe/webhook] Duplicate event skipped: ${event.id} (${event.type})`);
+    log.info("stripe_webhook_duplicate", { eventId: event.id, type: event.type });
     return NextResponse.json({ received: true, duplicate: true });
   }
 
-  console.log(`[stripe/webhook] Processing ${event.type} (${event.id})`);
+  log.info("stripe_webhook_processing", { eventId: event.id, type: event.type });
 
   try {
     switch (event.type) {
@@ -86,7 +89,7 @@ export async function POST(req: NextRequest) {
         const subscriptionId = session.subscription as string;
 
         if (!userId || !subscriptionId) {
-          console.warn("[stripe/webhook] checkout.session.completed missing metadata", {
+          log.warn("stripe_checkout_missing_metadata", {
             hasUserId: !!userId,
             hasSubscriptionId: !!subscriptionId,
           });
@@ -96,7 +99,7 @@ export async function POST(req: NextRequest) {
         // Verify user exists before writing
         const existingUser = await subscriptionRepo.getByUserId(userId);
         if (!existingUser) {
-          console.error(`[stripe/webhook] User ${userId} not found in DB — cannot activate`);
+          log.error("stripe_user_not_found", { userId, action: "activate" });
           break;
         }
 
@@ -106,7 +109,7 @@ export async function POST(req: NextRequest) {
         const planInfo = priceId ? PLAN_PRICE_MAP[priceId] : null;
 
         if (!planInfo) {
-          console.warn("[stripe/webhook] Unknown price ID:", priceId);
+          log.warn("stripe_unknown_price", { priceId });
           break;
         }
 
@@ -130,7 +133,7 @@ export async function POST(req: NextRequest) {
           await subscriptionRepo.resetJobCredits(userId, jobCredits);
         }
 
-        console.log(`[stripe/webhook] ✅ Activated ${planInfo.plan} (${planInfo.credits} AI credits, ${jobCredits} job credits/week) for user ${userId}`);
+        log.info("stripe_subscription_activated", { plan: planInfo.plan, credits: planInfo.credits, jobCredits, userId });
         break;
       }
 
@@ -146,7 +149,7 @@ export async function POST(req: NextRequest) {
 
         const user = await subscriptionRepo.getByStripeSubscriptionId(subscriptionId);
         if (!user) {
-          console.warn("[stripe/webhook] invoice.paid — user not found for sub:", subscriptionId);
+          log.warn("stripe_user_not_found", { subscriptionId, event: "invoice.paid" });
           break;
         }
 
@@ -158,7 +161,7 @@ export async function POST(req: NextRequest) {
           if (jobCredits > 0) {
             await subscriptionRepo.resetJobCredits(user.id, jobCredits);
           }
-          console.log(`[stripe/webhook] ✅ Reset ${credits} AI credits + ${jobCredits} job credits for user ${user.id} (renewal)`);
+          log.info("stripe_credits_reset", { userId: user.id, aiCredits: credits, jobCredits });
         }
         break;
       }
@@ -172,14 +175,14 @@ export async function POST(req: NextRequest) {
         if (!userId) {
           const user = await subscriptionRepo.getByStripeSubscriptionId(subscription.id);
           if (!user) {
-            console.warn("[stripe/webhook] subscription.updated — user not found for sub:", subscription.id);
+            log.warn("stripe_user_not_found", { subscriptionId: subscription.id, event: "subscription.updated" });
             break;
           }
           userId = user.id;
         }
 
         await subscriptionRepo.updateStatus(userId, subscription.status);
-        console.log(`[stripe/webhook] Status → ${subscription.status} for user ${userId}`);
+        log.info("stripe_subscription_status", { userId, status: subscription.status });
 
         // If plan/price changed (upgrade/downgrade) while active, update credits
         const priceId = subscription.items?.data?.[0]?.price?.id;
@@ -196,7 +199,7 @@ export async function POST(req: NextRequest) {
           if (jobCredits > 0) {
             await subscriptionRepo.resetJobCredits(userId, jobCredits);
           }
-          console.log(`[stripe/webhook] ✅ Plan changed to ${planInfo.plan} for user ${userId}`);
+          log.info("stripe_plan_changed", { userId, plan: planInfo.plan, jobCredits });
         }
         break;
       }
@@ -209,14 +212,14 @@ export async function POST(req: NextRequest) {
         if (!userId) {
           const user = await subscriptionRepo.getByStripeSubscriptionId(subscription.id);
           if (!user) {
-            console.warn("[stripe/webhook] subscription.deleted — user not found for sub:", subscription.id);
+            log.warn("stripe_user_not_found", { subscriptionId: subscription.id, event: "subscription.deleted" });
             break;
           }
           userId = user.id;
         }
 
         await subscriptionRepo.updateStatus(userId, "canceled");
-        console.log(`[stripe/webhook] ✅ Canceled subscription for user ${userId}`);
+        log.info("stripe_subscription_canceled", { userId });
         break;
       }
 
@@ -229,23 +232,23 @@ export async function POST(req: NextRequest) {
 
         const user = await subscriptionRepo.getByStripeSubscriptionId(subscriptionId);
         if (!user) {
-          console.warn("[stripe/webhook] invoice.payment_failed — user not found for sub:", subscriptionId);
+          log.warn("stripe_user_not_found", { subscriptionId, event: "invoice.payment_failed" });
           break;
         }
 
         // Stripe will also send subscription.updated with status=past_due,
         // but we handle it here too for faster UX feedback
         await subscriptionRepo.updateStatus(user.id, "past_due");
-        console.log(`[stripe/webhook] ⚠️ Payment failed for user ${user.id} — status → past_due`);
+        log.warn("stripe_payment_failed", { userId: user.id, status: "past_due" });
         break;
       }
 
       default:
-        console.log(`[stripe/webhook] Unhandled event: ${event.type}`);
+        log.info("stripe_webhook_unhandled", { type: event.type });
     }
   } catch (err: any) {
     // Transient errors (DB down, network) → return 500 so Stripe retries
-    console.error(`[stripe/webhook] ❌ Error handling ${event.type}:`, err.message, err.stack);
+    log.error("stripe_webhook_handler_error", { type: event.type, error: err.message });
     // Clear the idempotency marker so Stripe's retry can be processed.
     try {
       await getKV().del(`stripe:webhook:${event.id}`);
