@@ -1061,6 +1061,30 @@ export default function EditorPage() {
     }
   }, [user, router]);
 
+  /* ── Preview handler — save current draft, then open a token-gated
+   *    draft preview of the public page in a new tab. ──────────────── */
+  const handlePreview = useCallback(async () => {
+    // Open the tab synchronously so popup blockers don't kill it after await.
+    const win = window.open("", "_blank");
+    try {
+      // Persist the latest edits first so the preview reflects them.
+      await handleSaveRef.current?.(true);
+      const slug = activePageRef.current;
+      const res = await fetch(`/api/preview/token?slug=${encodeURIComponent(slug)}`);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.previewUrl) {
+        if (win) win.location.href = data.previewUrl;
+        else window.open(data.previewUrl, "_blank");
+      } else {
+        win?.close();
+        console.error("[Preview] token error:", data?.error);
+      }
+    } catch (err) {
+      win?.close();
+      console.error("[Preview] error:", err);
+    }
+  }, []);
+
   /* ── Device switching ────────────────────────────────────────────── */
   const switchDevice = useCallback((device: DeviceType) => {
     const editor = editorInstance.current;
@@ -1419,15 +1443,26 @@ export default function EditorPage() {
               )}
             </div>
           )}
-          {/* Preview link */}
+          {/* Draft preview — opens the page as it will look, before publishing */}
+          <button
+            onClick={handlePreview}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+            title="Preview the current draft (saves first)"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" />
+            </svg>
+            Preview draft
+          </button>
+          {/* View the published live page (only meaningful once published) */}
           <a
             href={`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/${activePage}`}
             target="_blank"
             rel="noreferrer"
-            className="block w-full text-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded-lg transition-colors"
-            title="Preview live site"
+            className="block w-full text-center px-3 py-1.5 text-gray-500 text-[11px] font-medium rounded-lg transition-colors hover:text-gray-700 hover:bg-gray-100"
+            title="View the published live page"
           >
-            ↗ Preview Live Site
+            ↗ View live site
           </a>
           {/* Unpublished changes indicator */}
           {!isViewer && hasUnpublishedChanges && publishStatus === "idle" && (

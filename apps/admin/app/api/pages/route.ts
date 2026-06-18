@@ -173,7 +173,7 @@ export const GET = withRequestLogging(async (req: Request) => {
   // List all pages
   const pages = await listPages(tenantId);
   return NextResponse.json({ pages });
-});
+}, { enableBotDetection: false });
 
 /** DELETE /api/pages?slug=xxx — delete a page (auth + CSRF required) */
 export const DELETE = withRequestLogging(async (req: Request) => {
