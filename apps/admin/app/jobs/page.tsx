@@ -11,7 +11,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import AiJobAssistant from "@/components/jobs/AiJobAssistant";
 import type { AiJobFormData } from "@/lib/ai/types";
 import { useAuthGuard } from "@/lib/useAuthGuard";
@@ -97,8 +96,7 @@ export default function AdminJobsPage() {
   const [form, setForm] = useState<JobFormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
-  const { loading: authLoading, authenticated } = useAuthGuard();
+  useAuthGuard();
 
   /* ─── Data loading ─────────────────────────────────────────── */
 

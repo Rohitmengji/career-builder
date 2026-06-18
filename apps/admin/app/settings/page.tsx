@@ -71,6 +71,8 @@ export default function SettingsPage() {
   /* ── Auth check ───────────────────────────────────────────────── */
   useEffect(() => {
     if (authLoading || !authUser) return;
+    // Syncing local form state from the external auth source once it resolves.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUser(authUser as SessionUser);
     setNewName(authUser.name);
   }, [authLoading, authUser]);
@@ -103,6 +105,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (user?.role === "admin" || user?.role === "super_admin") {
+      // Data fetches that update state asynchronously, not synchronous renders.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (tab === "users") loadUsers();
       if (tab === "audit") loadAudit();
     }

@@ -398,7 +398,7 @@ function getDefaultJob(): AiJobFormData {
  */
 export function parseAiJson(text: string): unknown {
   // Strip markdown code fences
-  let cleaned = text
+  const cleaned = text
     .replace(/^```json?\s*/gm, "")
     .replace(/^```\s*/gm, "")
     .trim();

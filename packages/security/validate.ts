@@ -16,7 +16,9 @@ import { z } from "zod";
 /* ================================================================== */
 
 const email = z.string().email().max(254).transform((v) => v.trim().toLowerCase());
-const password = z.string().min(6).max(128);
+// Min 8 per OWASP for NEW credentials. (The login schema intentionally uses its
+// own min(1) so existing/shorter passwords can still authenticate.)
+const password = z.string().min(8).max(128);
 const name = z.string().min(1).max(200).transform((v) => v.trim());
 const slug = z.string().regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and hyphens").min(1).max(100);
 const tenantId = z.string().regex(/^[a-z0-9-]+$/).min(1).max(50);
@@ -139,12 +141,19 @@ export const savePageSchema = z.object({
 /*  Tenant schemas                                                     */
 /* ================================================================== */
 
+// Declares every field a caller legitimately sends (the full TenantConfig plus
+// the optional `colors` map the route reads). Unknown keys are STRIPPED (Zod
+// default) instead of passed through, so arbitrary client fields can no longer
+// ride into mergeTenantConfig / persistence.
 export const saveTenantSchema = z.object({
   id: tenantId,
   name: z.string().min(1).max(200).optional(),
   theme: z.record(z.string(), z.unknown()).optional(),
   branding: z.record(z.string(), z.unknown()).optional(),
-}).passthrough();
+  colors: z.record(z.string(), z.string()).optional(),
+  createdAt: z.string().max(40).optional(),
+  updatedAt: z.string().max(40).optional(),
+});
 
 /* ================================================================== */
 /*  Query parameter schemas                                            */

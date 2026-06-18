@@ -3,7 +3,18 @@
  * Push schema to Turso database.
  *
  * Prisma CLI's `db push` doesn't work with libsql:// URLs (known Prisma 6 bug).
- * This script extracts SQL from the Prisma schema and executes it against Turso.
+ * This script executes SQL against Turso instead.
+ *
+ * IMPORTANT: The CREATE TABLE / CREATE INDEX statements are NO LONGER
+ * hand-maintained here. They are GENERATED from prisma/schema.prisma into
+ * prisma/turso-schema.sql (run `npm run db:gen-turso-sql`). This script reads
+ * that generated file, so the Turso DDL can never silently drift from the
+ * Prisma schema again. CI enforces parity via `npm run db:verify-turso`.
+ *
+ * The MIGRATION_STATEMENTS below handle *existing* (older / previously-drifted)
+ * deployments: additive ALTER TABLE / RENAME COLUMN statements that bring an
+ * already-created table up to the current schema. They are idempotent —
+ * "duplicate column" / "no such column" errors are caught and skipped.
  *
  * Usage:
  *   cd packages/database
@@ -11,6 +22,11 @@
  */
 
 import { createClient } from "@libsql/client";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const url = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL || "";
 const authToken = process.env.TURSO_AUTH_TOKEN || "";
@@ -54,239 +70,72 @@ try {
 
 const client = createClient({ url: cleanUrl, authToken: token });
 
-// SQL statements to create all tables (matching schema.prisma)
-const SQL_STATEMENTS = [
-  // Tenant
-  `CREATE TABLE IF NOT EXISTS "Tenant" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "name" TEXT NOT NULL,
-    "domain" TEXT,
-    "theme" TEXT NOT NULL DEFAULT '{}',
-    "branding" TEXT NOT NULL DEFAULT '{}',
-    "settings" TEXT NOT NULL DEFAULT '{}',
-    "plan" TEXT NOT NULL DEFAULT 'free',
-    "isActive" INTEGER NOT NULL DEFAULT 1,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
-  )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "Tenant_domain_key" ON "Tenant"("domain")`,
+/**
+ * Load the generated DDL (single source of truth = prisma/schema.prisma).
+ * Split into individual statements and make each idempotent so re-running
+ * against an existing database is a safe no-op.
+ */
+function loadSchemaStatements(): string[] {
+  const sqlPath = join(__dirname, "prisma", "turso-schema.sql");
+  let raw: string;
+  try {
+    raw = readFileSync(sqlPath, "utf8");
+  } catch {
+    console.error(
+      `❌ Missing ${sqlPath}. Generate it first: npm run db:gen-turso-sql`
+    );
+    process.exit(1);
+  }
 
-  // User
-  `CREATE TABLE IF NOT EXISTS "User" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "email" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "passwordHash" TEXT NOT NULL,
-    "role" TEXT NOT NULL DEFAULT 'admin',
-    "department" TEXT,
-    "isActive" INTEGER NOT NULL DEFAULT 1,
-    "lastLoginAt" DATETIME,
-    "passwordChangedAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "tenantId" TEXT NOT NULL,
-    "plan" TEXT NOT NULL DEFAULT 'free',
-    "subscriptionStatus" TEXT NOT NULL DEFAULT 'none',
-    "stripeCustomerId" TEXT,
-    "stripeSubscriptionId" TEXT,
-    "stripePriceId" TEXT,
-    "aiCredits" INTEGER NOT NULL DEFAULT 0,
-    "aiCreditsResetAt" DATETIME,
-    "billingCycleStart" DATETIME,
-    "jobAiCredits" INTEGER NOT NULL DEFAULT 0,
-    "jobAiCreditsResetAt" DATETIME,
-    "aiDailyUsed" INTEGER NOT NULL DEFAULT 0,
-    "aiDailyResetAt" DATETIME,
-    CONSTRAINT "User_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-  )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "User_email_tenantId_key" ON "User"("email", "tenantId")`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "User_stripeCustomerId_key" ON "User"("stripeCustomerId")`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "User_stripeSubscriptionId_key" ON "User"("stripeSubscriptionId")`,
-  `CREATE INDEX IF NOT EXISTS "User_tenantId_idx" ON "User"("tenantId")`,
-  `CREATE INDEX IF NOT EXISTS "User_email_idx" ON "User"("email")`,
+  return raw
+    // strip line comments so they don't ride along into execute()
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("--"))
+    .join("\n")
+    .split(";")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    // make idempotent: CREATE TABLE/INDEX -> CREATE ... IF NOT EXISTS
+    .map((s) =>
+      s
+        .replace(/^CREATE TABLE "/i, 'CREATE TABLE IF NOT EXISTS "')
+        .replace(/^CREATE INDEX "/i, 'CREATE INDEX IF NOT EXISTS "')
+        .replace(/^CREATE UNIQUE INDEX "/i, 'CREATE UNIQUE INDEX IF NOT EXISTS "')
+    );
+}
 
-  // Job
-  `CREATE TABLE IF NOT EXISTS "Job" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "title" TEXT NOT NULL,
-    "slug" TEXT NOT NULL,
-    "department" TEXT NOT NULL DEFAULT '',
-    "location" TEXT NOT NULL DEFAULT '',
-    "description" TEXT NOT NULL DEFAULT '',
-    "employmentType" TEXT NOT NULL DEFAULT 'full-time',
-    "experienceLevel" TEXT NOT NULL DEFAULT 'mid',
-    "salaryMin" INTEGER,
-    "salaryMax" INTEGER,
-    "salaryCurrency" TEXT NOT NULL DEFAULT 'USD',
-    "salaryPeriod" TEXT NOT NULL DEFAULT 'yearly',
-    "requirements" TEXT NOT NULL DEFAULT '[]',
-    "niceToHave" TEXT NOT NULL DEFAULT '[]',
-    "benefits" TEXT NOT NULL DEFAULT '[]',
-    "tags" TEXT NOT NULL DEFAULT '[]',
-    "isRemote" INTEGER NOT NULL DEFAULT 0,
-    "isPublished" INTEGER NOT NULL DEFAULT 0,
-    "sortOrder" INTEGER NOT NULL DEFAULT 0,
-    "views" INTEGER NOT NULL DEFAULT 0,
-    "postedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "closesAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "tenantId" TEXT NOT NULL,
-    CONSTRAINT "Job_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-  )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "Job_slug_tenantId_key" ON "Job"("slug", "tenantId")`,
-  `CREATE INDEX IF NOT EXISTS "Job_tenantId_idx" ON "Job"("tenantId")`,
-  `CREATE INDEX IF NOT EXISTS "Job_isPublished_idx" ON "Job"("isPublished")`,
-
-  // Application
-  `CREATE TABLE IF NOT EXISTS "Application" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "firstName" TEXT NOT NULL,
-    "lastName" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
-    "phone" TEXT NOT NULL DEFAULT '',
-    "resumeUrl" TEXT,
-    "coverLetter" TEXT NOT NULL DEFAULT '',
-    "linkedinUrl" TEXT,
-    "status" TEXT NOT NULL DEFAULT 'applied',
-    "rating" INTEGER,
-    "notes" TEXT NOT NULL DEFAULT '',
-    "source" TEXT NOT NULL DEFAULT 'direct',
-    "appliedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "jobId" TEXT NOT NULL,
-    "tenantId" TEXT NOT NULL,
-    CONSTRAINT "Application_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "Job" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "Application_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-  )`,
-  `CREATE INDEX IF NOT EXISTS "Application_jobId_idx" ON "Application"("jobId")`,
-  `CREATE INDEX IF NOT EXISTS "Application_tenantId_idx" ON "Application"("tenantId")`,
-  `CREATE INDEX IF NOT EXISTS "Application_status_idx" ON "Application"("status")`,
-
-  // Page
-  `CREATE TABLE IF NOT EXISTS "Page" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "slug" TEXT NOT NULL,
-    "title" TEXT NOT NULL DEFAULT '',
-    "blocks" TEXT NOT NULL DEFAULT '[]',
-    "publishedBlocks" TEXT NOT NULL DEFAULT '[]',
-    "isPublished" INTEGER NOT NULL DEFAULT 0,
-    "sortOrder" INTEGER NOT NULL DEFAULT 0,
-    "version" INTEGER NOT NULL DEFAULT 1,
-    "publishedVersion" INTEGER NOT NULL DEFAULT 0,
-    "publishedAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "tenantId" TEXT NOT NULL,
-    CONSTRAINT "Page_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-  )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "Page_slug_tenantId_key" ON "Page"("slug", "tenantId")`,
-  `CREATE INDEX IF NOT EXISTS "Page_tenantId_idx" ON "Page"("tenantId")`,
-
-  // PageVersion (history / rollback)
-  `CREATE TABLE IF NOT EXISTS "PageVersion" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "version" INTEGER NOT NULL,
-    "blocks" TEXT NOT NULL DEFAULT '[]',
-    "title" TEXT NOT NULL DEFAULT '',
-    "savedBy" TEXT,
-    "savedByEmail" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "pageId" TEXT NOT NULL,
-    "tenantId" TEXT NOT NULL,
-    CONSTRAINT "PageVersion_pageId_fkey" FOREIGN KEY ("pageId") REFERENCES "Page" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-  )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "PageVersion_pageId_version_key" ON "PageVersion"("pageId", "version")`,
-  `CREATE INDEX IF NOT EXISTS "PageVersion_pageId_idx" ON "PageVersion"("pageId")`,
-  `CREATE INDEX IF NOT EXISTS "PageVersion_tenantId_idx" ON "PageVersion"("tenantId")`,
-  `CREATE INDEX IF NOT EXISTS "PageVersion_createdAt_idx" ON "PageVersion"("createdAt")`,
-
-  // AuditLog
-  `CREATE TABLE IF NOT EXISTS "AuditLog" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "action" TEXT NOT NULL,
-    "entity" TEXT,
-    "entityId" TEXT,
-    "details" TEXT,
-    "ipAddress" TEXT,
-    "userAgent" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "userId" TEXT,
-    "tenantId" TEXT NOT NULL,
-    CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "AuditLog_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-  )`,
-  `CREATE INDEX IF NOT EXISTS "AuditLog_tenantId_idx" ON "AuditLog"("tenantId")`,
-  `CREATE INDEX IF NOT EXISTS "AuditLog_createdAt_idx" ON "AuditLog"("createdAt")`,
-
-  // AnalyticsEvent
-  `CREATE TABLE IF NOT EXISTS "AnalyticsEvent" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "type" TEXT NOT NULL,
-    "jobId" TEXT,
-    "pageSlug" TEXT,
-    "metadata" TEXT,
-    "sessionId" TEXT,
-    "referrer" TEXT,
-    "utmSource" TEXT,
-    "utmMedium" TEXT,
-    "utmCampaign" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "tenantId" TEXT NOT NULL,
-    CONSTRAINT "AnalyticsEvent_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-  )`,
-  `CREATE INDEX IF NOT EXISTS "AnalyticsEvent_tenantId_type_idx" ON "AnalyticsEvent"("tenantId", "type")`,
-  `CREATE INDEX IF NOT EXISTS "AnalyticsEvent_tenantId_jobId_idx" ON "AnalyticsEvent"("tenantId", "jobId")`,
-  `CREATE INDEX IF NOT EXISTS "AnalyticsEvent_tenantId_createdAt_idx" ON "AnalyticsEvent"("tenantId", "createdAt")`,
-  `CREATE INDEX IF NOT EXISTS "AnalyticsEvent_createdAt_idx" ON "AnalyticsEvent"("createdAt")`,
-
-  // Webhook
-  `CREATE TABLE IF NOT EXISTS "Webhook" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "url" TEXT NOT NULL,
-    "events" TEXT NOT NULL DEFAULT '[]',
-    "secret" TEXT,
-    "isActive" INTEGER NOT NULL DEFAULT 1,
-    "lastTriggeredAt" DATETIME,
-    "failCount" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "tenantId" TEXT NOT NULL,
-    CONSTRAINT "Webhook_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-  )`,
-  `CREATE INDEX IF NOT EXISTS "Webhook_tenantId_idx" ON "Webhook"("tenantId")`,
-
-  // AppConfig (key-value settings store)
-  `CREATE TABLE IF NOT EXISTS "AppConfig" (
-    "key" TEXT NOT NULL PRIMARY KEY,
-    "value" TEXT NOT NULL,
-    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`,
-];
+const SQL_STATEMENTS = loadSchemaStatements();
 
 // ── Migration statements ─────────────────────────────────────────
-// These ALTER TABLE statements add columns that may be missing from
-// older deployments. SQLite will throw "duplicate column" if the column
-// already exists — we catch and skip those errors.
+// Additive changes for EXISTING deployments whose tables were created by an
+// older version of this script. On fresh deployments the columns already exist
+// (created above) so these are caught-and-skipped no-ops.
 const MIGRATION_STATEMENTS = [
-  // Added in auth-hardening: passwordChangedAt for session invalidation
+  // auth-hardening: passwordChangedAt for session invalidation
   `ALTER TABLE "User" ADD COLUMN "passwordChangedAt" DATETIME`,
-  // Added in daily-credit-limit: daily AI usage tracking
+  // daily-credit-limit: daily AI usage tracking
   `ALTER TABLE "User" ADD COLUMN "aiDailyUsed" INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE "User" ADD COLUMN "aiDailyResetAt" DATETIME`,
-  // Added in version-history: version column for optimistic locking
+  // version-history / draft-publish: Page columns
   `ALTER TABLE "Page" ADD COLUMN "version" INTEGER NOT NULL DEFAULT 1`,
   `ALTER TABLE "Page" ADD COLUMN "title" TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE "Page" ADD COLUMN "sortOrder" INTEGER NOT NULL DEFAULT 0`,
-  // Added in draft-publish: separate draft and published blocks
   `ALTER TABLE "Page" ADD COLUMN "publishedBlocks" TEXT NOT NULL DEFAULT '[]'`,
   `ALTER TABLE "Page" ADD COLUMN "publishedVersion" INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE "Page" ADD COLUMN "publishedAt" DATETIME`,
-  // Backfill: copy existing blocks to publishedBlocks so current live pages stay live
+  // Backfill: keep already-live pages live
   `UPDATE "Page" SET "publishedBlocks" = "blocks", "publishedVersion" = "version" WHERE "publishedBlocks" = '[]' AND "blocks" != '[]'`,
-  // Added in analytics-funnel: rename old AnalyticsEvent columns to match Prisma schema
-  // These are safe no-ops on fresh deployments (CREATE TABLE IF NOT EXISTS already has new schema)
+  // ── schema-parity fixes (previously missing from the hand-written DDL) ──
+  // Job ATS-integration fields the app reads — their absence caused prod query failures.
+  `ALTER TABLE "Job" ADD COLUMN "externalId" TEXT`,
+  `ALTER TABLE "Job" ADD COLUMN "externalSource" TEXT`,
+  `ALTER TABLE "Job" ADD COLUMN "externalUrl" TEXT`,
+  // Application: resumePath + externalId were missing; appliedAt was misnamed.
+  `ALTER TABLE "Application" ADD COLUMN "resumePath" TEXT`,
+  `ALTER TABLE "Application" ADD COLUMN "externalId" TEXT`,
+  // Rename the legacy column to match the Prisma schema (no-op on fresh DBs).
+  `ALTER TABLE "Application" RENAME COLUMN "appliedAt" TO "submittedAt"`,
+  // analytics-funnel: columns added to older AnalyticsEvent tables
   `ALTER TABLE "AnalyticsEvent" ADD COLUMN "type" TEXT`,
   `ALTER TABLE "AnalyticsEvent" ADD COLUMN "jobId" TEXT`,
   `ALTER TABLE "AnalyticsEvent" ADD COLUMN "pageSlug" TEXT`,
@@ -297,9 +146,22 @@ const MIGRATION_STATEMENTS = [
   `ALTER TABLE "AnalyticsEvent" ADD COLUMN "utmCampaign" TEXT`,
 ];
 
+/** A column ALTER that fails because the column/table is already in the target state. */
+function isAlreadyAppliedError(message: string | undefined): boolean {
+  if (!message) return false;
+  return (
+    message.includes("duplicate column") ||
+    message.includes("already exists") ||
+    // RENAME COLUMN on a fresh DB: the legacy column isn't there.
+    message.includes("no such column") ||
+    message.includes("no such table")
+  );
+}
+
 async function main() {
-  console.log("🚀 Pushing schema to Turso...\n");
+  console.log("🚀 Pushing schema to Turso (from generated prisma/turso-schema.sql)...\n");
   console.log(`  URL: ${cleanUrl.replace(/\/\/.*@/, "//***@")}`);
+  console.log(`  Statements: ${SQL_STATEMENTS.length}`);
 
   let success = 0;
   let skipped = 0;
@@ -320,7 +182,7 @@ async function main() {
 
   console.log(`\n  ✓ ${success} statements executed, ${skipped} skipped (already exist)`);
 
-  // Run migration statements (safe: catches "duplicate column" errors)
+  // Run migration statements (safe: catches "duplicate column"/"no such column" errors)
   let migrated = 0;
   let alreadyApplied = 0;
   console.log("\n🔄 Running migrations...");
@@ -331,10 +193,7 @@ async function main() {
       migrated++;
       console.log(`  ✓ ${sql.slice(0, 80)}...`);
     } catch (err: any) {
-      if (
-        err.message?.includes("duplicate column") ||
-        err.message?.includes("already exists")
-      ) {
+      if (isAlreadyAppliedError(err.message)) {
         alreadyApplied++;
       } else {
         console.error(`  ❌ Migration error: ${err.message}`);

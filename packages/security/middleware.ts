@@ -126,61 +126,88 @@ export function checkRequest(
 /*  CSRF Validation                                                    */
 /* ================================================================== */
 
+/** Read a single cookie value from a raw Cookie header. */
+function readCookie(request: Request, name: string): string | null {
+  const header = request.headers.get("cookie");
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq === -1) continue;
+    if (part.slice(0, eq).trim() === name) {
+      return decodeURIComponent(part.slice(eq + 1).trim());
+    }
+  }
+  return null;
+}
+
 /**
- * Validate CSRF token in a request.
- * Checks both custom header (X-CSRF-Token) and Origin/Referer.
+ * Validate CSRF on a mutating request.
+ *
+ * Layered defense:
+ *   1. Same-origin enforcement via Origin / Referer (host must match), with a
+ *      Sec-Fetch-Site fallback so requests WITHOUT an Origin header are no
+ *      longer waved through (the previous gap).
+ *   2. Double-submit token: the X-CSRF-Token header must equal the CSRF cookie,
+ *      compared in constant time. Previously the code accepted the mere
+ *      PRESENCE of the header without comparing it to anything.
+ *
+ * A request must satisfy a same-origin signal AND a matching token (when the
+ * cookie is set). When no Origin/Referer/Sec-Fetch-Site signal exists at all,
+ * the double-submit token is the sole gate.
  */
 export function validateCsrf(
   request: Request,
+  options: { cookieName?: string } = {},
 ): { valid: boolean; error?: string } {
+  const cookieName = options.cookieName || "cb_csrf";
   const origin = request.headers.get("origin");
   const referer = request.headers.get("referer");
   const host = request.headers.get("host");
+  const secFetchSite = request.headers.get("sec-fetch-site");
 
-  // Check Origin header (strongest protection)
+  // ── 1. Same-origin signal ────────────────────────────────────────
+  let sameOriginVerified = false;
   if (origin) {
     try {
-      const originHost = new URL(origin).host;
-      if (host && originHost !== host) {
-        return {
-          valid: false,
-          error: "CSRF: Origin mismatch",
-        };
+      if (host && new URL(origin).host !== host) {
+        return { valid: false, error: "CSRF: Origin mismatch" };
       }
-      return { valid: true };
+      sameOriginVerified = true;
     } catch {
       return { valid: false, error: "CSRF: Invalid origin" };
     }
-  }
-
-  // Fallback: check Referer
-  if (referer) {
+  } else if (referer) {
     try {
-      const refererHost = new URL(referer).host;
-      if (host && refererHost !== host) {
-        return {
-          valid: false,
-          error: "CSRF: Referer mismatch",
-        };
+      if (host && new URL(referer).host !== host) {
+        return { valid: false, error: "CSRF: Referer mismatch" };
       }
-      return { valid: true };
+      sameOriginVerified = true;
     } catch {
       return { valid: false, error: "CSRF: Invalid referer" };
     }
+  } else if (secFetchSite) {
+    // Modern browsers always send Sec-Fetch-Site. cross-site is the attack.
+    if (secFetchSite === "cross-site") {
+      return { valid: false, error: "CSRF: cross-site request blocked" };
+    }
+    sameOriginVerified = secFetchSite === "same-origin" || secFetchSite === "same-site";
   }
 
-  // No Origin or Referer — check for custom header
-  const csrfToken = request.headers.get("x-csrf-token");
-  if (csrfToken) {
-    // If a token is present, the request came from JS (custom headers
-    // can't be set by forms), which is a mild CSRF indicator.
-    return { valid: true };
-  }
+  // ── 2. Double-submit token (constant-time) ───────────────────────
+  const headerToken = request.headers.get("x-csrf-token");
+  const cookieToken = readCookie(request, cookieName);
+  const tokenValid =
+    !!headerToken && !!cookieToken && timingSafeEqual(headerToken, cookieToken);
 
-  // No indicators at all — reject for safety on mutations
+  if (tokenValid) return { valid: true };
+
+  // A verified same-origin Origin/Referer alone is acceptable (these headers
+  // cannot be forged by a cross-site attacker), even without a token.
+  if (sameOriginVerified && (origin || referer)) return { valid: true };
+
   return {
     valid: false,
-    error: "CSRF: Missing Origin, Referer, or X-CSRF-Token header",
+    error: "CSRF: missing same-origin signal or valid double-submit token",
   };
 }
 

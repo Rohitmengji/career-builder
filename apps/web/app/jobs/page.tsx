@@ -7,7 +7,7 @@
 
 "use client";
 
-import React, { Suspense, useCallback, useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { useJobSearch } from "@/lib/jobs/useJobSearch";
 import { useRecentSearches } from "@/lib/jobs/useRecentSearches";
@@ -294,7 +294,10 @@ function JobsPageInner() {
 /* ================================================================== */
 
 function JobCard({ job }: { job: Job }) {
+  // Relative "days ago" label is intentionally computed from the current time at
+  // render; any slight drift on re-render is cosmetic and harmless here.
   const daysAgo = Math.floor(
+    // eslint-disable-next-line react-hooks/purity
     (Date.now() - new Date(job.postedAt).getTime()) / (1000 * 60 * 60 * 24),
   );
   const postedLabel =

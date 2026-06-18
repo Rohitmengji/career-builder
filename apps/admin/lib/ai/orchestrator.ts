@@ -20,7 +20,6 @@
 import type { AiPageBlock, AiTone, AiIndustry, AiCompanyType, AiAudience } from "@/lib/ai/types";
 import {
   buildGenerationContext,
-  type AiGenerationContext,
   type BuildContextInput,
 } from "@/lib/ai/context/contextEngine";
 import {
@@ -43,12 +42,11 @@ import {
   buildBlockContentPrompt,
   generateFallbackPage,
   generateFallbackContent,
-  type ContentPrompt,
 } from "@/lib/ai/contentGenerator";
 import { buildJobGenerationPrompt, type JobGenerationInput } from "@/lib/ai/jobGenerator";
-import { validateAiOutput, validatePageOutput, validateJobOutput, parseAiJson } from "@/lib/ai/validator";
+import { validateAiOutput, validateJobOutput, parseAiJson } from "@/lib/ai/validator";
 import { scorePageQuality, scoreBlockContent, shouldRegenerate, type QualityScore } from "@/lib/ai/qualityMetrics";
-import { blockSchemas, getDefaultProps } from "@/lib/blockSchemas";
+import { blockSchemas } from "@/lib/blockSchemas";
 
 /* ================================================================== */
 /*  Orchestrator output types                                          */
@@ -182,7 +180,10 @@ async function callAi(system: string, user: string, timeoutMs: number = 15000): 
           input: user,
           text: { format: { type: "json_object" } },
           max_output_tokens: 3200,
-          temperature: 0.7,
+          // NOTE: gpt-5 / o-series reasoning models (Responses API) reject a
+          // non-default temperature and would 400, causing every AI call to
+          // silently fall back. Omit it here; it's only valid on the
+          // chat/completions path below.
         }),
         signal: controller.signal,
       });

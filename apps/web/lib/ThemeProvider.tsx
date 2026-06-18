@@ -177,10 +177,7 @@ export function ThemeProvider({
   return (
     <ThemeContext.Provider value={value}>
       {/* Google Fonts */}
-      {fontsUrl && (
-        // eslint-disable-next-line @next/next/no-page-custom-font
-        <link rel="stylesheet" href={fontsUrl} />
-      )}
+      {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}
       {/* CSS custom properties */}
       <style dangerouslySetInnerHTML={{ __html: cssVarString }} />
       {children}

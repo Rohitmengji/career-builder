@@ -13,7 +13,7 @@ import type { Job, JobDetailResponse } from "@/lib/jobs/types";
 import ApplyModal from "@/app/jobs/[id]/ApplyModal";
 import PersonalizedSidebar from "@/components/PersonalizedSidebar";
 import JobViewTracker from "@/app/jobs/[id]/JobViewTracker";
-import { fetchTenantConfig, getAdminApiUrl } from "@/lib/tenant";
+import { fetchTenantConfig } from "@/lib/tenant";
 import { getSiteUrl } from "@/lib/env";
 
 /* ================================================================== */

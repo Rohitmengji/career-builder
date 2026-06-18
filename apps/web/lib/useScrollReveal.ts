@@ -17,7 +17,7 @@
 
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 
 const REVEAL_CLASS = "cb-reveal";
 const VISIBLE_CLASS = "cb-visible";

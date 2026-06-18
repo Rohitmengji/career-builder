@@ -1,15 +1,8 @@
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 
-const DUMMY_AVATARS = [
-  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=200&h=200&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&h=200&fit=crop&q=80",
-];
-
 function buildTeamMembers(members: any[]) {
-  return members.map((m: any, idx: number) => ({
+  return members.map((m: any, _idx: number) => ({
     tagName: "div" as const,
     style: { "text-align": "center" },
     components: [

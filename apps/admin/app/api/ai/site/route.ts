@@ -208,7 +208,7 @@ export async function POST(req: NextRequest) {
 async function handleApply(
   _req: NextRequest,
   body: any,
-  user: { id: string; role: string; tenantId: string },
+  _user: { id: string; role: string; tenantId: string },
 ) {
   // Get session for tenant ID — CSRF already validated at top of POST handler
   const session = await getSession();
@@ -256,7 +256,7 @@ async function handleApply(
       pagesCreated: site.pages.map((p) => p.slug),
       backupsCreated: backups.length,
     });
-  } catch (err: any) {
+  } catch (_err: any) {
     // Attempt to restore backups
     for (const backup of backups) {
       try {
@@ -281,7 +281,7 @@ async function handleRegen(
   _req: NextRequest,
   body: any,
   user: { id: string; role: string; tenantId: string },
-  ip: string,
+  _ip: string,
 ) {
   const { site, pageIndex, input, regenOption } = body;
 

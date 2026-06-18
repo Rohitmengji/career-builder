@@ -52,6 +52,16 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate --schema=packages/database/prisma/schema.prisma
 
+      - name: Verify Turso DDL parity (schema.prisma ↔ turso-schema.sql)
+        run: cd packages/database && npx tsx verify-turso-schema.ts
+
+      - name: Smoke-test libSQL driver adapter (prod DB path)
+        # CI's DATABASE_URL is sqlite; prod is Turso/libSQL. Construct the
+        # libSQL adapter + PrismaClient against a local libSQL file so adapter
+        # breakage (e.g. @prisma/adapter-libsql version mismatch) fails CI
+        # instead of production. Offline — no Turso connection required.
+        run: cd packages/database && npx tsx -e "const {PrismaLibSQL}=require('@prisma/adapter-libsql'); const a=new PrismaLibSQL({url:'file:./ci-smoke.db'}); const {PrismaClient}=require('@prisma/client'); const c=new PrismaClient({adapter:a}); if(!c) throw new Error('libSQL adapter failed'); console.log('✅ libSQL adapter + PrismaClient construct OK');"
+
       - name: Type Check (admin)
         run: npx tsc --noEmit --project apps/admin/tsconfig.json
 
@@ -87,9 +97,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history so `git diff origin/main...HEAD` actually resolves —
+          # the default shallow clone never fetches origin/main, which silently
+          # disabled this guard.
+          fetch-depth: 0
 
       - name: Check for destructive migrations
         run: |
+          # Ensure the base ref is available for the diff.
+          git fetch --no-tags --depth=1 origin main || true
           # Check if Prisma schema changed
           if git diff --name-only origin/main...HEAD | grep -q "schema.prisma"; then
             echo "⚠️  Prisma schema changed — reviewing for safety..."

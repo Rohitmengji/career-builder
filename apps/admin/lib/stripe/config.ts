@@ -34,16 +34,46 @@ function requireEnv(name: string, soft = false): string {
   return val;
 }
 
-const STRIPE_SECRET_KEY = requireEnv("STRIPE_SECRET_KEY");
-const STRIPE_PRO_PRICE_ID = requireEnv("STRIPE_PRO_PRICE_ID");
-const STRIPE_ENT_PRICE_ID = requireEnv("STRIPE_ENT_PRICE_ID");
+// Soft (warn, don't throw) at module load. Throwing here crashed `next build`
+// page-data collection when STRIPE_* weren't present in the build environment
+// (env vars are a runtime concern). The lazy `stripe` client below throws a
+// clear error on actual use, and routes can gate on `isStripeConfigured`.
+const STRIPE_SECRET_KEY = requireEnv("STRIPE_SECRET_KEY", true);
+const STRIPE_PRO_PRICE_ID = requireEnv("STRIPE_PRO_PRICE_ID", true);
+const STRIPE_ENT_PRICE_ID = requireEnv("STRIPE_ENT_PRICE_ID", true);
 
 // Webhook secret is soft — only needed when receiving webhooks
 export const WEBHOOK_SECRET = requireEnv("STRIPE_WEBHOOK_SECRET", true);
 
-export const stripe = new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: "2026-02-25.clover",
-  typescript: true,
+// Lazily construct the Stripe client. Constructing `new Stripe("")` throws
+// ("Neither apiKey nor config.authenticator provided") at MODULE LOAD, which
+// previously crashed every route that merely imports this file (even just to
+// read PLAN_CREDITS) whenever STRIPE_SECRET_KEY was unset — e.g. local dev or
+// any deploy without billing configured. The Proxy defers construction to the
+// first real Stripe call, so importing the config is always safe and only an
+// actual API call surfaces the missing-key error.
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (_stripe) return _stripe;
+  if (!STRIPE_SECRET_KEY) {
+    throw new Error("[stripe] STRIPE_SECRET_KEY is not configured — billing is disabled");
+  }
+  _stripe = new Stripe(STRIPE_SECRET_KEY, {
+    apiVersion: "2026-02-25.clover",
+    typescript: true,
+  });
+  return _stripe;
+}
+
+/** Whether Stripe billing is configured (has a secret key). */
+export const isStripeConfigured = Boolean(STRIPE_SECRET_KEY);
+
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, prop) {
+    const client = getStripe();
+    const value = (client as unknown as Record<string | symbol, unknown>)[prop];
+    return typeof value === "function" ? (value as (...a: unknown[]) => unknown).bind(client) : value;
+  },
 });
 
 /* ================================================================== */

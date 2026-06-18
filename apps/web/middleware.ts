@@ -54,22 +54,32 @@ export function middleware(request: NextRequest) {
   ) {
     const origin = request.headers.get("origin");
     const host = request.headers.get("host");
+    const referer = request.headers.get("referer");
+    const secFetchSite = request.headers.get("sec-fetch-site");
+
+    let rejected: string | null = null;
 
     if (origin) {
       try {
-        const originHost = new URL(origin).host;
-        if (host && originHost !== host) {
-          return NextResponse.json(
-            { error: "CSRF: Origin mismatch" },
-            { status: 403 },
-          );
-        }
+        if (host && new URL(origin).host !== host) rejected = "CSRF: Origin mismatch";
       } catch {
-        return NextResponse.json(
-          { error: "CSRF: Invalid origin" },
-          { status: 403 },
-        );
+        rejected = "CSRF: Invalid origin";
       }
+    } else if (secFetchSite) {
+      // No Origin header — fall back to Fetch Metadata. This is the public site,
+      // so we only block the explicit cross-site attack vector (the apply/analytics
+      // endpoints are same-origin); we don't reject signal-less requests.
+      if (secFetchSite === "cross-site") rejected = "CSRF: cross-site request blocked";
+    } else if (referer) {
+      try {
+        if (host && new URL(referer).host !== host) rejected = "CSRF: Referer mismatch";
+      } catch {
+        rejected = "CSRF: Invalid referer";
+      }
+    }
+
+    if (rejected) {
+      return NextResponse.json({ error: rejected }, { status: 403 });
     }
   }
 

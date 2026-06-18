@@ -28,7 +28,6 @@ interface PersonalizedSidebarProps {
 
 export default function PersonalizedSidebar({
   jobId,
-  jobTitle,
   jobDepartment,
   jobLocation,
   jobTags,

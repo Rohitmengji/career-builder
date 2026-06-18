@@ -22,11 +22,23 @@ import { metrics, METRIC } from "@career-builder/observability/metrics";
 const log = logger.security;
 
 function getClientIp(headersList: Headers): string {
-  return (
-    headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    headersList.get("x-real-ip") ||
-    "unknown"
-  );
+  // Trusted client IP for login lockout keys. Using the leftmost (spoofable)
+  // XFF entry let an attacker rotate the lockout key per attempt OR lock out a
+  // victim IP. Prefer platform headers, else the trusted RIGHTMOST hop —
+  // consistent with the edge rate limiter so keys match across layers.
+  const cfIp = headersList.get("cf-connecting-ip");
+  if (cfIp) return cfIp.trim();
+  const vercelIp = headersList.get("x-vercel-forwarded-for") || headersList.get("x-real-ip");
+  if (vercelIp) return vercelIp.split(",")[0]!.trim();
+  const xff = headersList.get("x-forwarded-for");
+  if (xff) {
+    const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
+    if (parts.length > 0) {
+      const trusted = Math.max(1, parseInt(process.env.TRUSTED_PROXY_COUNT || "1", 10) || 1);
+      return parts[Math.max(0, parts.length - trusted)]!;
+    }
+  }
+  return "unknown";
 }
 
 /** POST /api/auth — login with email + password (rate-limited) */

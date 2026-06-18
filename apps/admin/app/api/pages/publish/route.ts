@@ -6,7 +6,7 @@ import { withRequestLogging } from "@career-builder/observability/request-logger
 import { logger } from "@career-builder/observability/logger";
 import { metrics, METRIC } from "@career-builder/observability/metrics";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 declare global {
   var __previewListeners: Set<(slug: string) => void> | undefined;
 }

@@ -224,7 +224,6 @@ export function queryJobs(allJobs: Job[], params: JobSearchParams): JobSearchRes
 
   // Strip internal _score field
   const cleanJobs = paginatedJobs.map((job) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { _score, ...rest } = job as Job & { _score?: number };
     return rest;
   });

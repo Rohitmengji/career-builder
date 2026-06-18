@@ -63,8 +63,19 @@ export function stripHtml(str: string): string {
  * For job descriptions etc. where some formatting is acceptable.
  */
 export function sanitizeRichText(html: string): string {
-  // Remove scripts, styles, event handlers, and dangerous URIs
+  // 1. Strip constructs that can hide payloads or desync the tag matcher
+  //    BEFORE anything else: HTML comments (incl. conditional comments),
+  //    CDATA sections, doctype/markup declarations, and processing
+  //    instructions. Without this, e.g. `<!--<script>...//-->` or
+  //    `<![CDATA[ <img onerror=...> ]]>` could slip past the tag pass.
   let clean = html
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<!\[CDATA\[[\s\S]*?\]\]>/gi, "")
+    .replace(/<![\s\S]*?>/g, "")
+    .replace(/<\?[\s\S]*?\?>/g, "");
+
+  // 2. Remove scripts, styles, event handlers, and dangerous URIs.
+  clean = clean
     .replace(SCRIPT_RE, "")
     .replace(STYLE_RE, "")
     .replace(EVENT_HANDLER_RE, "")
@@ -81,24 +92,23 @@ export function sanitizeRichText(html: string): string {
     "hr", "span", "div", "sub", "sup",
   ]);
 
+  // Matches href in double-quote, single-quote, OR unquoted forms.
+  const HREF_RE = /href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i;
+
   clean = clean.replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>/g, (match, tag) => {
     const lower = tag.toLowerCase();
     if (ALLOWED_TAGS.has(lower)) {
-      // For allowed tags, strip attributes except href on <a>
-      if (lower === "a") {
-        const hrefMatch = match.match(/href\s*=\s*"([^"]*)"/i);
-        if (hrefMatch) {
-          const href = hrefMatch[1];
-          // Only allow http/https links
-          if (/^https?:\/\//i.test(href)) {
-            return match.startsWith("</")
-              ? `</${lower}>`
-              : `<${lower} href="${escapeHtml(href)}" rel="noopener noreferrer" target="_blank">`;
-          }
+      // For allowed tags, strip attributes except a safe href on <a>
+      if (lower === "a" && !match.startsWith("</")) {
+        const hrefMatch = match.match(HREF_RE);
+        const href = hrefMatch ? (hrefMatch[1] ?? hrefMatch[2] ?? hrefMatch[3] ?? "") : "";
+        // Only allow absolute http/https links (no javascript:, data:, etc.)
+        if (href && /^https?:\/\//i.test(href.trim())) {
+          return `<${lower} href="${escapeHtml(href.trim())}" rel="noopener noreferrer" target="_blank">`;
         }
-        return match.startsWith("</") ? `</${lower}>` : `<${lower}>`;
+        return `<${lower}>`;
       }
-      // Strip all attributes from other allowed tags
+      // Strip all attributes from other allowed tags (and closing <a>)
       return match.startsWith("</") ? `</${lower}>` : `<${lower}>`;
     }
     return ""; // Strip disallowed tags entirely

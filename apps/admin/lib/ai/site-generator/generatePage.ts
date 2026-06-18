@@ -53,7 +53,8 @@ async function callAi(system: string, user: string, timeoutMs: number): Promise<
           input: user,
           text: { format: { type: "json_object" } },
           max_output_tokens: 3200,
-          temperature: 0.7,
+          // gpt-5 / o-series reasoning models reject a non-default temperature
+          // (would 400 → silent fallback). Only valid on chat/completions.
         }),
         signal: controller.signal,
       });
@@ -126,7 +127,6 @@ export async function generatePage(
   const { system, user } = buildPageBlocksPrompt(pageType, blockTypes, input, brandVoice, jobContext);
 
   let blocks: AiPageBlock[];
-  let warnings: string[] = [];
 
   try {
     const rawOutput = await callAi(system, user, SITE_LIMITS.PAGE_TIMEOUT_MS);
@@ -144,12 +144,10 @@ export async function generatePage(
     // Validate blocks against expected types
     const validated = validatePageBlocks(parsed.blocks, blockTypes);
     blocks = validated.blocks;
-    warnings = validated.warnings;
   } catch (err: any) {
     // Fallback to defaults — NEVER return empty
     console.error(`[SiteGen] Page "${pageType}" AI failed: ${err.message}. Using defaults.`);
     blocks = getDefaultPageBlocks(pageType, blockTypes, input.companyName);
-    warnings = [`AI generation failed for ${pageType} page — using template defaults. Error: ${err.message}`];
   }
 
   // Ensure navbar/footer have correct company name

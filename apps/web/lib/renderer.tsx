@@ -23,7 +23,6 @@
 
 "use client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { memo, useState, useCallback, useId, useMemo, useRef, useEffect } from "react";
 import { useTheme } from "@/lib/ThemeProvider";
 import {
@@ -33,24 +32,14 @@ import {
 } from "@career-builder/tenant-config";
 import {
   safeString,
-  safeArray,
-  safeBool,
   safeUrl,
   getReadableTextColor,
-  ensureContrast,
-  keys,
   srText,
   optimizeImageUrl,
-  generateSrcSet,
-  defaultImageSizes,
 } from "@/lib/design-system";
 import {
-  VisuallyHidden,
   LazyImage,
   ResponsiveDrawer,
-  IconButton,
-  useIsMobile,
-  useReducedMotion,
 } from "@/lib/design-system-components";
 import { useScrollReveal, useNavbarShrink } from "@/lib/useScrollReveal";
 
@@ -537,7 +526,7 @@ function EmptyState({ message }: { message?: string }) {
 
 const Hero = memo((raw: any) => {
   const p = withDefaults("hero", raw);
-  const { tokens, getAccent } = useTheme();
+  const { tokens } = useTheme();
   const heroId = useId();
   const bgImage = safeString(p.backgroundImage);
   return (
@@ -637,7 +626,7 @@ Testimonial.displayName = "Testimonial";
 
 const Carousel = memo((raw: any) => {
   const p = withDefaults("carousel", raw);
-  const { tokens, getAccent } = useTheme();
+  const { tokens } = useTheme();
   const slides = safeList(p.slides, DEFAULT_BLOCK_PROPS.carousel.slides);
   const carouselId = useId();
   return (
@@ -686,7 +675,7 @@ Carousel.displayName = "Carousel";
 
 const Accordion = memo((raw: any) => {
   const p = withDefaults("accordion", raw);
-  const { tokens, getAccent } = useTheme();
+  const { tokens } = useTheme();
   const items = safeList(p.items, DEFAULT_BLOCK_PROPS.accordion.items);
   const sectionId = useId();
   return (
@@ -718,7 +707,7 @@ Accordion.displayName = "Accordion";
 
 const CtaButton = memo((raw: any) => {
   const p = withDefaults("cta-button", raw);
-  const { tokens, getAccent } = useTheme();
+  const { tokens } = useTheme();
   return (
     <Section variant="light" ariaLabel={safeString(p.title, "Call to action")}>
       <Container className="text-center max-w-2xl">
@@ -775,7 +764,7 @@ SearchBar.displayName = "SearchBar";
 
 const SearchResults = memo((raw: any) => {
   const p = withDefaults("search-results", raw);
-  const { tokens, getAccent } = useTheme();
+  const { tokens } = useTheme();
   const jobs = safeList(p.jobs, DEFAULT_BLOCK_PROPS["search-results"].jobs);
   const sectionId = useId();
   const [searchQuery, setSearchQuery] = useState("");
@@ -878,7 +867,7 @@ const SearchResults = memo((raw: any) => {
           <ul className="space-y-3 list-none p-0 m-0" role="list" aria-label="Job listings">
             {filtered.map((job: any) => (
               <li key={job.id}>
-                <a href={safeUrl(`/careers/jobs/${job.id}`, "#")} className="block group focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 rounded-2xl">
+                <a href={safeUrl(`/jobs/${job.id}`, "#")} className="block group focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 rounded-2xl">
                   <div
                     className="rounded-2xl border p-5 sm:p-6 shadow-sm transition-all duration-200 hover:shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                     style={{ borderColor: tokens.colors.border, backgroundColor: tokens.isDark ? "#1f2937" : "#ffffff" }}
@@ -936,7 +925,7 @@ SearchResults.displayName = "SearchResults";
 
 const JobDetails = memo((raw: any) => {
   const p = withDefaults("job-details", raw);
-  const { tokens, getAccent } = useTheme();
+  const { tokens } = useTheme();
   return (
     <Section variant="white" as="article" ariaLabel={safeString(p.jobTitle, "Job details")}>
       <Container className="max-w-3xl">
@@ -960,8 +949,7 @@ JobDetails.displayName = "JobDetails";
 
 const JobCategory = memo((raw: any) => {
   const p = withDefaults("job-category", raw);
-  const { tokens, getAccent } = useTheme();
-  const accent = getAccent(p.color);
+  const { tokens } = useTheme();
   const categories = safeList(p.categories, DEFAULT_BLOCK_PROPS["job-category"].categories);
   const sectionId = useId();
   return (
@@ -1061,7 +1049,7 @@ function toEmbedUrl(url: string): string {
 
 const VideoAndText = memo((raw: any) => {
   const p = withDefaults("video-and-text", raw);
-  const { tokens, getAccent } = useTheme();
+  const { tokens } = useTheme();
   const embed = toEmbedUrl(safeString(p.videoUrl));
   const videoTitle = safeString(p.title, "Video");
   return (
@@ -1099,7 +1087,8 @@ VideoAndText.displayName = "VideoAndText";
 
 const Personalization = memo((raw: any) => {
   const p = withDefaults("personalization", raw);
-  const { tokens, getAccent } = useTheme();
+  const { tokens } = useTheme();
+  const sectionId = useId();
   const cards: { label: string; visible: boolean }[] = [
     { label: "Recent Searches", visible: p.showRecentSearches !== false },
     { label: "Recommended Jobs", visible: p.showRecommendedJobs !== false },
@@ -1107,7 +1096,6 @@ const Personalization = memo((raw: any) => {
   ];
   const visibleCards = cards.filter((c) => c.visible);
   if (visibleCards.length === 0) return null;
-  const sectionId = useId();
   return (
     <Section variant="light" ariaLabelledBy={`${sectionId}-heading`}>
       <Container>
@@ -1128,7 +1116,7 @@ Personalization.displayName = "Personalization";
 
 const ShowHideTab = memo((raw: any) => {
   const p = withDefaults("show-hide-tab", raw);
-  const { tokens, getAccent } = useTheme();
+  const { tokens } = useTheme();
   const tabs = safeList(p.tabs, DEFAULT_BLOCK_PROPS["show-hide-tab"].tabs);
   const sectionId = useId();
   return (
@@ -1162,7 +1150,7 @@ ShowHideTab.displayName = "ShowHideTab";
 
 const ImageTextGrid = memo((raw: any) => {
   const p = withDefaults("image-text-grid", raw);
-  const { tokens, getAccent } = useTheme();
+  const { tokens } = useTheme();
   const items = safeList(p.items, DEFAULT_BLOCK_PROPS["image-text-grid"].items);
   const sectionId = useId();
   return (
@@ -1192,7 +1180,7 @@ ImageTextGrid.displayName = "ImageTextGrid";
 
 const LightBox = memo((raw: any) => {
   const p = withDefaults("light-box", raw);
-  const { tokens, getAccent } = useTheme();
+  const { tokens } = useTheme();
   const images = safeList(p.images, DEFAULT_BLOCK_PROPS["light-box"].images);
   const cols = safeString(p.columns, "3");
   const gridCls = cols === "2" ? "grid-cols-1 sm:grid-cols-2" : cols === "4" ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4" : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3";
@@ -1327,7 +1315,7 @@ JobAlert.displayName = "JobAlert";
 
 const NavigateBack = memo((raw: any) => {
   const p = withDefaults("navigate-back", raw);
-  const { tokens, getAccent } = useTheme();
+  const { tokens } = useTheme();
   return (
     <Section variant="white" noPadding className="py-4!" as="div" ariaLabel="Navigation">
       <Container>
@@ -1539,7 +1527,6 @@ function FormError({ message, onRetry }: { message: string; onRetry: () => void 
 
 const NotificationBanner = memo((raw: any) => {
   const p = withDefaults("notification-banner", raw);
-  const { tokens } = useTheme();
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
   const variantStyles: Record<string, React.CSSProperties> = {
@@ -1581,7 +1568,6 @@ NotificationBanner.displayName = "NotificationBanner";
 
 const StatsCounter = memo((raw: any) => {
   const p = withDefaults("stats-counter", raw);
-  const { tokens } = useTheme();
   const items = safeList(p.items, DEFAULT_BLOCK_PROPS["stats-counter"].items);
   const sectionId = useId();
   return (
@@ -1678,6 +1664,9 @@ const SocialProof = memo((raw: any) => {
             {logos.map((logo: any, i: number) => (
               <li key={i} className="flex items-center justify-center">
                 {logo.imageUrl ? (
+                  // Tenant-provided logo URL is arbitrary/dynamic, so next/image
+                  // (which needs configured remote domains) is not appropriate.
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={logo.imageUrl}
                     alt={safeString(logo.name, "Partner logo")}
@@ -1814,12 +1803,11 @@ ApplicationStatus.displayName = "ApplicationStatus";
 
 const Navbar = memo((raw: any) => {
   const p = withDefaults("navbar", raw);
-  const { tokens, getAccent } = useTheme();
+  const { tokens } = useTheme();
   const links = safeList(p.links, DEFAULT_BLOCK_PROPS.navbar.links);
   const isDark = p.variant === "dark";
   const isTransparent = p.variant === "transparent";
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const isMobile = useIsMobile();
   const navRef = useNavbarShrink<HTMLElement>();
   const bgStyle: React.CSSProperties = isDark
     ? { backgroundColor: "#030712", color: "#ffffff", borderColor: "#1f2937" }
@@ -1834,7 +1822,12 @@ const Navbar = memo((raw: any) => {
       <nav ref={navRef} className={`border-b ${stickyClass} backdrop-blur-lg`} style={bgStyle} aria-label="Main navigation">
         <Container className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
-            {p.logoUrl && <img src={p.logoUrl} alt={`${safeString(p.companyName, "Company")} logo`} className="h-8 w-auto" />}
+            {p.logoUrl && (
+              // Tenant-provided logo URL is arbitrary/dynamic, so next/image
+              // (which needs configured remote domains) is not appropriate.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.logoUrl} alt={`${safeString(p.companyName, "Company")} logo`} className="h-8 w-auto" />
+            )}
             <span className="text-base font-semibold tracking-tight" style={{ color: textColor }}>{p.companyName}</span>
           </div>
           {/* Desktop nav links */}
@@ -1910,7 +1903,7 @@ const socialIcons: Record<string, string> = {
 
 const Footer = memo((raw: any) => {
   const p = withDefaults("footer", raw);
-  const { tokens, branding, getAccent } = useTheme();
+  const { tokens, branding } = useTheme();
   const links = safeList(p.links, DEFAULT_BLOCK_PROPS.footer.links);
   const socials = safeList(p.socialLinks, DEFAULT_BLOCK_PROPS.footer.socialLinks);
   const isDark = p.variant !== "light";

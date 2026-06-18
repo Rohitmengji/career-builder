@@ -343,7 +343,7 @@ function sortByTemplateOrder(
 
 function enforceConstraints(
   blocks: StructureTemplate[],
-  ctx: AiGenerationContext,
+  _ctx: AiGenerationContext,
 ): StructureTemplate[] {
   const result = [...blocks];
 

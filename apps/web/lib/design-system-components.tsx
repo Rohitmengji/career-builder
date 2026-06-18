@@ -24,7 +24,6 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
@@ -36,7 +35,6 @@ import {
   generateSrcSet,
   defaultImageSizes,
   optimizeImageUrl,
-  uniqueId,
 } from "./design-system";
 
 /* ================================================================== */
@@ -356,6 +354,9 @@ export function LazyImage({
   const srcSet = !error ? generateSrcSet(src) : undefined;
 
   return (
+    // Generic image primitive: src is an arbitrary/dynamic URL with custom
+    // srcSet, fallback and error handling, so next/image is not appropriate.
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={optimizeImageUrl(imgSrc)}
       srcSet={srcSet || undefined}
@@ -569,6 +570,9 @@ export function useReducedMotion(): boolean {
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    // Read initial value from the external media-query system on mount;
+    // matchMedia is unavailable during SSR.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReducedMotion(mq.matches);
 
     const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
@@ -588,6 +592,9 @@ export function useIsMobile(breakpoint = 768): boolean {
 
   useEffect(() => {
     const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    // Read initial value from the external media-query system on mount;
+    // matchMedia is unavailable during SSR.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMobile(mq.matches);
 
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);

@@ -10,7 +10,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/lib/useAuthGuard";
 
 /* ================================================================== */
@@ -67,8 +66,7 @@ export default function AdminApplicationsPage() {
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const router = useRouter();
-  const { loading: authLoading, authenticated } = useAuthGuard();
+  useAuthGuard();
 
   /* ─── Data loading ─────────────────────────────────────────── */
 

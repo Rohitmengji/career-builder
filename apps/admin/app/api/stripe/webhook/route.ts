@@ -21,37 +21,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe, PLAN_PRICE_MAP, PLAN_CREDITS, JOB_AI_CREDITS_PER_WEEK, WEBHOOK_SECRET } from "@/lib/stripe/config";
 import { subscriptionRepo } from "@career-builder/database";
+import { getKV } from "@career-builder/shared/kv";
 
 /* ================================================================== */
 /*  Idempotency — prevent duplicate event processing                   */
 /* ================================================================== */
 
-const processedEvents = new Map<string, number>();
-const IDEMPOTENCY_TTL = 10 * 60_000; // 10 minutes (Stripe may retry up to ~7 min)
-const MAX_IDEMPOTENCY_ENTRIES = 5000;
+// Stripe may retry an event for up to ~7 minutes; keep the marker for 10.
+const IDEMPOTENCY_TTL_SECONDS = 10 * 60;
 
-// Periodic cleanup to prevent unbounded growth (every 5 min)
-const _whCleanup = setInterval(() => {
-  const now = Date.now();
-  for (const [id, ts] of processedEvents) {
-    if (now - ts > IDEMPOTENCY_TTL) processedEvents.delete(id);
+/**
+ * Atomic, cross-instance idempotency via the shared KV store. The previous
+ * implementation used a per-process Map, which on serverless meant each
+ * instance had its own view — so the same event could be processed twice (e.g.
+ * double credit grants). incr() returning >1 means we've already seen it.
+ * With KV_DRIVER=redis this is durable across all instances.
+ */
+async function isDuplicate(eventId: string): Promise<boolean> {
+  try {
+    const count = await getKV().incr(`stripe:webhook:${eventId}`, IDEMPOTENCY_TTL_SECONDS);
+    return count > 1;
+  } catch (err) {
+    // Fail-open: never drop a real Stripe event because the KV is unavailable.
+    console.error("[stripe/webhook] idempotency check failed (processing anyway):", err);
+    return false;
   }
-}, 300_000);
-if (typeof _whCleanup === "object" && _whCleanup && "unref" in _whCleanup) {
-  (_whCleanup as NodeJS.Timeout).unref();
-}
-
-function isDuplicate(eventId: string): boolean {
-  const now = Date.now();
-  // Also cleanup on high watermark as a safety net
-  if (processedEvents.size > MAX_IDEMPOTENCY_ENTRIES) {
-    for (const [id, ts] of processedEvents) {
-      if (now - ts > IDEMPOTENCY_TTL) processedEvents.delete(id);
-    }
-  }
-  if (processedEvents.has(eventId)) return true;
-  processedEvents.set(eventId, now);
-  return false;
 }
 
 /**
@@ -76,7 +70,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Idempotency check — skip duplicate events
-  if (isDuplicate(event.id)) {
+  if (await isDuplicate(event.id)) {
     console.log(`[stripe/webhook] Duplicate event skipped: ${event.id} (${event.type})`);
     return NextResponse.json({ received: true, duplicate: true });
   }
@@ -252,8 +246,10 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     // Transient errors (DB down, network) → return 500 so Stripe retries
     console.error(`[stripe/webhook] ❌ Error handling ${event.type}:`, err.message, err.stack);
-    // Remove from idempotency cache so retry can succeed
-    processedEvents.delete(event.id);
+    // Clear the idempotency marker so Stripe's retry can be processed.
+    try {
+      await getKV().del(`stripe:webhook:${event.id}`);
+    } catch { /* best-effort */ }
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 

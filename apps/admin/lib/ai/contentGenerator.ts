@@ -274,7 +274,7 @@ Generate EXACTLY ${layouts.length} blocks. Respond with ONLY the JSON.`;
 /*  Helpers                                                            */
 /* ================================================================== */
 
-function getPositionHint(blockType: string, index: number, total: number, pageType: string): string {
+function getPositionHint(blockType: string, index: number, total: number, _pageType: string): string {
   if (index === 0) return "This is the FIRST block — it sets the tone for the entire page.";
   if (index === 1) return "This is the HERO — the most important visual impression. Make it powerful.";
   if (index === total - 1) return "This is the LAST block — it wraps up the page. Keep it clean.";

@@ -143,6 +143,8 @@ function LoadingSkeleton({ fieldCount = 4 }: { fieldCount?: number }) {
       </div>
       {Array.from({ length: fieldCount }).map((_, i) => (
         <div key={i} className="space-y-2">
+          {/* Decorative loading skeleton — random width is purely cosmetic. */}
+          {/* eslint-disable-next-line react-hooks/purity */}
           <ShimmerLine width={`${30 + Math.random() * 30}%`} height="10px" />
           <ShimmerLine height={i % 3 === 0 ? "48px" : "36px"} />
         </div>
@@ -182,7 +184,7 @@ export default function AiAssistant({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<AiPreviewState | null>(null);
-  const [pageBlocks, setPageBlocks] = useState<AiPageBlock[] | null>(null);
+  const [, setPageBlocks] = useState<AiPageBlock[] | null>(null);
   const [successToast, setSuccessToast] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
 
@@ -202,9 +204,11 @@ export default function AiAssistant({
 
   // Cleanup on unmount
   useEffect(() => {
+    const abortController = abortRef;
+    const debounce = debounceRef;
     return () => {
-      abortRef.current?.abort();
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      abortController.current?.abort();
+      if (debounce.current) clearTimeout(debounce.current);
     };
   }, []);
 
@@ -1056,7 +1060,7 @@ function ReviewModal({
   selectedFields,
   toggleField,
   toggleAllFields,
-  schema,
+  schema: _schema,
   onAccept,
   onDiscard,
   onRetry,

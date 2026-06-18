@@ -13,7 +13,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { GeneratedSite, GeneratedPage, SiteGenerationInput, PageType } from "@/lib/ai/site-generator/siteSchema";
+import type { GeneratedSite, GeneratedPage, SiteGenerationInput } from "@/lib/ai/site-generator/siteSchema";
 import type { AiPageBlock } from "@/lib/ai/types";
 import { blockSchemas } from "@/lib/blockSchemas";
 import { REGEN_OPTIONS, type RegenOption } from "@/lib/ai/context/siteContext";
@@ -208,7 +208,7 @@ function PagePreview({
 
         {page.blocks.length === 0 && (
           <div className="text-center py-12 text-gray-400 text-sm">
-            No blocks on this page. Click "Regenerate" to add content.
+            No blocks on this page. Click &quot;Regenerate&quot; to add content.
           </div>
         )}
       </div>

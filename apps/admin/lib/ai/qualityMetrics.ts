@@ -12,7 +12,7 @@
  *   2. Track quality over time for monitoring/improvement
  */
 
-import { blockSchemas, type BlockField } from "@/lib/blockSchemas";
+import { blockSchemas } from "@/lib/blockSchemas";
 import type { AiPageBlock } from "@/lib/ai/types";
 
 /* ================================================================== */
@@ -185,7 +185,7 @@ export function scorePageQuality(blocks: AiPageBlock[]): QualityScore {
   let uniqueness = 100;
   const seenTexts = new Set<string>();
   for (const block of blocks) {
-    for (const [key, value] of Object.entries(block.props)) {
+    for (const [, value] of Object.entries(block.props)) {
       if (typeof value === "string" && value.length > 10) {
         const normalized = value.trim().toLowerCase();
         if (seenTexts.has(normalized)) {
@@ -224,7 +224,6 @@ export function scorePageQuality(blocks: AiPageBlock[]): QualityScore {
 
   // Must have CTA before footer
   const ctaIdx = blocks.findIndex((b) => b.type === "cta-button");
-  const footerIdx = blocks.findIndex((b) => b.type === "footer");
   if (ctaIdx < 0) {
     structuralOrder -= 10;
     issues.push("Missing CTA block");

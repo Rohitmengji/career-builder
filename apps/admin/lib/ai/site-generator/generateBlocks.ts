@@ -5,9 +5,9 @@
  * Reuses the existing AI provider, prompts, and validator pipeline.
  */
 
-import { blockSchemas, getDefaultProps, type BlockSchema } from "@/lib/blockSchemas";
-import type { AiTone, AiIndustry, AiCompanyType, AiAudience, AiPageBlock } from "@/lib/ai/types";
-import type { SiteGenerationInput, PageType, PAGE_BLUEPRINTS } from "./siteSchema";
+import { blockSchemas, getDefaultProps } from "@/lib/blockSchemas";
+import type { AiPageBlock } from "@/lib/ai/types";
+import type { SiteGenerationInput, PageType } from "./siteSchema";
 import { validateAiOutput } from "@/lib/ai/validator";
 
 /* ================================================================== */
@@ -42,7 +42,7 @@ export async function fetchJobSummaries(tenantId?: string): Promise<JobSummary[]
 export function buildJobContextString(jobs: JobSummary[]): string {
   if (jobs.length === 0) return "";
   const lines = jobs.map((j) => `- ${j.title} (${j.department}, ${j.location}, ${j.type})`).join("\n");
-  return `\nACTUAL OPEN POSITIONS at the company:\n${lines}\nUse these real job titles and departments in job-related blocks (job-list, job-category, hero for jobs page, etc.).`;
+  return `\nACTUAL OPEN POSITIONS at the company:\n${lines}\nUse these real job titles and departments in job-related blocks (search-results, job-category, hero for jobs page, etc.).`;
 }
 
 /* ================================================================== */

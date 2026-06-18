@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { JobSearchResponse, JobSearchParams } from "./types";
 
@@ -48,20 +48,27 @@ export function useJobSearch(defaultTenantId?: string): UseJobSearchResult {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Parse current params from URL
-  const params: JobSearchParams = {
-    q: searchParams.get("q") || undefined,
-    location: searchParams.get("location") || undefined,
-    department: searchParams.get("department") || undefined,
-    employmentType: (searchParams.get("employmentType") as JobSearchParams["employmentType"]) || undefined,
-    experienceLevel: (searchParams.get("experienceLevel") as JobSearchParams["experienceLevel"]) || undefined,
-    isRemote: searchParams.get("isRemote") === "true" ? true : undefined,
-    tenantId: searchParams.get("tenantId") || defaultTenantId || "default",
-    page: parseInt(searchParams.get("page") || "1", 10),
-    perPage: parseInt(searchParams.get("perPage") || "10", 10),
-    sortBy: (searchParams.get("sortBy") as JobSearchParams["sortBy"]) || undefined,
-    sortOrder: (searchParams.get("sortOrder") as JobSearchParams["sortOrder"]) || undefined,
-  };
+  // Parse current params from URL.
+  // Memoized so the object identity is stable across renders (only changes when
+  // the query string or default tenant changes), which keeps dependent hooks
+  // from re-running on every render.
+  const params: JobSearchParams = useMemo(
+    () => ({
+      q: searchParams.get("q") || undefined,
+      location: searchParams.get("location") || undefined,
+      department: searchParams.get("department") || undefined,
+      employmentType: (searchParams.get("employmentType") as JobSearchParams["employmentType"]) || undefined,
+      experienceLevel: (searchParams.get("experienceLevel") as JobSearchParams["experienceLevel"]) || undefined,
+      isRemote: searchParams.get("isRemote") === "true" ? true : undefined,
+      tenantId: searchParams.get("tenantId") || defaultTenantId || "default",
+      page: parseInt(searchParams.get("page") || "1", 10),
+      perPage: parseInt(searchParams.get("perPage") || "10", 10),
+      sortBy: (searchParams.get("sortBy") as JobSearchParams["sortBy"]) || undefined,
+      sortOrder: (searchParams.get("sortOrder") as JobSearchParams["sortOrder"]) || undefined,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [searchParams.toString(), defaultTenantId],
+  );
 
   const [data, setData] = useState<JobSearchResponse>(EMPTY_RESPONSE);
   const [isLoading, setIsLoading] = useState(true);
@@ -148,7 +155,6 @@ export function useJobSearch(defaultTenantId?: string): UseJobSearchResult {
       if (key !== "page") next.page = 1;
       updateUrl(next);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [params, updateUrl],
   );
 

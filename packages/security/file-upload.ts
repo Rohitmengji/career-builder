@@ -181,7 +181,7 @@ export function validateUpload(
   // 4. Check magic bytes (file header signature)
   if (config.checkMagicBytes && typeInfo.magicBytes) {
     const buf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
-    const header = buf.subarray(0, 8).toString("hex").toLowerCase();
+    const header = buf.subarray(0, 16).toString("hex").toLowerCase();
 
     const matches = typeInfo.magicBytes.some((magic) => header.startsWith(magic.toLowerCase()));
     if (!matches) {
@@ -189,6 +189,18 @@ export function validateUpload(
         valid: false,
         error: "File content does not match its extension. Possible spoofed file.",
       };
+    }
+
+    // WEBP is a RIFF container — so are WAV and AVI. The "RIFF" prefix alone
+    // accepts those too. Require the "WEBP" fourCC at byte offset 8 (hex 8..15).
+    if (matchedType === "webp") {
+      const fourCC = buf.subarray(8, 12).toString("ascii");
+      if (fourCC !== "WEBP") {
+        return {
+          valid: false,
+          error: "File content does not match its extension. Possible spoofed file.",
+        };
+      }
     }
   }
 
@@ -198,8 +210,20 @@ export function validateUpload(
       ? buffer.toString("utf-8")
       : Buffer.from(buffer).toString("utf-8");
 
-    if (/<script/i.test(content) || /on\w+\s*=/i.test(content) || /javascript:/i.test(content)) {
-      return { valid: false, error: "SVG files with embedded scripts are not allowed" };
+    // Reject the common SVG-borne XSS / XXE vectors. (SVGs are also served with
+    // Content-Disposition: attachment + a sandbox CSP, so this is layered.)
+    const SVG_DANGER = [
+      /<script/i,            // inline script
+      /\son\w+\s*=/i,        // event-handler attributes (onload, onerror, ...)
+      /javascript:/i,        // javascript: URIs
+      /<foreignobject/i,     // can embed arbitrary HTML
+      /<!entity/i,           // entity declarations (XXE)
+      /<!doctype/i,          // doctype (entity expansion)
+      /xlink:href\s*=\s*["']?\s*(javascript|data):/i,
+      /\shref\s*=\s*["']?\s*(javascript|data):/i,
+    ];
+    if (SVG_DANGER.some((re) => re.test(content))) {
+      return { valid: false, error: "SVG file contains disallowed scripting or external references" };
     }
   }
 

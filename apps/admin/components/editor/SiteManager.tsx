@@ -143,7 +143,7 @@ export default function SiteManager({
       return updated;
     });
     onCreatePage(slug);
-  }, [newSlug, pages, onCreatePage]);
+  }, [newSlug, pages, onCreatePage, onPageCountChange]);
 
   // Handle page deletion
   const handleDelete = useCallback(
@@ -157,7 +157,7 @@ export default function SiteManager({
       });
       onDeletePage(slug);
     },
-    [onDeletePage],
+    [onDeletePage, onPageCountChange],
   );
 
   // Site URL for preview
