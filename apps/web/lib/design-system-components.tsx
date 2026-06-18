@@ -216,31 +216,37 @@ export function ResponsiveDrawer({
   }, [isOpen, onClose]);
 
   const sideClass = side === "left" ? "left-0" : "right-0";
-  const translateClass = side === "left"
-    ? isOpen ? "translate-x-0" : "-translate-x-full"
-    : isOpen ? "translate-x-0" : "translate-x-full";
 
   return (
     <>
-      {/* Backdrop — always rendered, visibility controlled via opacity */}
+      {/* Backdrop — always rendered, visibility controlled via opacity.
+          opacity/pointer-events are set INLINE (not just via utility classes)
+          so a stray global rule (e.g. scroll-reveal's .cb-reveal) can never
+          override the closed/hidden state and leave a full-page scrim. */}
       <div
-        className={`fixed inset-0 bg-black/50 transition-opacity duration-300 ${
-          isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
-        style={{ zIndex: zIndex.overlay }}
+        className="fixed inset-0 bg-black/50 transition-opacity duration-300"
+        style={{
+          zIndex: zIndex.overlay,
+          opacity: isOpen ? 1 : 0,
+          pointerEvents: isOpen ? "auto" : "none",
+        }}
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Drawer panel — always in DOM, slides in/out via transform */}
+      {/* Drawer panel — always in DOM, slides in/out via transform (inline, for
+          the same override-proofing reason as the backdrop). */}
       <div
         ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-label={label}
         className={`fixed top-0 ${sideClass} h-full w-80 max-w-[85vw] bg-white shadow-2xl
-          flex flex-col transform transition-transform duration-300 ease-out ${translateClass}`}
-        style={{ zIndex: zIndex.modal }}
+          flex flex-col transition-transform duration-300 ease-out`}
+        style={{
+          zIndex: zIndex.modal,
+          transform: isOpen ? "translateX(0)" : side === "left" ? "translateX(-100%)" : "translateX(100%)",
+        }}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
           <span className="font-semibold text-gray-900 text-sm">{label}</span>

@@ -35,7 +35,16 @@ export function useScrollReveal<T extends HTMLElement = HTMLElement>() {
     const el = containerRef.current;
     if (!el) return;
 
-    const children = Array.from(el.children) as HTMLElement[];
+    // Only reveal normal-flow content. Overlays (fixed/absolute) — e.g. a nav
+    // drawer's backdrop/panel that render as fragment siblings of the page
+    // blocks — must NOT be reveal-animated: the `.cb-reveal.cb-visible{opacity:1}`
+    // rule (unlayered, specificity 0,2,0) would override their Tailwind
+    // `opacity-0` hide state and paint a full-page scrim. (Root cause of the
+    // stuck dark overlay bug.)
+    const children = (Array.from(el.children) as HTMLElement[]).filter((child) => {
+      const pos = getComputedStyle(child).position;
+      return pos !== "fixed" && pos !== "absolute";
+    });
     if (children.length === 0) return;
 
     // If reduced motion, mark visible immediately — no animations
