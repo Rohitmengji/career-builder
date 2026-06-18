@@ -160,7 +160,7 @@ export function TextareaField({ label, error, hint, required, className = "", ..
   );
 }
 
-interface PasswordFieldProps extends Omit<FieldProps, "type"> {}
+type PasswordFieldProps = Omit<FieldProps, "type">;
 
 export function PasswordField({ label, error, hint, labelRight, required, className = "", ...rest }: PasswordFieldProps) {
   const id = React.useId();
