@@ -1,5 +1,30 @@
 # Changelog
 
+## Candidate Accounts + Web Overlay Fix (2026-06-18)
+
+### Candidate auth (public career site)
+Full job-seeker account system on `apps/web`, separate from staff RBAC users:
+- **New `Candidate` model** (tenant-scoped) + `candidateRepo`; Turso DDL
+  regenerated and parity-verified.
+- **Sessions** via iron-session (`apps/web/lib/session.ts`) — AES-256-GCM
+  encrypted cookie; passwords hashed with scrypt (`@career-builder/security`).
+- **Pages:** `/login`, `/register`, `/forgot-password`, `/reset-password`,
+  `/profile` (view + edit/update).
+- **API:** `POST /api/auth/{register,login,logout,forgot-password,reset-password}`,
+  `GET /api/auth/session`, `GET|PATCH /api/profile`.
+- **Security:** rate-limited; enumeration-resistant login/forgot; one-time,
+  hashed, 1-hour reset tokens (raw token only emailed); responses never expose
+  `passwordHash`; LinkedIn URL validated (https + host allowlist).
+- **Email:** new `emailService.sendPasswordReset` with an escaped reset link.
+- Requires `SESSION_SECRET` (32+ chars) in production on the web app.
+
+### Fix: stuck full-page dark overlay (public site)
+The nav drawer's fixed backdrop/panel rendered as `main > div` siblings of page
+blocks, so two reveal mechanisms forced their opacity to 1 — a 50% black scrim
+over the whole site. Fixed: `useScrollReveal` skips fixed/absolute overlays; the
+`main > div` entry animation excludes `.fixed`/`[role=dialog]`/`[aria-hidden]`;
+the drawer drives opacity/transform via inline styles.
+
 ## Security & Reliability Hardening (2026-06-18)
 
 A platform-wide hardening pass driven by a full-codebase audit. Closes the

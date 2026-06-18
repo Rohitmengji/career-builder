@@ -119,6 +119,43 @@ export const emailService = {
       ],
     });
   },
+
+  /**
+   * Send a password-reset link to a candidate. The URL is HTML-escaped and the
+   * token is URL-encoded to prevent attribute/markup injection.
+   */
+  async sendPasswordReset(data: {
+    email: string;
+    firstName?: string;
+    resetUrl: string;
+    companyName?: string;
+    expiresInMinutes?: number;
+  }): Promise<SendResult> {
+    const esc = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const company = esc(data.companyName || "Our Careers Team");
+    const name = esc(data.firstName || "there");
+    const url = esc(data.resetUrl);
+    const mins = data.expiresInMinutes ?? 60;
+    const subject = `Reset your password`;
+    const html = `<!doctype html><html><body style="font-family:system-ui,sans-serif;line-height:1.5;color:#111827;max-width:520px;margin:0 auto;padding:24px">
+      <h1 style="font-size:20px;margin:0 0 16px">Reset your password</h1>
+      <p>Hi ${name},</p>
+      <p>We received a request to reset your password. Click the button below to choose a new one. This link expires in ${mins} minutes.</p>
+      <p style="margin:24px 0"><a href="${url}" style="background:#2563eb;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">Reset Password</a></p>
+      <p style="color:#6b7280;font-size:13px">If you didn't request this, you can safely ignore this email — your password won't change.</p>
+      <p style="color:#6b7280;font-size:13px">Or paste this link into your browser:<br>${url}</p>
+      <p style="color:#9ca3af;font-size:12px;margin-top:24px">${company}</p>
+    </body></html>`;
+    const text = `Hi ${data.firstName || "there"},\n\nReset your password using this link (expires in ${mins} minutes):\n${data.resetUrl}\n\nIf you didn't request this, ignore this email.\n\n${data.companyName || "Our Careers Team"}`;
+    return getProvider().send({
+      to: { email: data.email, name: data.firstName },
+      subject,
+      html,
+      text,
+      tags: [{ name: "type", value: "password-reset" }],
+    });
+  },
 };
 
 /* ================================================================== */

@@ -21,3 +21,5 @@ export { webhookRepo } from "./webhookRepo";
 export type { CreateWebhookInput } from "./webhookRepo";
 export { subscriptionRepo } from "./subscriptionRepo";
 export type { SubscriptionRecord } from "./subscriptionRepo";
+export { candidateRepo } from "./candidateRepo";
+export type { CreateCandidateInput, UpdateCandidateProfileInput } from "./candidateRepo";
