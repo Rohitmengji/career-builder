@@ -29,6 +29,17 @@ async function hashPassword(password: string): Promise<string> {
 async function main() {
   console.log("🚀 Production seed — creating minimal data...\n");
 
+  // Refuse to create production admins with well-known default passwords.
+  // Operators MUST supply real credentials via env.
+  const missing = ["ADMIN_PASSWORD", "SUPER_ADMIN_PASSWORD"].filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    console.error(
+      `❌ Refusing to seed production: set ${missing.join(" and ")} to strong, unique ` +
+        `password(s) before running. (These create the initial admin accounts.)`,
+    );
+    process.exit(1);
+  }
+
   const dbUrl = process.env.DATABASE_URL || "";
   console.log(`  Database: ${dbUrl.startsWith("libsql://") ? "Turso" : dbUrl.startsWith("file:") ? "SQLite" : "Unknown"}`);
 

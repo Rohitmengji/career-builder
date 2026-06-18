@@ -47,8 +47,16 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+/** Allow only http(s) links; escape for the href attribute. Prevents
+ *  attribute breakout and javascript:/data: URIs in email buttons. */
+function safeHref(href: string): string {
+  const trimmed = String(href || "").trim();
+  if (!/^https?:\/\//i.test(trimmed)) return "#";
+  return escapeHtml(trimmed);
+}
+
 function btn(text: string, href: string): string {
-  return `<a href="${href}" style="display:inline-block;background:#2563eb;color:#ffffff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;margin-top:16px;">${escapeHtml(text)}</a>`;
+  return `<a href="${safeHref(href)}" style="display:inline-block;background:#2563eb;color:#ffffff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;margin-top:16px;">${escapeHtml(text)}</a>`;
 }
 
 /* ================================================================== */

@@ -25,7 +25,16 @@ import { getIronSession } from "iron-session";
 import { userRepo, auditRepo } from "@career-builder/database";
 import { sessionOptions, type SessionData, SESSION_MAX_AGE_SECONDS } from "./session";
 
-const AUTH_SECRET = process.env.AUTH_SECRET || "career-builder-secret-key";
+// Legacy SHA-256 hash-migration secret only (bcrypt is primary). Never ship the
+// recognizable hardcoded literal to production: prefer AUTH_SECRET, fall back to
+// the (prod-required) SESSION_SECRET, and only use a dev placeholder locally.
+const AUTH_SECRET =
+  process.env.AUTH_SECRET ||
+  process.env.SESSION_SECRET ||
+  (process.env.NODE_ENV === "production" ? "" : "career-builder-dev-only-secret");
+if (process.env.NODE_ENV === "production" && !process.env.AUTH_SECRET && !process.env.SESSION_SECRET) {
+  console.warn("[auth] Neither AUTH_SECRET nor SESSION_SECRET is set in production — legacy SHA-256 login is disabled.");
+}
 const DEFAULT_TENANT_ID = process.env.TENANT_ID || "default";
 const CSRF_COOKIE = "cb_csrf";
 const SESSION_MAX_AGE = SESSION_MAX_AGE_SECONDS;
