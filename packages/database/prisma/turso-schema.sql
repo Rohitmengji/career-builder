@@ -183,6 +183,29 @@ CREATE TABLE "Webhook" (
 );
 
 -- CreateTable
+CREATE TABLE "Candidate" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "email" TEXT NOT NULL,
+    "passwordHash" TEXT NOT NULL,
+    "firstName" TEXT NOT NULL,
+    "lastName" TEXT NOT NULL,
+    "phone" TEXT,
+    "location" TEXT,
+    "linkedinUrl" TEXT,
+    "resumeUrl" TEXT,
+    "headline" TEXT,
+    "bio" TEXT,
+    "resetTokenHash" TEXT,
+    "resetTokenExpiry" DATETIME,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "lastLoginAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    CONSTRAINT "Candidate_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "AppConfig" (
     "key" TEXT NOT NULL PRIMARY KEY,
     "value" TEXT NOT NULL,
@@ -275,4 +298,13 @@ CREATE INDEX "AnalyticsEvent_createdAt_idx" ON "AnalyticsEvent"("createdAt");
 
 -- CreateIndex
 CREATE INDEX "Webhook_tenantId_idx" ON "Webhook"("tenantId");
+
+-- CreateIndex
+CREATE INDEX "Candidate_tenantId_idx" ON "Candidate"("tenantId");
+
+-- CreateIndex
+CREATE INDEX "Candidate_resetTokenHash_idx" ON "Candidate"("resetTokenHash");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Candidate_email_tenantId_key" ON "Candidate"("email", "tenantId");
 

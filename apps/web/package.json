@@ -18,7 +18,8 @@
     "@career-builder/tenant-config": "*",
     "next": "16.1.7",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "iron-session": "^8.0.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

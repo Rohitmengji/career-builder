@@ -18,6 +18,7 @@ export {
   auditRepo,
   webhookRepo,
   subscriptionRepo,
+  candidateRepo,
 } from "./repositories";
 
 // Re-export all domain types and constants
