@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,13 +13,20 @@ import {
   getGoogleFontsUrl,
   isLightColor,
 } from "@career-builder/tenant-config";
+import {
+  Button,
+  Alert,
+  Skeleton,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+} from "@/components/ui";
 
 function getCsrfToken(): string {
   const match = document.cookie.match(/(?:^|;\s*)cb_csrf=([^;]*)/);
   return match ? match[1] : "";
 }
 
-/* ─── Color Swatch ──────────────────────────────────────────────── */
+/* ─── Color Field ───────────────────────────────────────────────── */
 function ColorField({
   label,
   value,
@@ -28,21 +36,26 @@ function ColorField({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const swatchId = React.useId();
+  const textId = React.useId();
   return (
     <div className="flex items-center gap-3">
       <input
+        id={swatchId}
         type="color"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-8 h-8 rounded-lg border border-gray-200 cursor-pointer"
+        aria-label={`${label} color picker`}
+        className="h-10 w-10 shrink-0 cursor-pointer rounded-lg border border-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
       />
-      <div className="flex-1 min-w-0">
-        <label className="text-xs font-medium text-gray-600 block">{label}</label>
+      <div className="min-w-0 flex-1">
+        <label htmlFor={textId} className="block text-xs font-medium text-gray-700">{label}</label>
         <input
+          id={textId}
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="text-xs text-gray-900 bg-transparent border-none p-0 outline-none w-full font-mono"
+          className="w-full rounded-md border border-transparent bg-transparent p-0 font-mono text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
         />
       </div>
     </div>
@@ -61,13 +74,15 @@ function SelectField({
   options: { label: string; value: string }[];
   onChange: (v: string) => void;
 }) {
+  const id = React.useId();
   return (
     <div>
-      <label className="text-xs font-medium text-gray-600 block mb-1">{label}</label>
+      <label htmlFor={id} className="mb-1 block text-xs font-medium text-gray-700">{label}</label>
       <select
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-blue-600 transition"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -89,21 +104,23 @@ function TextField({
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
+  const id = React.useId();
   return (
     <div>
-      <label className="text-xs font-medium text-gray-600 block mb-1">{label}</label>
+      <label htmlFor={id} className="mb-1 block text-xs font-medium text-gray-700">{label}</label>
       <input
+        id={id}
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-blue-600 transition"
       />
     </div>
   );
 }
 
-/* ─── Toggle Field ──────────────────────────────────────────────── */
+/* ─── Toggle Field (switch) ─────────────────────────────────────── */
 function ToggleField({
   label,
   value,
@@ -113,14 +130,19 @@ function ToggleField({
   value: boolean;
   onChange: (v: boolean) => void;
 }) {
+  const id = React.useId();
   return (
-    <div className="flex items-center justify-between">
-      <label className="text-xs font-medium text-gray-600">{label}</label>
+    <div className="flex items-center justify-between gap-3">
+      <span id={id} className="text-xs font-medium text-gray-700">{label}</span>
       <button
+        type="button"
+        role="switch"
+        aria-checked={value}
+        aria-labelledby={id}
         onClick={() => onChange(!value)}
-        className={`w-9 h-5 rounded-full transition-colors ${value ? "bg-blue-600" : "bg-gray-300"}`}
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${value ? "bg-blue-600" : "bg-gray-300"}`}
       >
-        <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${value ? "translate-x-4.5" : "translate-x-0.5"}`} />
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${value ? "translate-x-6" : "translate-x-1"}`} />
       </button>
     </div>
   );
@@ -129,10 +151,10 @@ function ToggleField({
 /* ─── Section Wrapper ───────────────────────────────────────────── */
 function ConfigSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-3">
-      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">{title}</h3>
+    <section className="space-y-3">
+      <h2 className="text-xs font-bold uppercase tracking-wider text-gray-600">{title}</h2>
       <div className="space-y-3">{children}</div>
-    </div>
+    </section>
   );
 }
 
@@ -144,20 +166,20 @@ function ThemePreview({ theme, branding }: { theme: TenantTheme; branding: Tenan
 
   return (
     <div
-      className="rounded-2xl overflow-hidden border border-gray-200 shadow-lg"
+      className="overflow-hidden rounded-2xl border border-gray-200 shadow-lg"
       style={{ fontFamily: `"${theme.typography.fontFamily}", system-ui, sans-serif` }}
     >
       {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}
       {/* Navbar */}
       <div
-        className="px-6 py-3 flex items-center justify-between border-b"
+        className="flex items-center justify-between border-b px-6 py-3"
         style={{ backgroundColor: isDark ? "#030712" : theme.colors.background, borderColor: theme.colors.border }}
       >
         <span className="text-sm font-semibold" style={{ color: isDark ? "#ffffff" : theme.colors.text }}>
           {branding.companyName || "Company"}
         </span>
         <span
-          className="text-xs font-semibold px-3 py-1.5"
+          className="px-3 py-1.5 text-xs font-semibold"
           style={{
             backgroundColor: theme.colors.primary,
             color: primaryText,
@@ -172,8 +194,8 @@ function ThemePreview({ theme, branding }: { theme: TenantTheme; branding: Tenan
         className="px-8 py-12 text-center"
         style={{ background: isDark ? "linear-gradient(to bottom, #1f2937, #111827)" : `linear-gradient(to bottom, ${theme.colors.surface}, ${theme.colors.background})` }}
       >
-        <h2
-          className="text-xl font-semibold mb-2"
+        <h3
+          className="mb-2 text-xl font-semibold"
           style={{
             color: isDark ? "#f9fafb" : theme.colors.text,
             fontFamily: theme.typography.headingFontFamily ? `"${theme.typography.headingFontFamily}", sans-serif` : undefined,
@@ -181,12 +203,12 @@ function ThemePreview({ theme, branding }: { theme: TenantTheme; branding: Tenan
           }}
         >
           Build Your Career
-        </h2>
-        <p className="text-xs mb-4" style={{ color: isDark ? "#9ca3af" : theme.colors.textMuted }}>
+        </h3>
+        <p className="mb-4 text-xs" style={{ color: isDark ? "#9ca3af" : theme.colors.textMuted }}>
           Join our team and make an impact.
         </p>
         <span
-          className="inline-block text-xs font-semibold px-4 py-2"
+          className="inline-block px-4 py-2 text-xs font-semibold"
           style={{ backgroundColor: theme.colors.primary, color: primaryText, borderRadius: "var(--btn-radius, 8px)" }}
         >
           Explore Roles
@@ -194,13 +216,13 @@ function ThemePreview({ theme, branding }: { theme: TenantTheme; branding: Tenan
       </div>
       {/* Card row */}
       <div
-        className="px-6 py-6 grid grid-cols-3 gap-3"
+        className="grid grid-cols-3 gap-3 px-6 py-6"
         style={{ backgroundColor: isDark ? "#111827" : theme.colors.surface }}
       >
         {["Culture", "Growth", "Balance"].map((t) => (
           <div
             key={t}
-            className="p-3 border text-center"
+            className="border p-3 text-center"
             style={{
               borderColor: theme.colors.border,
               borderRadius: "var(--card-radius, 12px)",
@@ -220,7 +242,7 @@ function ThemePreview({ theme, branding }: { theme: TenantTheme; branding: Tenan
       </div>
       {/* Footer */}
       <div className="px-6 py-4 text-center" style={{ backgroundColor: "#030712" }}>
-        <p className="text-[10px] text-gray-500">© 2026 {branding.companyName || "Company"}</p>
+        <p className="text-[10px] text-gray-400">© 2026 {branding.companyName || "Company"}</p>
       </div>
     </div>
   );
@@ -249,7 +271,7 @@ export default function ThemeEditorPage() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState<{ tone: "success" | "error"; message: string } | null>(null);
 
   const [config, setConfig] = useState<TenantConfig>(mergeTenantConfig({ id: tenantId }));
   const [tenants, setTenants] = useState<TenantConfig[]>([]);
@@ -258,9 +280,9 @@ export default function ThemeEditorPage() {
   const theme = config.theme;
   const branding = config.branding;
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+  const showToast = (tone: "success" | "error", message: string) => {
+    setToast({ tone, message });
+    setTimeout(() => setToast(null), 3000);
   };
 
   /* ── Auth ──────────────────────────────────────────────────────── */
@@ -308,12 +330,12 @@ export default function ThemeEditorPage() {
         body: JSON.stringify(config),
       });
       if (!res.ok) throw new Error("Save failed");
-      showToast("✅ Theme saved");
+      showToast("success", "Theme saved");
       // Refresh tenant list
       const listData = await fetch("/api/tenants").then((r) => r.json());
       if (listData.tenants) setTenants(listData.tenants);
     } catch {
-      showToast("❌ Failed to save");
+      showToast("error", "Failed to save");
     }
     setSaving(false);
   }, [config]);
@@ -333,76 +355,85 @@ export default function ThemeEditorPage() {
       });
       if (!res.ok) throw new Error("Create failed");
       setNewTenantId("");
-      showToast(`✅ Tenant "${id}" created`);
+      showToast("success", `Tenant "${id}" created`);
       router.push(`/theme?tenant=${id}`);
     } catch {
-      showToast("❌ Failed to create tenant");
+      showToast("error", "Failed to create tenant");
     }
     setSaving(false);
   }, [newTenantId, router]);
 
   if (authenticated === null || loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-sm text-gray-400">Loading theme editor…</p>
-      </div>
+      <main className="flex min-h-screen bg-gray-50">
+        <div className="w-full max-w-sm space-y-4 border-r border-gray-200 bg-white p-5">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+        <div className="flex-1 p-10">
+          <Skeleton className="h-96 w-full max-w-xl" />
+        </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="flex min-h-screen flex-col bg-gray-50 lg:flex-row">
       {/* ── Left: Config Panel ──────────────────────────────────── */}
-      <div className="w-96 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+      <div className="flex w-full flex-col border-b border-gray-200 bg-white lg:max-h-screen lg:w-96 lg:border-b-0 lg:border-r lg:overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
-          <div className="flex items-center justify-between mb-3">
+        <header className="border-b border-gray-100 bg-gray-50 px-5 py-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <h1 className="text-sm font-bold text-gray-900">🎨 Theme Editor</h1>
-              <p className="text-[10px] text-gray-400 mt-0.5">Configure branding & theme for each tenant</p>
+              <h1 className="text-sm font-bold text-gray-900">Theme Editor</h1>
+              <p className="mt-0.5 text-xs text-gray-600">Configure branding &amp; theme for each tenant</p>
             </div>
-            <Link href="/" className="text-xs text-gray-400 hover:text-gray-600">← Home</Link>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1 rounded px-1 text-xs text-gray-600 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+            >
+              <ArrowLeftIcon className="h-4 w-4" /> Home
+            </Link>
           </div>
 
           {/* Tenant selector */}
           <div className="flex gap-2">
+            <label htmlFor="tenant-select" className="sr-only">Select tenant</label>
             <select
+              id="tenant-select"
               value={tenantId}
               onChange={(e) => router.push(`/theme?tenant=${e.target.value}`)}
-              className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white"
+              className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
             >
               {tenants.map((t) => (
                 <option key={t.id} value={t.id}>{t.name || t.id}</option>
               ))}
             </select>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors"
-            >
-              {saving ? "Saving…" : "💾 Save"}
-            </button>
+            <Button onClick={handleSave} loading={saving} size="sm">
+              {saving ? "Saving…" : "Save"}
+            </Button>
           </div>
 
           {/* New tenant */}
-          <div className="flex gap-2 mt-2">
+          <div className="mt-2 flex gap-2">
+            <label htmlFor="new-tenant" className="sr-only">New tenant ID</label>
             <input
+              id="new-tenant"
               type="text"
               value={newTenantId}
               onChange={(e) => setNewTenantId(e.target.value)}
               placeholder="New tenant ID…"
-              className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-1.5"
+              className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
             />
-            <button
-              onClick={handleCreateTenant}
-              className="bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium px-3 py-1.5 rounded-lg"
-            >
-              + Create
-            </button>
+            <Button onClick={handleCreateTenant} variant="secondary" size="sm">+ Create</Button>
           </div>
-        </div>
+        </header>
 
         {/* Config fields — scrollable */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        <div className="flex-1 space-y-6 overflow-y-auto p-5">
           {/* BRANDING */}
           <ConfigSection title="Branding">
             <TextField label="Company Name" value={branding.companyName} onChange={(v) => updateBranding("companyName", v)} />
@@ -568,36 +599,38 @@ export default function ThemeEditorPage() {
       </div>
 
       {/* ── Right: Live Preview ─────────────────────────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <div className="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200">
-          <h2 className="text-sm font-medium text-gray-700">Live Preview — <span className="font-mono text-gray-400">{tenantId}</span></h2>
-          <div className="flex gap-2">
-            <a
-              href={`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/${tenantId === "default" ? "careers" : tenantId}`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-blue-600 hover:text-blue-500 font-medium"
-            >
-              ↗ Open Full Preview
-            </a>
-          </div>
+        <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-6 py-3">
+          <h2 className="text-sm font-medium text-gray-700">
+            Live Preview — <span className="font-mono text-gray-600">{tenantId}</span>
+          </h2>
+          <a
+            href={`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/${tenantId === "default" ? "careers" : tenantId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded px-1 text-xs font-medium text-blue-700 hover:text-blue-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+          >
+            Open Full Preview <ArrowRightIcon className="h-4 w-4" />
+          </a>
         </div>
 
         {/* Preview */}
-        <div className="flex-1 overflow-y-auto p-10 flex items-start justify-center" style={{ backgroundColor: "#f3f4f6" }}>
+        <div className="flex flex-1 items-start justify-center overflow-y-auto p-6 sm:p-10" style={{ backgroundColor: "#f3f4f6" }}>
           <div className="w-full max-w-xl">
             <ThemePreview theme={theme} branding={branding} />
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-800 text-white text-sm px-5 py-2.5 rounded-lg shadow-lg font-medium">
-          {toast}
-        </div>
-      )}
+      {/* Toast / live region */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4" role="status" aria-live="polite">
+        {toast && (
+          <div className="pointer-events-auto w-full max-w-sm">
+            <Alert tone={toast.tone}>{toast.message}</Alert>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

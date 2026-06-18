@@ -43,8 +43,74 @@ import type { GeneratedSite } from "@/lib/ai/site-generator/siteSchema";
 import dynamic from "next/dynamic";
 import SiteManager from "@/components/editor/SiteManager";
 import VersionHistory from "@/components/editor/VersionHistory";
+import { Button, Spinner } from "@/components/ui";
 
 const SiteGenerator = dynamic(() => import("@/components/ai/SiteGenerator"), { ssr: false });
+
+/* ── Inline chrome icons (decorative — always aria-hidden) ──────────── */
+const ICON = {
+  fill: "none" as const,
+  stroke: "currentColor",
+  strokeWidth: 1.8,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+  viewBox: "0 0 24 24",
+  "aria-hidden": true,
+};
+function IconUndo({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><path d="M9 14L4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-1" /></svg>;
+}
+function IconRedo({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><path d="M15 14l5-5-5-5" /><path d="M20 9H9a5 5 0 0 0 0 10h1" /></svg>;
+}
+function IconHistory({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l3 2" /></svg>;
+}
+function IconDesktop({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg>;
+}
+function IconTablet({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><rect x="5" y="2" width="14" height="20" rx="2" /><path d="M12 18h.01" /></svg>;
+}
+function IconMobile({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M12 18h.01" /></svg>;
+}
+function IconGlobe({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z" /></svg>;
+}
+function IconSparkles({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z" /><path d="M18 16l.7 1.8L20.5 18.5l-1.8.7L18 21l-.7-1.8L15.5 18.5l1.8-.7z" /></svg>;
+}
+function IconSave({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>;
+}
+function IconRocket({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><path d="M4.5 16.5c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2 0-2.8a2 2 0 0 0-3 0z" /><path d="M12 15l-3-3a14 14 0 0 1 9-9c2 0 3 1 3 3a14 14 0 0 1-9 9z" /><circle cx="15" cy="9" r="1" /></svg>;
+}
+function IconCheck({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><path d="M5 13l4 4L19 7" /></svg>;
+}
+function IconX({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><path d="M6 6l12 12M18 6L6 18" /></svg>;
+}
+function IconExternal({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><path d="M15 3h6v6M10 14L21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>;
+}
+function IconLock({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>;
+}
+function IconTrash({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>;
+}
+function IconAlert({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>;
+}
+function IconBlocks({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><rect x="3" y="3" width="8" height="8" rx="1" /><rect x="13" y="3" width="8" height="8" rx="1" /><rect x="3" y="13" width="8" height="8" rx="1" /><rect x="13" y="13" width="8" height="8" rx="1" /></svg>;
+}
+function IconPages({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg className={className} {...ICON}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>;
+}
 
 type SaveStatus = "idle" | "saving" | "saved" | "error" | "expired" | "autosaving";
 type DeviceType = "desktop" | "tablet" | "mobile";
@@ -1061,6 +1127,30 @@ export default function EditorPage() {
     }
   }, [user, router]);
 
+  /* ── Preview handler — save current draft, then open a token-gated
+   *    draft preview of the public page in a new tab. ──────────────── */
+  const handlePreview = useCallback(async () => {
+    // Open the tab synchronously so popup blockers don't kill it after await.
+    const win = window.open("", "_blank");
+    try {
+      // Persist the latest edits first so the preview reflects them.
+      await handleSaveRef.current?.(true);
+      const slug = activePageRef.current;
+      const res = await fetch(`/api/preview/token?slug=${encodeURIComponent(slug)}`);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.previewUrl) {
+        if (win) win.location.href = data.previewUrl;
+        else window.open(data.previewUrl, "_blank");
+      } else {
+        win?.close();
+        console.error("[Preview] token error:", data?.error);
+      }
+    } catch (err) {
+      win?.close();
+      console.error("[Preview] error:", err);
+    }
+  }, []);
+
   /* ── Device switching ────────────────────────────────────────────── */
   const switchDevice = useCallback((device: DeviceType) => {
     const editor = editorInstance.current;
@@ -1077,8 +1167,9 @@ export default function EditorPage() {
   /* ── Loading state ─────────────────────────────────────────────── */
   if (authenticated === null) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-sm text-gray-400">Loading editor…</p>
+      <div className="h-screen flex flex-col items-center justify-center gap-3 bg-gray-50" role="status" aria-live="polite">
+        <span className="inline-block h-7 w-7 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" aria-hidden="true" />
+        <p className="text-sm font-medium text-gray-600">Loading editor…</p>
       </div>
     );
   }
@@ -1088,16 +1179,23 @@ export default function EditorPage() {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* ── Left panel: Tabbed — Blocks / Pages ─────────────────── */}
-      <div className="w-56 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+      <aside className="w-56 bg-white border-r border-gray-200 flex flex-col overflow-hidden" aria-label="Editor blocks and pages">
         {/* Header */}
-        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-          <div className="flex items-center justify-between">
-            <a href="/dashboard" className="text-sm font-bold text-gray-900 tracking-tight flex items-center gap-1.5" title="Back to Dashboard">
-              🏗️ Career Builder
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between gap-2">
+            <a
+              href="/dashboard"
+              className="flex items-center gap-1.5 rounded-md text-sm font-bold text-gray-900 tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+              title="Back to Dashboard"
+            >
+              <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 21h18M5 21V10l7-6 7 6v11M9 21v-6h6v6" />
+              </svg>
+              Career Builder
             </a>
             <button
               onClick={handleLogout}
-              className="text-[10px] text-gray-400 hover:text-red-500 transition-colors"
+              className="rounded px-1 text-[11px] font-medium text-gray-600 hover:text-red-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
               title="Sign out"
             >
               Sign out
@@ -1106,12 +1204,12 @@ export default function EditorPage() {
           {/* User info */}
           {user && (
             <div className="mt-2 flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+              <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0" aria-hidden="true">
                 {user.name.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] text-gray-700 font-medium truncate">{user.name}</p>
-                <p className="text-[10px] text-gray-400 truncate">{user.email} · <span className={`font-semibold ${user.role === 'super_admin' ? 'text-red-500' : user.role === 'admin' ? 'text-purple-500' : user.role === 'hiring_manager' ? 'text-blue-500' : user.role === 'recruiter' ? 'text-teal-500' : 'text-gray-500'}`}>{user.role === 'super_admin' ? 'Super Admin' : user.role === 'hiring_manager' ? 'Hiring Manager' : user.role}</span></p>
+                <p className="text-[11px] text-gray-800 font-medium truncate">{user.name}</p>
+                <p className="text-[10px] text-gray-600 truncate">{user.email} · <span className={`font-semibold ${user.role === 'super_admin' ? 'text-red-600' : user.role === 'admin' ? 'text-purple-600' : user.role === 'hiring_manager' ? 'text-blue-600' : user.role === 'recruiter' ? 'text-teal-700' : 'text-gray-600'}`}>{user.role === 'super_admin' ? 'Super Admin' : user.role === 'hiring_manager' ? 'Hiring Manager' : user.role}</span></p>
               </div>
             </div>
           )}
@@ -1119,34 +1217,44 @@ export default function EditorPage() {
 
         {/* Tab switcher */}
         {!isViewer && (
-          <div className="flex border-b border-gray-200 bg-white shrink-0">
+          <div className="flex border-b border-gray-200 bg-white shrink-0" role="tablist" aria-label="Left panel sections">
             <button
+              role="tab"
+              id="tab-blocks"
+              aria-selected={leftTab === "blocks"}
+              aria-controls="panel-blocks"
               onClick={() => setLeftTab("blocks")}
-              className={`flex-1 py-2 text-[11px] font-semibold text-center transition-colors relative ${
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 py-2 text-[11px] font-semibold transition-colors relative focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 ${
                 leftTab === "blocks"
                   ? "text-blue-600"
-                  : "text-gray-400 hover:text-gray-600"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              🧱 Blocks
+              <IconBlocks className="h-3.5 w-3.5" />
+              Blocks
               {leftTab === "blocks" && (
-                <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-600 rounded-full" />
+                <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-600 rounded-full" aria-hidden="true" />
               )}
             </button>
             <button
+              role="tab"
+              id="tab-pages"
+              aria-selected={leftTab === "pages"}
+              aria-controls="panel-pages"
               onClick={() => setLeftTab("pages")}
-              className={`flex-1 py-2 text-[11px] font-semibold text-center transition-colors relative ${
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 py-2 text-[11px] font-semibold transition-colors relative focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 ${
                 leftTab === "pages"
                   ? "text-blue-600"
-                  : "text-gray-400 hover:text-gray-600"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              📄 Pages
+              <IconPages className="h-3.5 w-3.5" />
+              Pages
               {pageCount > 0 && (
-                <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-[9px] font-bold text-gray-600">{pageCount}</span>
+                <span className="ml-0.5 inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-gray-200 text-[9px] font-bold text-gray-700" aria-hidden="true">{pageCount}</span>
               )}
               {leftTab === "pages" && (
-                <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-600 rounded-full" />
+                <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-600 rounded-full" aria-hidden="true" />
               )}
             </button>
           </div>
@@ -1155,15 +1263,20 @@ export default function EditorPage() {
         {/* Tab content */}
         <div className="flex-1 overflow-y-auto">
           {/* Blocks tab */}
-          <div className={leftTab === "blocks" ? "p-2" : "hidden"}>
+          <div
+            id="panel-blocks"
+            role={isViewer ? undefined : "tabpanel"}
+            aria-labelledby={isViewer ? undefined : "tab-blocks"}
+            className={leftTab === "blocks" ? "p-2" : "hidden"}
+          >
             {isViewer ? (
               <div className="text-center py-8">
-                <p className="text-xs text-gray-400">👁 View-only mode</p>
-                <p className="text-[10px] text-gray-300 mt-1">You can preview but not edit</p>
+                <p className="text-xs font-medium text-gray-700">View-only mode</p>
+                <p className="text-[11px] text-gray-500 mt-1">You can preview but not edit</p>
               </div>
             ) : (
               <>
-                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider px-1 mb-2">
+                <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider px-1 mb-2">
                   Drag to canvas
                 </p>
                 <div ref={blockPanelRef} />
@@ -1174,7 +1287,12 @@ export default function EditorPage() {
 
           {/* Pages tab */}
           {!isViewer && (
-            <div className={leftTab === "pages" ? "" : "hidden"}>
+            <div
+              id="panel-pages"
+              role="tabpanel"
+              aria-labelledby="tab-pages"
+              className={leftTab === "pages" ? "" : "hidden"}
+            >
               <SiteManager
                 activePage={activePage}
                 onSwitchPage={(slug) => { handleSwitchPage(slug); setLeftTab("blocks"); }}
@@ -1189,19 +1307,22 @@ export default function EditorPage() {
         </div>
 
         {/* Footer — current page indicator + shortcuts */}
-        <div className="p-3 border-t border-gray-100 text-[10px] text-gray-400 space-y-0.5">
+        <div className="p-3 border-t border-gray-200 text-[10px] text-gray-600 space-y-0.5">
           {/* Active page pill */}
           {!isViewer && (
             <button
               onClick={() => setLeftTab("pages")}
-              className="flex items-center gap-1.5 w-full px-2 py-1.5 mb-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-left"
+              className="flex items-center gap-1.5 w-full px-2 py-1.5 mb-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" aria-hidden="true" />
               <span className="text-[10px] font-medium truncate">Editing: /{activePage}</span>
             </button>
           )}
           {hasUnsaved && !isViewer && (
-            <p className="text-amber-500 font-medium mb-1">● Unsaved changes</p>
+            <p className="flex items-center gap-1.5 text-amber-700 font-medium mb-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
+              Unsaved changes
+            </p>
           )}
           {!isViewer && (
             <>
@@ -1211,21 +1332,19 @@ export default function EditorPage() {
             </>
           )}
           {(user?.role === "admin" || user?.role === "super_admin") && (
-            <p className="mt-1">
-              <a href="/settings" className="text-blue-500 hover:text-blue-400 underline">⚙ Settings</a>
-              {" · "}
-              <a href="/theme" className="text-purple-500 hover:text-purple-400 underline">🎨 Theme</a>
-              {" · "}
-              <a href="/analytics" className="text-green-500 hover:text-green-400 underline">📊 Analytics</a>
+            <p className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1">
+              <a href="/settings" className="rounded text-blue-700 hover:text-blue-800 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Settings</a>
+              <a href="/theme" className="rounded text-purple-700 hover:text-purple-800 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Theme</a>
+              <a href="/analytics" className="rounded text-green-700 hover:text-green-800 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Analytics</a>
             </p>
           )}
         </div>
-      </div>
+      </aside>
 
       {/* ── Center: Canvas ────────────────────────────────────────── */}
       <div className="flex-1 relative overflow-hidden flex flex-col">
         {/* Device switcher toolbar */}
-        <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shrink-0">
+        <div className="flex items-center justify-between gap-2 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
           {/* Left: Undo/Redo + Version History */}
           <div className="flex items-center gap-1 w-56">
             {!isViewer && (
@@ -1233,41 +1352,44 @@ export default function EditorPage() {
                 <button
                   onClick={() => editorInstance.current?.UndoManager?.undo?.()}
                   disabled={undoCount === 0}
-                  className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  aria-label="Undo (⌘Z)"
+                  className={`inline-flex items-center justify-center h-9 w-9 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
                     undoCount > 0
-                      ? "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
-                      : "text-gray-300 cursor-not-allowed"
+                      ? "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      : "text-gray-400 cursor-not-allowed"
                   }`}
                   title="Undo (⌘Z)"
                 >
-                  ↩
+                  <IconUndo />
                 </button>
                 <button
                   onClick={() => editorInstance.current?.UndoManager?.redo?.()}
                   disabled={redoCount === 0}
-                  className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  aria-label="Redo (⇧⌘Z)"
+                  className={`inline-flex items-center justify-center h-9 w-9 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
                     redoCount > 0
-                      ? "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
-                      : "text-gray-300 cursor-not-allowed"
+                      ? "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      : "text-gray-400 cursor-not-allowed"
                   }`}
                   title="Redo (⇧⌘Z)"
                 >
-                  ↪
+                  <IconRedo />
                 </button>
-                <div className="w-px h-5 bg-gray-200 mx-1" />
+                <div className="w-px h-5 bg-gray-200 mx-1" aria-hidden="true" />
                 <button
                   onClick={() => setShowVersionHistory(!showVersionHistory)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  aria-pressed={showVersionHistory}
+                  className={`inline-flex items-center gap-1.5 h-9 px-2.5 rounded-md text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
                     showVersionHistory
-                      ? "bg-blue-100 text-blue-700 shadow-sm"
-                      : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      ? "bg-blue-100 text-blue-700"
+                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                   }`}
                   title="Version History"
                 >
-                  🕒
+                  <IconHistory />
                   <span className="hidden sm:inline">History</span>
                   {pageVersion > 0 && (
-                    <span className="text-[9px] bg-gray-200 text-gray-600 px-1 rounded-full">
+                    <span className="text-[9px] bg-gray-200 text-gray-700 px-1 rounded-full">
                       v{pageVersion}
                     </span>
                   )}
@@ -1277,23 +1399,24 @@ export default function EditorPage() {
           </div>
 
           {/* Device buttons — centered */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1" role="group" aria-label="Canvas device preview">
             {([
-              { key: "desktop" as DeviceType, icon: "🖥", label: "Desktop" },
-              { key: "tablet" as DeviceType, icon: "📱", label: "Tablet" },
-              { key: "mobile" as DeviceType, icon: "📲", label: "Mobile" },
-            ]).map(({ key, icon, label }) => (
+              { key: "desktop" as DeviceType, Icon: IconDesktop, label: "Desktop" },
+              { key: "tablet" as DeviceType, Icon: IconTablet, label: "Tablet" },
+              { key: "mobile" as DeviceType, Icon: IconMobile, label: "Mobile" },
+            ]).map(({ key, Icon, label }) => (
               <button
                 key={key}
                 onClick={() => switchDevice(key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                aria-pressed={activeDevice === key}
+                className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
                   activeDevice === key
-                    ? "bg-blue-100 text-blue-700 shadow-sm"
-                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                 }`}
                 title={label}
               >
-                <span>{icon}</span>
+                <Icon />
                 <span>{label}</span>
               </button>
             ))}
@@ -1304,16 +1427,16 @@ export default function EditorPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowSiteGenerator(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-linear-to-r from-emerald-600 to-teal-600 text-white text-xs font-semibold hover:from-emerald-500 hover:to-teal-500 shadow-sm transition-all"
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-linear-to-r from-emerald-600 to-teal-600 text-white text-xs font-semibold hover:from-emerald-500 hover:to-teal-500 shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-1"
               >
-                <span>🌐</span>
+                <IconGlobe />
                 <span>Generate Site</span>
               </button>
               <button
                 onClick={() => setShowGenPageModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-linear-to-r from-purple-600 to-indigo-600 text-white text-xs font-semibold hover:from-purple-500 hover:to-indigo-500 shadow-sm transition-all"
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-linear-to-r from-purple-600 to-indigo-600 text-white text-xs font-semibold hover:from-purple-500 hover:to-indigo-500 shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-1"
               >
-                <span>✨</span>
+                <IconSparkles />
                 <span>Generate Page</span>
               </button>
             </div>
@@ -1327,48 +1450,56 @@ export default function EditorPage() {
 
           {/* Page loading overlay */}
           {pageLoading && (
-            <div className="absolute inset-0 z-40 bg-white/80 flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 z-40 bg-white/80 flex items-center justify-center pointer-events-none" role="status" aria-live="polite">
               <div className="flex items-center gap-3">
-                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm text-gray-500 font-medium">Loading /{activePage}…</span>
+                <span className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+                <span className="text-sm text-gray-700 font-medium">Loading /{activePage}…</span>
               </div>
             </div>
           )}
 
           {/* Save toast */}
           {saveStatus !== "idle" && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+            <div
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+              role={saveStatus === "error" || saveStatus === "expired" ? "alert" : "status"}
+              aria-live={saveStatus === "error" || saveStatus === "expired" ? "assertive" : "polite"}
+            >
               <div
-                className={`px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium transition-all animate-fade-in
+                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium transition-all animate-fade-in
                   ${saveStatus === "saving" ? "bg-gray-800 text-white" : ""}
-                  ${saveStatus === "autosaving" ? "bg-gray-700 text-gray-300" : ""}
+                  ${saveStatus === "autosaving" ? "bg-gray-700 text-gray-100" : ""}
                   ${saveStatus === "saved" ? "bg-green-600 text-white" : ""}
                   ${saveStatus === "error" ? "bg-red-600 text-white" : ""}
                   ${saveStatus === "expired" ? "bg-amber-600 text-white" : ""}
                 `}
               >
-                {saveStatus === "saving" && "⏳ Saving…"}
-                {saveStatus === "autosaving" && "💾 Auto-saving…"}
-                {saveStatus === "saved" && `✅ Page saved (/${activePage}) — v${pageVersion}`}
-                {saveStatus === "error" && "❌ Failed to save — please try again"}
-                {saveStatus === "expired" && "🔒 Session expired — redirecting to login…"}
+                {saveStatus === "saving" && <><Spinner className="h-4 w-4" />Saving…</>}
+                {saveStatus === "autosaving" && <><IconSave />Auto-saving…</>}
+                {saveStatus === "saved" && <><IconCheck />{`Page saved (/${activePage}) — v${pageVersion}`}</>}
+                {saveStatus === "error" && <><IconX />Failed to save — please try again</>}
+                {saveStatus === "expired" && <><IconLock />Session expired — redirecting to login…</>}
               </div>
             </div>
           )}
 
           {/* Publish toast */}
           {publishStatus !== "idle" && saveStatus === "idle" && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+            <div
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+              role={publishStatus === "error" ? "alert" : "status"}
+              aria-live={publishStatus === "error" ? "assertive" : "polite"}
+            >
               <div
-                className={`px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium transition-all animate-fade-in
+                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium transition-all animate-fade-in
                   ${publishStatus === "publishing" ? "bg-emerald-800 text-white" : ""}
                   ${publishStatus === "published" ? "bg-emerald-600 text-white" : ""}
                   ${publishStatus === "error" ? "bg-red-600 text-white" : ""}
                 `}
               >
-                {publishStatus === "publishing" && "🚀 Publishing changes…"}
-                {publishStatus === "published" && `✅ Published! Changes are now live on /${activePage}`}
-                {publishStatus === "error" && "❌ Publish failed — please try again"}
+                {publishStatus === "publishing" && <><Spinner className="h-4 w-4" />Publishing changes…</>}
+                {publishStatus === "published" && <><IconCheck />{`Published! Changes are now live on /${activePage}`}</>}
+                {publishStatus === "error" && <><IconX />Publish failed — please try again</>}
               </div>
             </div>
           )}
@@ -1376,24 +1507,27 @@ export default function EditorPage() {
       </div>
 
       {/* ── Right panel: Settings sidebar / Version History ────── */}
-      <div className="w-80 border-l border-gray-200 bg-white flex flex-col overflow-hidden">
+      <aside className="w-80 border-l border-gray-200 bg-white flex flex-col overflow-hidden" aria-label="Block settings and publishing">
         {/* Save + Publish + Preview buttons */}
-        <div className="px-4 py-3 border-b border-gray-100 space-y-2">
+        <div className="px-4 py-3 border-b border-gray-200 space-y-2">
           {!isViewer && (
             <div className="flex gap-2">
-              <button
+              <Button
                 onClick={() => handleSave(false)}
                 disabled={saveStatus === "saving" || saveStatus === "autosaving"}
-                className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-400 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+                loading={saveStatus === "saving"}
+                fullWidth
               >
-                {saveStatus === "saving" ? "Saving…" : "💾 Save Draft"}
-              </button>
+                {saveStatus !== "saving" && <IconSave />}
+                {saveStatus === "saving" ? "Saving…" : "Save Draft"}
+              </Button>
               {/* Publish button — visible for admins/hiring managers */}
               {user?.role !== "recruiter" && (
                 <button
                   onClick={handlePublish}
                   disabled={publishStatus === "publishing"}
-                  className={`flex-1 text-sm font-semibold py-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  aria-busy={publishStatus === "publishing" || undefined}
+                  className={`cb-btn flex-1 h-10 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-emerald-600 disabled:opacity-60 disabled:pointer-events-none ${
                     publishStatus === "published"
                       ? "bg-green-600 text-white"
                       : publishStatus === "error"
@@ -1404,35 +1538,45 @@ export default function EditorPage() {
                   }`}
                 >
                   {publishStatus === "publishing" ? (
-                    <>
-                      <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Publishing…
-                    </>
+                    <><Spinner className="h-4 w-4" />Publishing…</>
                   ) : publishStatus === "published" ? (
-                    <>✅ Published!</>
+                    <><IconCheck />Published!</>
                   ) : publishStatus === "error" ? (
-                    <>❌ Failed</>
+                    <><IconX />Failed</>
                   ) : (
-                    <>🚀 Publish</>
+                    <><IconRocket />Publish</>
                   )}
                 </button>
               )}
             </div>
           )}
-          {/* Preview link */}
+          {/* Draft preview — opens the page as it will look, before publishing */}
+          <button
+            onClick={handlePreview}
+            className="cb-btn flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+            title="Preview the current draft (saves first)"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" />
+            </svg>
+            Preview draft
+          </button>
+          {/* View the published live page (only meaningful once published) */}
           <a
             href={`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/${activePage}`}
             target="_blank"
             rel="noreferrer"
-            className="block w-full text-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded-lg transition-colors"
-            title="Preview live site"
+            className="flex w-full items-center justify-center gap-1.5 px-3 py-1.5 text-gray-600 text-[11px] font-medium rounded-lg transition-colors hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+            title="View the published live page"
           >
-            ↗ Preview Live Site
+            <IconExternal className="h-3.5 w-3.5" />
+            View live site
           </a>
           {/* Unpublished changes indicator */}
           {!isViewer && hasUnpublishedChanges && publishStatus === "idle" && (
-            <p className="text-[10px] text-amber-600 font-medium text-center">
-              ⚠ Draft has unpublished changes{publishedVersion > 0 ? ` (live: v${publishedVersion})` : ""}
+            <p className="flex items-center justify-center gap-1 text-[10px] text-amber-700 font-medium text-center">
+              <IconAlert className="h-3 w-3" />
+              Draft has unpublished changes{publishedVersion > 0 ? ` (live: v${publishedVersion})` : ""}
             </p>
           )}
         </div>
@@ -1454,19 +1598,20 @@ export default function EditorPage() {
                 <Sidebar component={selected} onApplyPage={handleAiApplyPage} />
                 {/* Delete block button — with locked region protection */}
                 {!isViewer && (
-                  <div className="mt-6 pt-4 border-t border-gray-100">
+                  <div className="mt-6 pt-4 border-t border-gray-200">
                     {/* Locked indicator for navbar/footer */}
                     {selected && ["navbar", "footer"].includes(selected.get?.("type")) ? (
-                      <div className="w-full text-center py-2 text-xs text-gray-400 flex items-center justify-center gap-1.5">
-                        <span>🔒</span>
+                      <div className="w-full text-center py-2 text-xs text-gray-600 flex items-center justify-center gap-1.5">
+                        <IconLock className="h-3.5 w-3.5" />
                         <span>This block is locked and cannot be deleted</span>
                       </div>
                     ) : (
                       <button
                         onClick={handleDeleteBlock}
-                        className="w-full text-sm text-red-600 hover:text-white hover:bg-red-600 border border-red-200 hover:border-red-600 py-2 rounded-lg transition-all font-medium"
+                        className="cb-btn w-full inline-flex items-center justify-center gap-1.5 text-sm text-red-600 hover:text-white hover:bg-red-600 border border-red-200 hover:border-red-600 py-2 rounded-lg transition-all font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1"
                       >
-                        🗑 Delete This Block
+                        <IconTrash className="h-4 w-4" />
+                        Delete This Block
                       </button>
                     )}
                   </div>
@@ -1474,8 +1619,13 @@ export default function EditorPage() {
               </>
             ) : (
               <div className="flex flex-col items-center justify-center h-64 text-center">
-                <div className="text-4xl mb-3">🎨</div>
-                <p className="text-sm text-gray-500 leading-relaxed">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600" aria-hidden="true">
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <circle cx="13.5" cy="6.5" r="1.5" /><circle cx="17.5" cy="10.5" r="1.5" /><circle cx="8.5" cy="7.5" r="1.5" /><circle cx="6.5" cy="12.5" r="1.5" />
+                    <path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.2 0-1 .8-1.5 1.8-1.5H16a6 6 0 0 0 6-6c0-4.4-4.5-8-10-8z" />
+                  </svg>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
                   {isViewer
                     ? "Click a block to view its settings."
                     : "Drag a block from the left panel,\nthen click it to edit settings."}
@@ -1484,29 +1634,38 @@ export default function EditorPage() {
             )}
           </div>
         )}
-      </div>
+      </aside>
 
       {/* ── Generate Page Modal ───────────────────────────────────── */}
       {showGenPageModal && (
-        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+        <div
+          className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowGenPageModal(false); setGenPageError(null); } }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="genpage-title"
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          >
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-purple-50 to-indigo-50">
-              <div className="flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-gray-200 bg-linear-to-r from-purple-50 to-indigo-50">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-linear-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-sm">
-                    <span className="text-white text-lg">✨</span>
+                  <div className="w-10 h-10 rounded-xl bg-linear-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-sm text-white" aria-hidden="true">
+                    <IconSparkles className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-gray-900">Generate Full Page</h3>
-                    <p className="text-xs text-gray-500">AI builds a complete career page for you</p>
+                    <h3 id="genpage-title" className="text-base font-bold text-gray-900">Generate Full Page</h3>
+                    <p className="text-xs text-gray-600">AI builds a complete career page for you</p>
                   </div>
                 </div>
                 <button
                   onClick={() => { setShowGenPageModal(false); setGenPageError(null); }}
-                  className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label="Close dialog"
+                  className="w-11 h-11 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                 >
-                  ✕
+                  <IconX className="h-5 w-5" />
                 </button>
               </div>
             </div>
@@ -1514,8 +1673,8 @@ export default function EditorPage() {
             {/* Body */}
             <div className="px-6 py-5 space-y-4">
               {/* Warning */}
-              <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200">
-                <span className="text-amber-500 text-sm mt-0.5">⚠</span>
+              <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200" role="status">
+                <IconAlert className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                 <p className="text-xs text-amber-800 leading-relaxed">
                   This will <strong>replace the entire /{activePage} page</strong> with a new AI-generated layout. Make sure to save your current work first.
                 </p>
@@ -1523,14 +1682,15 @@ export default function EditorPage() {
 
               {/* Prompt */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                <label htmlFor="genpage-prompt" className="block text-xs font-semibold text-gray-700 mb-1.5">
                   Describe your career page
                 </label>
                 <textarea
+                  id="genpage-prompt"
                   value={genPagePrompt}
                   onChange={(e) => setGenPagePrompt(e.target.value)}
                   placeholder="e.g. A modern tech startup focused on AI/ML, targeting senior engineers with a bold and innovative tone..."
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder-gray-400"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:border-purple-600 placeholder:text-gray-500"
                   rows={3}
                 />
               </div>
@@ -1538,11 +1698,12 @@ export default function EditorPage() {
               {/* Tone / Industry / Audience selectors */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Tone</label>
+                  <label htmlFor="genpage-tone" className="block text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Tone</label>
                   <select
+                    id="genpage-tone"
                     value={genPageTone}
                     onChange={(e) => setGenPageTone(e.target.value as AiTone)}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded-md text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-600"
                   >
                     <option value="professional">Professional</option>
                     <option value="friendly">Friendly</option>
@@ -1552,11 +1713,12 @@ export default function EditorPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Industry</label>
+                  <label htmlFor="genpage-industry" className="block text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Industry</label>
                   <select
+                    id="genpage-industry"
                     value={genPageIndustry}
                     onChange={(e) => setGenPageIndustry(e.target.value as AiIndustry)}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded-md text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-600"
                   >
                     <option value="technology">Technology</option>
                     <option value="fintech">Fintech</option>
@@ -1572,11 +1734,12 @@ export default function EditorPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Audience</label>
+                  <label htmlFor="genpage-audience" className="block text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Audience</label>
                   <select
+                    id="genpage-audience"
                     value={genPageAudience}
                     onChange={(e) => setGenPageAudience(e.target.value as AiAudience)}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded-md text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-600"
                   >
                     <option value="general">General</option>
                     <option value="engineers">Engineers</option>
@@ -1591,24 +1754,24 @@ export default function EditorPage() {
 
               {/* Credits info */}
               {subscription.aiEnabled && (
-                <p className="text-[10px] text-gray-400">
+                <p className="text-[10px] text-gray-600">
                   Credits: {subscription.aiCreditsRemaining.toLocaleString()}/{subscription.aiCreditsTotal.toLocaleString()} remaining
                 </p>
               )}
 
               {/* Error */}
               {genPageError && (
-                <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-200" role="alert">
                   <p className="text-xs text-red-700">{genPageError}</p>
                 </div>
               )}
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50">
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50">
               <button
                 onClick={() => { setShowGenPageModal(false); setGenPageError(null); }}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+                className="cb-btn h-10 px-4 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                 disabled={genPageLoading}
               >
                 Cancel
@@ -1616,15 +1779,13 @@ export default function EditorPage() {
               <button
                 onClick={handleGeneratePage}
                 disabled={genPageLoading || !subscription.aiEnabled || subscription.aiCreditsRemaining <= 0}
-                className="px-5 py-2 rounded-lg bg-linear-to-r from-purple-600 to-indigo-600 text-white text-sm font-semibold hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all flex items-center gap-2"
+                aria-busy={genPageLoading || undefined}
+                className="cb-btn h-10 px-5 rounded-lg bg-linear-to-r from-purple-600 to-indigo-600 text-white text-sm font-semibold hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-purple-600"
               >
                 {genPageLoading ? (
-                  <>
-                    <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Generating…
-                  </>
+                  <><Spinner className="h-4 w-4" />Generating…</>
                 ) : (
-                  <>✨ Generate Page</>
+                  <><IconSparkles />Generate Page</>
                 )}
               </button>
             </div>

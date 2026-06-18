@@ -7,3 +7,5 @@ export { createStorage } from "./storage";
 export type { ObjectStorage, StorageDriver, StorageOptions, StoredObject } from "./storage";
 export { getKV } from "./kv";
 export type { KVStore } from "./kv";
+export { createPreviewToken, verifyPreviewToken } from "./preview-token";
+export type { PreviewClaims } from "./preview-token";

@@ -61,12 +61,18 @@ export default function BillingPortalButton({ compact = false, className }: Bill
         <button
           onClick={openPortal}
           disabled={loading}
-          className={className || `text-[10px] font-semibold text-purple-600 hover:text-purple-700 hover:underline transition-colors disabled:opacity-50 disabled:cursor-wait`}
+          aria-busy={loading || undefined}
+          className={className || `inline-flex items-center gap-1 rounded text-[10px] font-semibold text-purple-700 hover:text-purple-800 hover:underline transition-colors disabled:opacity-50 disabled:cursor-wait focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-600`}
         >
-          {loading ? "Opening…" : "Manage Billing →"}
+          {loading ? "Opening…" : (
+            <>
+              Manage Billing
+              <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </>
+          )}
         </button>
         {error && (
-          <p className="text-[9px] text-red-500 mt-0.5">{error}</p>
+          <p className="text-[9px] text-red-600 mt-0.5" role="alert">{error}</p>
         )}
       </div>
     );
@@ -77,26 +83,29 @@ export default function BillingPortalButton({ compact = false, className }: Bill
       <button
         onClick={openPortal}
         disabled={loading}
-        className={className || `flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
-          bg-white border-2 border-gray-200 text-gray-700
+        aria-busy={loading || undefined}
+        className={className || `cb-btn inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold
+          bg-white border border-gray-300 text-gray-700
           hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700
           transition-all duration-200 disabled:opacity-50 disabled:cursor-wait
-          shadow-sm hover:shadow-md`}
+          shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-purple-600`}
       >
         {loading ? (
           <>
-            <span className="w-4 h-4 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin" />
+            <span className="w-4 h-4 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin" aria-hidden="true" />
             <span>Opening portal…</span>
           </>
         ) : (
           <>
-            <span className="text-base">💳</span>
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" />
+            </svg>
             <span>Manage Billing</span>
           </>
         )}
       </button>
       {error && (
-        <p className="text-xs text-red-500 mt-1.5">{error}</p>
+        <p className="text-xs text-red-600 mt-1.5" role="alert">{error}</p>
       )}
     </div>
   );

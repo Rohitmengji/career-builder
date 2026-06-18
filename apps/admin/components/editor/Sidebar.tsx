@@ -177,19 +177,45 @@ function MediaLibrary({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-9999 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
+    <div
+      className="fixed inset-0 bg-black/50 z-9999 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="media-library-title"
+        className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b">
-          <h3 className="font-semibold text-gray-900">📁 Media Library</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <h3 id="media-library-title" className="flex items-center gap-2 font-semibold text-gray-900">
+            <svg className="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            </svg>
+            Media Library
+          </h3>
+          <button
+            onClick={onClose}
+            aria-label="Close media library"
+            className="w-11 h-11 flex items-center justify-center rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
         </div>
 
         {/* Upload */}
-        <div className="px-5 py-3 border-b bg-gray-50">
-          <label className="flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
-            <span className="text-sm text-gray-500">
-              {uploading ? "⏳ Uploading…" : "📤 Click to upload image (max 5MB)"}
+        <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
+          <label className="flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors focus-within:ring-2 focus-within:ring-blue-600">
+            <span className="flex items-center gap-2 text-sm text-gray-600">
+              {uploading ? (
+                <><span className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" aria-hidden="true" />Uploading…</>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" /></svg>
+                  Click to upload image (max 5MB)
+                </>
+              )}
             </span>
             <input
               ref={fileInputRef}
@@ -205,9 +231,9 @@ function MediaLibrary({
         {/* Library grid */}
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
-            <p className="text-center text-sm text-gray-400 py-8">Loading…</p>
+            <p className="text-center text-sm text-gray-600 py-8" role="status">Loading…</p>
           ) : media.length === 0 ? (
-            <p className="text-center text-sm text-gray-400 py-8">
+            <p className="text-center text-sm text-gray-600 py-8">
               No images yet. Upload one above!
             </p>
           ) : (
@@ -216,7 +242,8 @@ function MediaLibrary({
                 <button
                   key={item.name}
                   onClick={() => onSelect(item.url)}
-                  className="group relative aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-blue-500 transition-colors"
+                  aria-label={`Select image ${item.name}`}
+                  className="group relative aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-blue-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                 >
                   {/* User-uploaded media with arbitrary remote URLs — not a static asset. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -269,15 +296,16 @@ function ImageField({
           />
           <button
             onClick={() => onChange(field.name, "")}
-            className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Remove image"
+            className="absolute top-1.5 right-1.5 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
             title="Remove image"
           >
-            ✕
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </div>
       ) : (
-        <div className="w-full h-24 bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center">
-          <span className="text-xs text-gray-400">No image selected</span>
+        <div className="w-full h-24 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+          <span className="text-xs text-gray-600">No image selected</span>
         </div>
       )}
 
@@ -285,17 +313,19 @@ function ImageField({
       <div className="flex gap-2">
         <button
           onClick={() => setShowLibrary(true)}
-          className="flex-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded-md transition-colors font-medium"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded-md transition-colors font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
         >
-          📁 Browse Library
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
+          Browse Library
         </button>
       </div>
 
       {/* URL input (for external images) */}
       <input
-        className="w-full border border-gray-200 p-1.5 rounded-md text-xs text-gray-500
-                   focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+        className="w-full border border-gray-300 p-2 rounded-md text-xs text-gray-700
+                   placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-blue-600"
         placeholder="…or paste image URL"
+        aria-label="Image URL"
         value={value}
         onChange={(e) => onChange(field.name, e.target.value)}
       />
@@ -361,47 +391,56 @@ function ListField({
         <div key={idx} className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2">
           {/* Item header */}
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+            <span className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider">
               Item {idx + 1}
             </span>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => moveItem(idx, -1)}
                 disabled={idx === 0}
-                className="text-[10px] text-gray-400 hover:text-gray-600 disabled:opacity-30 px-1"
+                aria-label={`Move item ${idx + 1} up`}
+                className="inline-flex items-center justify-center h-7 w-7 rounded text-gray-600 hover:text-gray-900 hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                 title="Move up"
-              >▲</button>
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 15l-6-6-6 6" /></svg>
+              </button>
               <button
                 onClick={() => moveItem(idx, 1)}
                 disabled={idx === items.length - 1}
-                className="text-[10px] text-gray-400 hover:text-gray-600 disabled:opacity-30 px-1"
+                aria-label={`Move item ${idx + 1} down`}
+                className="inline-flex items-center justify-center h-7 w-7 rounded text-gray-600 hover:text-gray-900 hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                 title="Move down"
-              >▼</button>
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
               <button
                 onClick={() => removeItem(idx)}
-                className="text-[10px] text-red-400 hover:text-red-600 px-1 font-bold"
+                aria-label={`Remove item ${idx + 1}`}
+                className="inline-flex items-center justify-center h-7 w-7 rounded text-red-600 hover:text-white hover:bg-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
                 title="Remove item"
-              >✕</button>
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
             </div>
           </div>
 
           {/* Sub-fields */}
           {subFields.map((sf) => (
             <div key={sf.name}>
-              <label className="block mb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+              <label className="block mb-1 text-[10px] font-medium text-gray-600 uppercase tracking-wider">
                 {sf.label}
               </label>
               {sf.type === "textarea" ? (
                 <textarea
-                  className="w-full border border-gray-200 p-2 rounded-md text-xs min-h-14 resize-y
-                             focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-gray-300 p-2 rounded-md text-xs min-h-14 resize-y
+                             focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-blue-600"
                   value={item[sf.name] || ""}
                   onChange={(e) => handleItemChange(idx, sf.name, e.target.value)}
                 />
               ) : (
                 <input
-                  className="w-full border border-gray-200 p-2 rounded-md text-xs
-                             focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-gray-300 p-2 rounded-md text-xs
+                             focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-blue-600"
                   value={item[sf.name] || ""}
                   onChange={(e) => handleItemChange(idx, sf.name, e.target.value)}
                 />
@@ -413,7 +452,7 @@ function ListField({
 
       <button
         onClick={addItem}
-        className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-xs font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+        className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
       >
         + Add {field.label?.replace(/s$/, "") || "Item"}
       </button>
@@ -436,8 +475,8 @@ function FieldRenderer({ field, value, onChange }: FieldProps) {
     case "text":
       return (
         <input
-          className="w-full border border-gray-300 p-2 rounded-md text-sm
-                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+          className="w-full border border-gray-300 p-2 rounded-md text-sm text-gray-900
+                     placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-blue-600
                      transition-colors"
           placeholder={`Enter ${field.label.toLowerCase()}…`}
           value={String(value ?? "")}
@@ -450,8 +489,8 @@ function FieldRenderer({ field, value, onChange }: FieldProps) {
     case "textarea":
       return (
         <textarea
-          className="w-full border border-gray-300 p-2 rounded-md text-sm min-h-20 resize-y
-                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+          className="w-full border border-gray-300 p-2 rounded-md text-sm min-h-20 resize-y text-gray-900
+                     placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-blue-600
                      transition-colors"
           placeholder={`Enter ${field.label.toLowerCase()}…`}
           value={String(value ?? "")}
@@ -464,8 +503,8 @@ function FieldRenderer({ field, value, onChange }: FieldProps) {
     case "select":
       return (
         <select
-          className="w-full border border-gray-300 p-2 rounded-md text-sm bg-white
-                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+          className="w-full border border-gray-300 p-2 rounded-md text-sm bg-white text-gray-900
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-blue-600
                      transition-colors"
           value={String(value ?? "")}
           onChange={(e: ChangeEvent<HTMLSelectElement>) =>
@@ -486,7 +525,7 @@ function FieldRenderer({ field, value, onChange }: FieldProps) {
           <input
             type="checkbox"
             className="h-4 w-4 rounded border-gray-300 text-blue-600
-                       focus:ring-blue-500 transition-colors"
+                       focus-visible:ring-2 focus-visible:ring-blue-600 transition-colors"
             checked={Boolean(value)}
             onChange={(e: ChangeEvent<HTMLInputElement>) =>
               onChange(field.name, e.target.checked)
@@ -636,8 +675,13 @@ export default function Sidebar({ component, onApplyPage }: SidebarProps) {
   if (!schema) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-4">
-        <div className="text-4xl mb-3">🎨</div>
-        <p className="text-sm text-gray-500 leading-relaxed">
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600" aria-hidden="true">
+          <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <circle cx="13.5" cy="6.5" r="1.5" /><circle cx="17.5" cy="10.5" r="1.5" /><circle cx="8.5" cy="7.5" r="1.5" /><circle cx="6.5" cy="12.5" r="1.5" />
+            <path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.2 0-1 .8-1.5 1.8-1.5H16a6 6 0 0 0 6-6c0-4.4-4.5-8-10-8z" />
+          </svg>
+        </div>
+        <p className="text-sm text-gray-600 leading-relaxed">
           Select a block on the canvas to edit its settings.
         </p>
       </div>
@@ -648,12 +692,12 @@ export default function Sidebar({ component, onApplyPage }: SidebarProps) {
     <div>
       <div className="mb-5 pb-3 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-blue-500" />
+          <div className="w-2 h-2 rounded-full bg-blue-600" aria-hidden="true" />
           <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
             {schema.label} Settings
           </h2>
         </div>
-        <span className="inline-block mt-1.5 ml-4 text-[10px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full uppercase tracking-wider">
+        <span className="inline-block mt-1.5 ml-4 text-[10px] font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
           {schema.category}
         </span>
       </div>

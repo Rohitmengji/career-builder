@@ -10,6 +10,7 @@
     "./api-response": "./api-response.ts",
     "./tenant-resolver": "./tenant-resolver.ts",
     "./storage": "./storage.ts",
-    "./kv": "./kv.ts"
+    "./kv": "./kv.ts",
+    "./preview-token": "./preview-token.ts"
   }
 }

@@ -127,33 +127,37 @@ export default function UpgradeModal({ currentPlan, hasStripeCustomer, subscript
   }
   return createPortal(
     <div
-      className="fixed inset-0 z-10000 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-10000 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-[92vw] max-w-195 overflow-hidden animate-modal-in"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="upgrade-modal-title"
+        className="bg-white rounded-2xl shadow-xl w-[92vw] max-w-195 max-h-[90vh] overflow-y-auto animate-modal-in"
       >
         {/* Header */}
         <div className="relative px-8 pt-8 pb-6 bg-linear-to-br from-purple-600 via-indigo-600 to-blue-600 text-white">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+            aria-label="Close upgrade dialog"
+            className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
-            ✕
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl">
-              ✨
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center" aria-hidden="true">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z" /><path d="M18 16l.7 1.8L20.5 18.5l-1.8.7L18 21l-.7-1.8L15.5 18.5l1.8-.7z" /></svg>
             </div>
             <div>
-              <h2 className="text-xl font-bold">Unlock AI-Powered Editing</h2>
-              <p className="text-sm text-white/70">Generate, improve, and expand content with AI</p>
+              <h2 id="upgrade-modal-title" className="text-xl font-bold">Unlock AI-Powered Editing</h2>
+              <p className="text-sm text-white/80">Generate, improve, and expand content with AI</p>
             </div>
           </div>
           {/* Region indicator */}
           {!loading && (
-            <div className="absolute top-4 right-14 flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/10 text-[10px] text-white/70">
-              <span>{pricing.flag}</span>
+            <div className="absolute top-4 right-16 flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/10 text-[10px] text-white/80">
+              <span aria-hidden="true">{pricing.flag}</span>
               <span>Prices in {pricing.currency}</span>
             </div>
           )}
@@ -162,8 +166,9 @@ export default function UpgradeModal({ currentPlan, hasStripeCustomer, subscript
         {/* Plans grid */}
         <div className="px-6 py-6">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-6 h-6 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin" />
+            <div className="flex items-center justify-center py-12" role="status" aria-live="polite">
+              <span className="w-6 h-6 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin" aria-hidden="true" />
+              <span className="sr-only">Loading pricing…</span>
             </div>
           ) : (
           <div className="grid grid-cols-3 gap-4">
@@ -195,9 +200,9 @@ export default function UpgradeModal({ currentPlan, hasStripeCustomer, subscript
                   <ul className="space-y-2 mb-5">
                     {p.features.map((f, i) => (
                       <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
-                        <span className={`mt-0.5 text-[10px] ${f.includes("AI") ? "text-purple-500" : "text-green-500"}`}>
-                          ✓
-                        </span>
+                        <svg className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${f.includes("AI") ? "text-purple-600" : "text-green-600"}`} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M5 13l4 4L19 7" />
+                        </svg>
                         <span className={f.includes("AI") ? "font-semibold text-purple-700" : ""}>
                           {f}
                         </span>
@@ -208,15 +213,16 @@ export default function UpgradeModal({ currentPlan, hasStripeCustomer, subscript
                   <button
                     onClick={() => !isCurrent && !p.disabled && handleUpgrade(p.plan)}
                     disabled={isCurrent || p.plan === "free" || checkoutLoading !== null}
-                    className={`w-full py-2.5 rounded-lg text-xs font-bold transition-all ${
+                    aria-busy={checkoutLoading === p.plan || undefined}
+                    className={`cb-btn w-full py-2.5 rounded-lg text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-purple-600 ${
                       isCurrent
-                        ? "bg-gray-100 text-gray-400 cursor-default"
+                        ? "bg-gray-100 text-gray-500 cursor-default"
                         : checkoutLoading === p.plan
                           ? "bg-purple-400 text-white cursor-wait"
                           : p.highlight
                             ? "bg-purple-600 hover:bg-purple-500 text-white shadow-sm hover:shadow-md"
                             : p.plan === "free"
-                              ? "bg-gray-100 text-gray-400 cursor-default"
+                              ? "bg-gray-100 text-gray-500 cursor-default"
                               : "bg-gray-900 hover:bg-gray-800 text-white"
                     }`}
                   >
@@ -229,36 +235,39 @@ export default function UpgradeModal({ currentPlan, hasStripeCustomer, subscript
           )}
 
           {checkoutError && (
-            <div className="mt-3 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600 text-center">
+            <div className="mt-3 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 text-center" role="alert">
               {checkoutError}
             </div>
           )}
 
-          <p className="text-center text-[10px] text-gray-400 mt-4">
+          <p className="text-center text-[10px] text-gray-500 mt-4">
             Cancel anytime · 14-day money-back guarantee · Prices exclude tax
           </p>
 
           {/* Manage existing subscription — shown if user has Stripe customer */}
           {hasStripeCustomer && (
-            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-center gap-2">
-              <span className="text-[10px] text-gray-400">Already subscribed?</span>
+            <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-center gap-2">
+              <span className="text-[10px] text-gray-600">Already subscribed?</span>
               <BillingPortalButton compact />
             </div>
           )}
 
           {/* Canceled subscription notice */}
           {subscriptionStatus === "canceled" && (
-            <div className="mt-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-center">
+            <div className="mt-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-center" role="status">
               <p className="text-[11px] font-semibold text-amber-700">Your subscription was canceled</p>
-              <p className="text-[10px] text-amber-600 mt-0.5">Subscribe again to restore AI access and credits</p>
+              <p className="text-[10px] text-amber-700 mt-0.5">Subscribe again to restore AI access and credits</p>
             </div>
           )}
 
           {/* Past due payment notice */}
           {subscriptionStatus === "past_due" && (
-            <div className="mt-3 px-4 py-2.5 bg-red-50 border border-red-200 rounded-lg text-center">
-              <p className="text-[11px] font-semibold text-red-700">⚠️ Payment failed</p>
-              <p className="text-[10px] text-red-600 mt-0.5">Please update your payment method to keep your subscription active</p>
+            <div className="mt-3 px-4 py-2.5 bg-red-50 border border-red-200 rounded-lg text-center" role="alert">
+              <p className="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-red-700">
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>
+                Payment failed
+              </p>
+              <p className="text-[10px] text-red-700 mt-0.5">Please update your payment method to keep your subscription active</p>
               <div className="mt-2 flex justify-center">
                 <BillingPortalButton compact />
               </div>

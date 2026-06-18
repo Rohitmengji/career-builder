@@ -11,6 +11,22 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuthGuard } from "@/lib/useAuthGuard";
+import {
+  Card,
+  Badge,
+  Button,
+  ButtonLink,
+  EmptyState,
+  Skeleton,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+} from "@/components/ui";
+import {
+  UsersIcon,
+  DocumentIcon,
+  LinkedInIcon,
+  StarIcon,
+} from "@/components/jobs/icons";
 
 /* ================================================================== */
 /*  Types                                                              */
@@ -45,14 +61,30 @@ interface PipelineStats {
   rejected?: number;
 }
 
-const STATUS_OPTIONS = [
-  { value: "applied", label: "Applied", color: "bg-gray-100 text-gray-700" },
-  { value: "screening", label: "Screening", color: "bg-blue-100 text-blue-700" },
-  { value: "interview", label: "Interview", color: "bg-purple-100 text-purple-700" },
-  { value: "offer", label: "Offer", color: "bg-amber-100 text-amber-700" },
-  { value: "hired", label: "Hired", color: "bg-green-100 text-green-700" },
-  { value: "rejected", label: "Rejected", color: "bg-red-100 text-red-700" },
+type BadgeTone = "neutral" | "brand" | "success" | "warning" | "danger" | "info";
+
+const STATUS_OPTIONS: { value: string; label: string; tone: BadgeTone }[] = [
+  { value: "applied", label: "Applied", tone: "neutral" },
+  { value: "screening", label: "Screening", tone: "info" },
+  { value: "interview", label: "Interview", tone: "brand" },
+  { value: "offer", label: "Offer", tone: "warning" },
+  { value: "hired", label: "Hired", tone: "success" },
+  { value: "rejected", label: "Rejected", tone: "danger" },
 ];
+
+/* dot color per status — paired with a label so state is never color-only */
+const STATUS_DOT: Record<string, string> = {
+  applied: "bg-gray-400",
+  screening: "bg-blue-500",
+  interview: "bg-blue-600",
+  offer: "bg-amber-500",
+  hired: "bg-emerald-500",
+  rejected: "bg-red-500",
+};
+
+function statusMeta(value: string) {
+  return STATUS_OPTIONS.find((s) => s.value === value) ?? STATUS_OPTIONS[0];
+}
 
 /* ================================================================== */
 /*  Component                                                          */
@@ -131,169 +163,282 @@ export default function AdminApplicationsPage() {
     }
   }
 
-  /* ─── Render ───────────────────────────────────────────────── */
+  const totalApplications = Object.values(stats).reduce((sum, n) => sum + (n || 0), 0);
 
-  if (loading) {
+  /* ─── Sub-components ────────────────────────────────────────── */
+
+  function StatusSelect({ app }: { app: Application }) {
+    const meta = statusMeta(app.status);
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+      <span className="relative inline-flex items-center">
+        <span className="pointer-events-none absolute left-2.5 flex items-center" aria-hidden="true">
+          <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[app.status] ?? "bg-gray-400"}`} />
+        </span>
+        <select
+          value={app.status}
+          onChange={(e) => handleStatusChange(app.id, e.target.value)}
+          aria-label={`Change status for ${app.firstName} ${app.lastName} (currently ${meta.label})`}
+          className="cursor-pointer appearance-none rounded-full border border-gray-300 bg-white py-1.5 pl-6 pr-7 text-xs font-medium text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+        >
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+        <span className="pointer-events-none absolute right-2 flex items-center text-gray-500" aria-hidden="true">
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+        </span>
+      </span>
+    );
+  }
+
+  function StarRating({ app }: { app: Application }) {
+    const current = app.rating || 0;
+    return (
+      <div className="flex items-center gap-0.5" role="group" aria-label={`Rating for ${app.firstName} ${app.lastName}: ${current} of 5 stars`}>
+        {[1, 2, 3, 4, 5].map((star) => {
+          const active = current >= star;
+          return (
+            <button
+              key={star}
+              type="button"
+              onClick={() => handleRating(app.id, star)}
+              aria-label={`Rate ${star} star${star !== 1 ? "s" : ""}`}
+              aria-pressed={active}
+              className={`flex h-9 w-9 items-center justify-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${active ? "text-amber-500" : "text-gray-500 hover:text-amber-500"}`}
+            >
+              <StarIcon className="h-4 w-4" filled={active} />
+            </button>
+          );
+        })}
       </div>
     );
   }
 
-  const totalApplications = Object.values(stats).reduce((sum, n) => sum + (n || 0), 0);
+  /* ─── Render ───────────────────────────────────────────────── */
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main className="min-h-screen bg-gray-50">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 md:py-10">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Application Pipeline</h1>
-          <p className="text-gray-500 mt-1">{totalApplications} total applications</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
+            Application Pipeline
+          </h1>
+          <p className="mt-1 text-sm text-gray-600" role="status">
+            {loading ? "Loading applications…" : `${totalApplications} total application${totalApplications !== 1 ? "s" : ""}`}
+          </p>
         </div>
 
         {/* Pipeline Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          {STATUS_OPTIONS.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => {
-                setFilterStatus(filterStatus === s.value ? "" : s.value);
-                setPage(1);
-              }}
-              className={`p-4 rounded-xl border text-left transition-all ${
-                filterStatus === s.value
-                  ? "border-blue-500 ring-2 ring-blue-200 bg-white"
-                  : "border-gray-200 bg-white hover:border-gray-300"
-              }`}
-            >
-              <div className="text-2xl font-bold text-gray-900">
-                {stats[s.value as keyof PipelineStats] ?? 0}
-              </div>
-              <div className="text-sm text-gray-500 mt-1">{s.label}</div>
-            </button>
-          ))}
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {STATUS_OPTIONS.map((s) => {
+            const selected = filterStatus === s.value;
+            return (
+              <button
+                key={s.value}
+                onClick={() => {
+                  setFilterStatus(selected ? "" : s.value);
+                  setPage(1);
+                }}
+                aria-pressed={selected}
+                className={`rounded-2xl border bg-white p-4 text-left shadow-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                  selected
+                    ? "border-blue-600 ring-1 ring-blue-600"
+                    : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${STATUS_DOT[s.value]}`} aria-hidden="true" />
+                  <span className="text-2xl font-semibold tabular-nums text-gray-900">
+                    {stats[s.value as keyof PipelineStats] ?? 0}
+                  </span>
+                </div>
+                <div className="mt-1 text-sm text-gray-600">{s.label}</div>
+              </button>
+            );
+          })}
         </div>
+
+        {/* Loading skeleton */}
+        {loading && (
+          <Card className="overflow-hidden p-0" aria-busy="true">
+            <div className="space-y-3 p-6" role="status" aria-label="Loading applications">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-10 flex-1 rounded-lg" />
+                  <Skeleton className="h-10 w-28 rounded-lg" />
+                  <Skeleton className="h-10 w-24 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Application List */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Candidate</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Job</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Rating</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Links</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
+        {!loading && applications.length === 0 && (
+          <Card>
+            <EmptyState
+              icon={<UsersIcon className="h-7 w-7" />}
+              title={filterStatus ? `No ${statusMeta(filterStatus).label.toLowerCase()} applications` : "No applications yet"}
+              body={
+                filterStatus
+                  ? "Try clearing the filter to see all candidates."
+                  : "Applications will appear here as candidates apply to your open roles."
+              }
+              action={
+                filterStatus ? (
+                  <Button variant="secondary" onClick={() => { setFilterStatus(""); setPage(1); }}>
+                    Clear filter
+                  </Button>
+                ) : undefined
+              }
+            />
+          </Card>
+        )}
+
+        {!loading && applications.length > 0 && (
+          <Card className="overflow-hidden p-0">
+            {/* Desktop / tablet table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-left">
+                <caption className="sr-only">List of candidate applications</caption>
+                <thead className="border-b border-gray-200 bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Candidate</th>
+                    <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Job</th>
+                    <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Status</th>
+                    <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Rating</th>
+                    <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Date</th>
+                    <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Links</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {applications.map((app) => (
+                    <tr key={app.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 align-middle">
+                        <div className="font-medium text-gray-900">{app.firstName} {app.lastName}</div>
+                        <div className="mt-0.5 text-sm text-gray-600">{app.email}</div>
+                      </td>
+                      <td className="px-6 py-4 align-middle">
+                        <div className="text-sm text-gray-900">{app.job.title}</div>
+                        <div className="mt-0.5 text-sm text-gray-600">{app.job.department}</div>
+                      </td>
+                      <td className="px-6 py-4 align-middle"><StatusSelect app={app} /></td>
+                      <td className="px-6 py-4 align-middle"><StarRating app={app} /></td>
+                      <td className="px-6 py-4 align-middle text-sm text-gray-600">
+                        <time dateTime={app.submittedAt}>{new Date(app.submittedAt).toLocaleDateString()}</time>
+                      </td>
+                      <td className="px-6 py-4 align-middle">
+                        <div className="flex items-center gap-1">
+                          {app.resumeUrl && (
+                            <a
+                              href={app.resumeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`View résumé for ${app.firstName} ${app.lastName} (opens in new tab)`}
+                              className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                            >
+                              <DocumentIcon className="h-4 w-4" />
+                              Resume
+                            </a>
+                          )}
+                          {app.linkedinUrl && (
+                            <a
+                              href={app.linkedinUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`View LinkedIn for ${app.firstName} ${app.lastName} (opens in new tab)`}
+                              className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                            >
+                              <LinkedInIcon className="h-4 w-4" />
+                              LinkedIn
+                            </a>
+                          )}
+                          {!app.resumeUrl && !app.linkedinUrl && (
+                            <span className="text-sm text-gray-500">—</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile card list */}
+            <ul className="divide-y divide-gray-100 md:hidden">
               {applications.map((app) => (
-                <tr key={app.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-gray-900">
-                      {app.firstName} {app.lastName}
+                <li key={app.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900">{app.firstName} {app.lastName}</p>
+                      <p className="mt-0.5 truncate text-sm text-gray-600">{app.email}</p>
                     </div>
-                    <div className="text-sm text-gray-500">{app.email}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{app.job.title}</div>
-                    <div className="text-xs text-gray-500">{app.job.department}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <select
-                      value={app.status}
-                      onChange={(e) => handleStatusChange(app.id, e.target.value)}
-                      className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${
-                        STATUS_OPTIONS.find((s) => s.value === app.status)?.color || "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s.value} value={s.value}>{s.label}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-0.5">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => handleRating(app.id, star)}
-                          className={`text-lg ${
-                            (app.rating || 0) >= star ? "text-yellow-400" : "text-gray-300"
-                          } hover:text-yellow-400`}
-                        >
-                          ★
-                        </button>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {new Date(app.submittedAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
+                    <Badge tone={statusMeta(app.status).tone}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[app.status]}`} aria-hidden="true" />
+                      {statusMeta(app.status).label}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-700">
+                    {app.job.title} <span className="text-gray-500">· {app.job.department}</span>
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Applied <time dateTime={app.submittedAt}>{new Date(app.submittedAt).toLocaleDateString()}</time>
+                  </p>
+                  <div className="mt-3 space-y-3">
+                    <StatusSelect app={app} />
+                    <StarRating app={app} />
+                    <div className="flex flex-wrap items-center gap-2">
                       {app.resumeUrl && (
-                        <a
-                          href={app.resumeUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:text-blue-800"
-                        >
+                        <ButtonLink href={app.resumeUrl} target="_blank" rel="noopener noreferrer" variant="secondary" size="sm" aria-label={`View résumé for ${app.firstName} ${app.lastName} (opens in new tab)`}>
+                          <DocumentIcon className="h-4 w-4" />
                           Resume
-                        </a>
+                        </ButtonLink>
                       )}
                       {app.linkedinUrl && (
-                        <a
-                          href={app.linkedinUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:text-blue-800"
-                        >
+                        <ButtonLink href={app.linkedinUrl} target="_blank" rel="noopener noreferrer" variant="secondary" size="sm" aria-label={`View LinkedIn for ${app.firstName} ${app.lastName} (opens in new tab)`}>
+                          <LinkedInIcon className="h-4 w-4" />
                           LinkedIn
-                        </a>
+                        </ButtonLink>
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </div>
+                </li>
               ))}
-              {applications.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                    {filterStatus
-                      ? `No applications with status "${filterStatus}"`
-                      : "No applications yet"}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+            </ul>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-3 border-t bg-gray-50">
-              <button
-                onClick={() => setPage(Math.max(1, page - 1))}
-                disabled={page <= 1}
-                className="px-3 py-1 text-sm text-gray-700 bg-white border rounded hover:bg-gray-50 disabled:opacity-50"
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <nav
+                aria-label="Applications pagination"
+                className="flex items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-4 py-3 sm:px-6"
               >
-                Previous
-              </button>
-              <span className="text-sm text-gray-500">
-                Page {page} of {totalPages}
-              </span>
-              <button
-                onClick={() => setPage(Math.min(totalPages, page + 1))}
-                disabled={page >= totalPages}
-                className="px-3 py-1 text-sm text-gray-700 bg-white border rounded hover:bg-gray-50 disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                  disabled={page <= 1}
+                >
+                  <ArrowLeftIcon className="h-4 w-4" />
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-600" role="status">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  disabled={page >= totalPages}
+                >
+                  Next
+                  <ArrowRightIcon className="h-4 w-4" />
+                </Button>
+              </nav>
+            )}
+          </Card>
+        )}
       </div>
-    </div>
+    </main>
   );
 }

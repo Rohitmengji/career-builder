@@ -15,6 +15,16 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useAuthGuard } from "@/lib/useAuthGuard";
+import {
+  Card,
+  Badge,
+  Button,
+  Alert,
+  Skeleton,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  CheckIcon,
+} from "@/components/ui";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -81,7 +91,7 @@ const STAGE_COLORS: Record<string, string> = {
   job_list_view: "bg-indigo-500",
   job_view: "bg-violet-500",
   apply_start: "bg-amber-500",
-  apply_complete: "bg-green-500",
+  apply_complete: "bg-emerald-500",
 };
 
 function pct(num: number, den: number): string {
@@ -100,7 +110,7 @@ function fmt(n: number): string {
 function TrendChart({ data }: { data: DailyPoint[] }) {
   if (!data.length) {
     return (
-      <div className="flex items-center justify-center h-32 text-sm text-gray-400">
+      <div className="flex h-32 items-center justify-center text-sm text-gray-600">
         No data yet
       </div>
     );
@@ -112,26 +122,26 @@ function TrendChart({ data }: { data: DailyPoint[] }) {
   );
 
   const series = [
-    { key: "job_view" as const, label: "Job Views", color: "bg-violet-400" },
-    { key: "apply_start" as const, label: "Apply Clicks", color: "bg-amber-400" },
-    { key: "apply_complete" as const, label: "Applications", color: "bg-green-500" },
+    { key: "job_view" as const, label: "Job Views", color: "bg-violet-500" },
+    { key: "apply_start" as const, label: "Apply Clicks", color: "bg-amber-500" },
+    { key: "apply_complete" as const, label: "Applications", color: "bg-emerald-500" },
   ];
 
   return (
     <div>
       {/* Legend */}
-      <div className="flex gap-4 mb-3 flex-wrap">
+      <div className="mb-3 flex flex-wrap gap-4">
         {series.map((s) => (
-          <div key={s.key} className="flex items-center gap-1.5 text-xs text-gray-500">
-            <span className={`inline-block w-3 h-3 rounded-sm ${s.color}`} />
+          <div key={s.key} className="flex items-center gap-1.5 text-xs text-gray-600">
+            <span className={`inline-block h-3 w-3 rounded-sm ${s.color}`} aria-hidden="true" />
             {s.label}
           </div>
         ))}
       </div>
       {/* Chart */}
-      <div className="flex items-end gap-0.5 h-32 overflow-x-auto">
+      <div className="flex h-32 items-end gap-0.5 overflow-x-auto" role="img" aria-label="Daily trend of job views, apply clicks and applications over the last 30 days">
         {data.map((d) => (
-          <div key={d.date} className="flex-1 min-w-2 flex flex-col justify-end gap-0.5">
+          <div key={d.date} className="flex min-w-2 flex-1 flex-col justify-end gap-0.5">
             {series.map((s) => {
               const val = d[s.key] ?? 0;
               const h = Math.round((val / maxVal) * 100);
@@ -149,7 +159,7 @@ function TrendChart({ data }: { data: DailyPoint[] }) {
       </div>
       {/* X-axis: first + last date */}
       {data.length > 1 && (
-        <div className="flex justify-between mt-1 text-xs text-gray-400">
+        <div className="mt-1 flex justify-between text-xs text-gray-500">
           <span>{data[0].date}</span>
           <span>{data[data.length - 1].date}</span>
         </div>
@@ -197,26 +207,34 @@ export default function AnalyticsDashboardPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
-      </div>
+      <main className="min-h-screen bg-gray-50">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+          <div role="status" aria-live="polite">
+            <span className="sr-only">Loading analytics…</span>
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="mt-3 h-8 w-72" />
+            <Skeleton className="mt-2 h-4 w-64" />
+          </div>
+          <div className="mt-8 space-y-6" aria-hidden="true">
+            <Card><Skeleton className="h-5 w-48" /><div className="mt-5 space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 w-full" />)}</div></Card>
+            <Card><Skeleton className="h-5 w-40" /><Skeleton className="mt-4 h-32 w-full" /></Card>
+          </div>
+        </div>
+      </main>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 font-medium mb-2">Failed to load analytics</p>
-          <p className="text-sm text-gray-500 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-          >
-            Retry
-          </button>
+      <main className="min-h-screen bg-gray-50">
+        <div className="mx-auto flex min-h-screen max-w-md items-center justify-center px-4">
+          <div className="w-full text-center">
+            <h1 className="mb-3 text-xl font-semibold text-gray-900">Failed to load analytics</h1>
+            <Alert tone="error" className="mb-4 text-left">{error || "No analytics data available."}</Alert>
+            <Button variant="primary" onClick={() => window.location.reload()}>Retry</Button>
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -224,28 +242,32 @@ export default function AnalyticsDashboardPage() {
   const funnelMax = funnel[0]?.count || 1;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main className="min-h-screen bg-gray-50">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between gap-4 flex-wrap">
+        <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3 mb-1">
-              <Link href="/dashboard" className="text-sm text-blue-600 hover:text-blue-800">
-                ← Dashboard
-              </Link>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">Hiring Funnel Analytics</h1>
-            <p className="text-gray-500 mt-1 text-sm">Last 30 days — visitor to applicant conversion</p>
+            <Link
+              href="/dashboard"
+              className="mb-2 inline-flex items-center gap-1 rounded-md text-sm font-medium text-blue-600 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+            >
+              <ArrowLeftIcon className="h-4 w-4" /> Dashboard
+            </Link>
+            <h1 className="text-3xl font-semibold tracking-tight text-gray-900">Hiring Funnel Analytics</h1>
+            <p className="mt-1 text-sm text-gray-600">Last 30 days — visitor to applicant conversion</p>
           </div>
-          <div className="text-xs text-gray-400 bg-white border border-gray-200 rounded-lg px-3 py-2">
-            Tracked events: {data.eventCounts.reduce((s, c) => s + c._count.type, 0).toLocaleString()}
+          <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-600">
+            Tracked events:{" "}
+            <span className="font-semibold text-gray-900">
+              {data.eventCounts.reduce((s, c) => s + c._count.type, 0).toLocaleString()}
+            </span>
           </div>
-        </div>
+        </header>
 
         {/* ── Funnel ── */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-5">Conversion Funnel</h2>
+        <Card className="mb-6">
+          <h2 className="mb-5 text-lg font-semibold text-gray-900">Conversion Funnel</h2>
           <div className="space-y-3">
             {funnel.map((stage, i) => {
               const prev = i > 0 ? funnel[i - 1] : null;
@@ -256,31 +278,31 @@ export default function AnalyticsDashboardPage() {
                 <div key={stage.stage}>
                   {/* Drop-off label between stages */}
                   {dropRate !== null && (
-                    <div className="flex items-center gap-2 my-1 pl-2">
-                      <div className="w-px h-4 bg-gray-200" />
-                      <span className="text-xs text-red-500 font-medium">
-                        ↓ {dropRate.toFixed(1)}% drop-off
+                    <div className="my-1 flex items-center gap-2 pl-2">
+                      <div className="h-4 w-px bg-gray-200" aria-hidden="true" />
+                      <span className="text-xs font-medium text-red-700">
+                        {dropRate.toFixed(1)}% drop-off
                       </span>
                     </div>
                   )}
                   <div className="flex items-center gap-4">
-                    <div className="w-36 shrink-0 text-sm text-gray-600 font-medium">
+                    <div className="w-32 shrink-0 text-sm font-medium text-gray-700 sm:w-36">
                       {STAGE_LABELS[stage.stage] ?? stage.stage}
                     </div>
-                    <div className="flex-1 bg-gray-100 rounded-full h-7 overflow-hidden">
+                    <div className="h-7 flex-1 overflow-hidden rounded-full bg-gray-100">
                       <div
-                        className={`h-full rounded-full flex items-center justify-end pr-3 transition-all ${STAGE_COLORS[stage.stage] ?? "bg-blue-500"}`}
+                        className={`flex h-full items-center justify-end rounded-full pr-3 transition-all ${STAGE_COLORS[stage.stage] ?? "bg-blue-500"}`}
                         style={{ width: `${barWidth}%` }}
                       >
                         {barWidth > 15 && (
-                          <span className="text-white text-xs font-semibold">{fmt(stage.count)}</span>
+                          <span className="text-xs font-semibold text-white">{fmt(stage.count)}</span>
                         )}
                       </div>
                     </div>
                     <div className="w-24 shrink-0 text-right">
                       <span className="text-sm font-bold text-gray-900">{stage.count.toLocaleString()}</span>
                       {i > 0 && (
-                        <span className="ml-1 text-xs text-gray-400">
+                        <span className="ml-1 text-xs text-gray-500">
                           ({pct(stage.count, funnelMax)})
                         </span>
                       )}
@@ -293,7 +315,7 @@ export default function AnalyticsDashboardPage() {
 
           {/* Summary conversion */}
           {funnel.length >= 2 && (
-            <div className="mt-6 pt-5 border-t border-gray-100 flex flex-wrap gap-6">
+            <div className="mt-6 flex flex-wrap gap-6 border-t border-gray-100 pt-5">
               {[
                 { label: "Site → Job View", from: "page_view", to: "job_view" },
                 { label: "Job View → Apply Click", from: "job_view", to: "apply_start" },
@@ -305,95 +327,82 @@ export default function AnalyticsDashboardPage() {
                 return (
                   <div key={label} className="text-center">
                     <div className="text-2xl font-bold text-gray-900">{pct(toCount, fromCount)}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+                    <div className="mt-0.5 text-xs text-gray-600">{label}</div>
                   </div>
                 );
               })}
             </div>
           )}
-        </div>
+        </Card>
 
         {/* ── Daily Trend ── */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Daily Trend (30 days)</h2>
+        <Card className="mb-6">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">Daily Trend (30 days)</h2>
           <TrendChart data={data.dailyTrend ?? []} />
-        </div>
+        </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* ── Top Jobs ── */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Jobs by Applications</h2>
+          <Card>
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">Top Jobs by Applications</h2>
             {data.topJobsByConversion.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4 text-center">
+              <p className="py-8 text-center text-sm text-gray-600">
                 Not enough data yet (min. 5 job views per role)
               </p>
             ) : (
-              <div className="space-y-3">
+              <ul className="divide-y divide-gray-100">
                 {data.topJobsByConversion.slice(0, 10).map((job) => {
                   const meta = jobMap.get(job.jobId);
+                  const convTone: "success" | "warning" | "danger" =
+                    job.conversionRate >= 10 ? "success" : job.conversionRate >= 5 ? "warning" : "danger";
                   return (
-                    <div
-                      key={job.jobId}
-                      className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0 gap-2"
-                    >
+                    <li key={job.jobId} className="flex items-center justify-between gap-2 py-3">
                       <div className="min-w-0 flex-1">
                         <Link
                           href={`/jobs?highlight=${job.jobId}`}
-                          className="text-sm font-medium text-gray-900 hover:text-blue-600 truncate block"
+                          className="block truncate rounded text-sm font-medium text-gray-900 hover:text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                         >
                           {meta?.title ?? `Job ${job.jobId.slice(-6)}`}
                         </Link>
-                        <div className="text-xs text-gray-400 mt-0.5">
-                          {meta?.department ?? ""} · {job.views.toLocaleString()} views
+                        <div className="mt-0.5 truncate text-xs text-gray-600">
+                          {meta?.department ?? ""}{meta?.department ? " · " : ""}{job.views.toLocaleString()} views
                         </div>
                       </div>
-                      <div className="shrink-0 text-right">
-                        <div className="text-sm font-bold text-gray-900">
-                          {job.applications} apps
-                        </div>
-                        <div
-                          className={`text-xs font-medium mt-0.5 ${
-                            job.conversionRate >= 10
-                              ? "text-green-600"
-                              : job.conversionRate >= 5
-                              ? "text-amber-600"
-                              : "text-red-500"
-                          }`}
-                        >
-                          {job.conversionRate}% conv.
-                        </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="text-sm font-bold text-gray-900">{job.applications} apps</span>
+                        <Badge tone={convTone}>{job.conversionRate}% conv.</Badge>
                       </div>
-                    </div>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             )}
-          </div>
+          </Card>
 
           {/* ── Traffic Sources ── */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Traffic Sources</h2>
+          <Card>
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">Traffic Sources</h2>
             {data.sourceBreakdown.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4 text-center">No source data yet</p>
+              <p className="py-8 text-center text-sm text-gray-600">No source data yet</p>
             ) : (
               <div className="space-y-2">
                 {(() => {
                   const total = data.sourceBreakdown.reduce((s, r) => s + r.count, 0) || 1;
                   return data.sourceBreakdown.slice(0, 10).map((row) => (
                     <div key={row.source} className="flex items-center gap-3">
-                      <div className="w-32 text-sm text-gray-600 truncate" title={row.source}>
+                      <div className="w-28 truncate text-sm text-gray-700 sm:w-32" title={row.source}>
                         {row.source}
                       </div>
-                      <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100">
                         <div
-                          className="bg-blue-500 h-full rounded-full"
+                          className="h-full rounded-full bg-blue-600"
                           style={{ width: `${Math.round((row.count / total) * 100)}%` }}
                         />
                       </div>
-                      <div className="w-12 text-xs text-gray-500 text-right">
+                      <div className="w-12 text-right text-xs font-medium text-gray-700">
                         {((row.count / total) * 100).toFixed(1)}%
                       </div>
-                      <div className="w-10 text-xs text-gray-400 text-right">
+                      <div className="w-10 text-right text-xs text-gray-500">
                         {row.count.toLocaleString()}
                       </div>
                     </div>
@@ -401,90 +410,102 @@ export default function AnalyticsDashboardPage() {
                 })()}
               </div>
             )}
-          </div>
+          </Card>
         </div>
 
         {/* ── Search Terms ── */}
         {data.searchTerms.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Search Terms</h2>
+          <Card className="mb-6">
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">Top Search Terms</h2>
             <div className="flex flex-wrap gap-2">
               {data.searchTerms.slice(0, 30).map((t) => (
-                <div
+                <span
                   key={t.term}
-                  className="flex items-center gap-1.5 bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-sm"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700"
                 >
                   <span>{t.term}</span>
-                  <span className="text-xs text-gray-400 font-medium">{t.count}</span>
-                </div>
+                  <span className="text-xs font-semibold text-gray-600">{t.count}</span>
+                </span>
               ))}
             </div>
-          </div>
+          </Card>
         )}
 
         {/* ── AI Insight Cards ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {(() => {
-            const insights: { icon: string; title: string; body: string; color: string }[] = [];
+        {(() => {
+          type Insight = {
+            title: string;
+            body: string;
+            tone: "success" | "warning" | "info";
+          };
+          const insights: Insight[] = [];
 
-            const applyStart = funnel.find((f) => f.stage === "apply_start")?.count ?? 0;
-            const applyComplete = funnel.find((f) => f.stage === "apply_complete")?.count ?? 0;
-            const jobView = funnel.find((f) => f.stage === "job_view")?.count ?? 0;
+          const applyStart = funnel.find((f) => f.stage === "apply_start")?.count ?? 0;
+          const applyComplete = funnel.find((f) => f.stage === "apply_complete")?.count ?? 0;
+          const jobView = funnel.find((f) => f.stage === "job_view")?.count ?? 0;
 
-            // Insight 1: Apply completion rate
-            if (applyStart > 0) {
-              const completionPct = ((applyComplete / applyStart) * 100).toFixed(1);
-              const isGood = applyComplete / applyStart >= 0.5;
-              insights.push({
-                icon: isGood ? "✅" : "⚠️",
-                title: "Form Completion Rate",
-                body: isGood
-                  ? `${completionPct}% of candidates who click Apply complete the form. Strong drop-off protection.`
-                  : `Only ${completionPct}% of apply clicks result in a submission. Consider simplifying the form.`,
-                color: isGood ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50",
-              });
-            }
+          // Insight 1: Apply completion rate
+          if (applyStart > 0) {
+            const completionPct = ((applyComplete / applyStart) * 100).toFixed(1);
+            const isGood = applyComplete / applyStart >= 0.5;
+            insights.push({
+              title: "Form Completion Rate",
+              body: isGood
+                ? `${completionPct}% of candidates who click Apply complete the form. Strong drop-off protection.`
+                : `Only ${completionPct}% of apply clicks result in a submission. Consider simplifying the form.`,
+              tone: isGood ? "success" : "warning",
+            });
+          }
 
-            // Insight 2: Job view → apply conversion
-            if (jobView > 0) {
-              const cvr = ((applyStart / jobView) * 100).toFixed(1);
-              insights.push({
-                icon: parseFloat(cvr) >= 5 ? "🚀" : "💡",
-                title: "Apply Click Rate",
-                body: `${cvr}% of job detail viewers click Apply. ${
-                  parseFloat(cvr) >= 5
-                    ? "Above industry average (3–5%)."
-                    : "Below industry average. Try improving job descriptions or salary visibility."
-                }`,
-                color:
-                  parseFloat(cvr) >= 5
-                    ? "border-green-200 bg-green-50"
-                    : "border-blue-200 bg-blue-50",
-              });
-            }
+          // Insight 2: Job view → apply conversion
+          if (jobView > 0) {
+            const cvr = ((applyStart / jobView) * 100).toFixed(1);
+            insights.push({
+              title: "Apply Click Rate",
+              body: `${cvr}% of job detail viewers click Apply. ${
+                parseFloat(cvr) >= 5
+                  ? "Above industry average (3–5%)."
+                  : "Below industry average. Try improving job descriptions or salary visibility."
+              }`,
+              tone: parseFloat(cvr) >= 5 ? "success" : "info",
+            });
+          }
 
-            // Insight 3: top source
-            if (data.sourceBreakdown.length > 0 && data.sourceBreakdown[0].source !== "direct") {
-              insights.push({
-                icon: "📈",
-                title: "Top Traffic Source",
-                body: `"${data.sourceBreakdown[0].source}" is your #1 referrer with ${data.sourceBreakdown[0].count.toLocaleString()} visits. Consider investing more in this channel.`,
-                color: "border-purple-200 bg-purple-50",
-              });
-            }
+          // Insight 3: top source
+          if (data.sourceBreakdown.length > 0 && data.sourceBreakdown[0].source !== "direct") {
+            insights.push({
+              title: "Top Traffic Source",
+              body: `"${data.sourceBreakdown[0].source}" is your #1 referrer with ${data.sourceBreakdown[0].count.toLocaleString()} visits. Consider investing more in this channel.`,
+              tone: "info",
+            });
+          }
 
-            if (!insights.length) return null;
+          if (!insights.length) return null;
 
-            return insights.map((ins) => (
-              <div key={ins.title} className={`rounded-xl border p-4 ${ins.color}`}>
-                <div className="text-xl mb-1">{ins.icon}</div>
-                <div className="font-semibold text-gray-900 text-sm mb-1">{ins.title}</div>
-                <div className="text-xs text-gray-600 leading-relaxed">{ins.body}</div>
-              </div>
-            ));
-          })()}
-        </div>
+          const toneStyles: Record<Insight["tone"], { card: string; icon: string }> = {
+            success: { card: "border-emerald-200 bg-emerald-50", icon: "text-emerald-700" },
+            warning: { card: "border-amber-200 bg-amber-50", icon: "text-amber-700" },
+            info: { card: "border-blue-200 bg-blue-50", icon: "text-blue-700" },
+          };
+
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {insights.map((ins) => {
+                const s = toneStyles[ins.tone];
+                return (
+                  <div key={ins.title} className={`rounded-2xl border p-4 ${s.card}`}>
+                    <div className={`mb-2 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/70 ${s.icon}`} aria-hidden="true">
+                      {ins.tone === "success" ? <CheckIcon className="h-4 w-4" /> : <ArrowRightIcon className="h-4 w-4" />}
+                    </div>
+                    <div className="mb-1 text-sm font-semibold text-gray-900">{ins.title}</div>
+                    <div className="text-xs leading-relaxed text-gray-700">{ins.body}</div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
-    </div>
+    </main>
   );
 }

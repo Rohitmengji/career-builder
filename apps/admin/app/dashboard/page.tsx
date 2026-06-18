@@ -13,6 +13,13 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuthGuard } from "@/lib/useAuthGuard";
+import {
+  Card,
+  Badge,
+  ButtonLink,
+  Skeleton,
+  ArrowRightIcon,
+} from "@/components/ui";
 
 interface DashboardData {
   overview: { jobs: number; applications: number; users: number };
@@ -39,6 +46,23 @@ interface SubStatus {
   jobAiCreditsRemaining: number;
   jobAiCreditsTotal: number;
 }
+
+type BadgeTone = "neutral" | "brand" | "success" | "warning" | "danger" | "info";
+
+const STATUS_TONE: Record<string, BadgeTone> = {
+  applied: "neutral",
+  screening: "info",
+  interview: "brand",
+  offer: "warning",
+  hired: "success",
+  rejected: "danger",
+};
+
+/* Pipeline bar fill colors — paired with a text label so color is not the only signal. */
+const PIPELINE_FILL: Record<string, string> = {
+  hired: "bg-emerald-500",
+  rejected: "bg-red-500",
+};
 
 export default function AdminDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -70,194 +94,195 @@ export default function AdminDashboardPage() {
 
   if (authLoading || loading || !data) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
-      </div>
+      <main className="min-h-screen bg-gray-50">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8" role="status" aria-live="polite">
+            <span className="sr-only">Loading dashboard…</span>
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="mt-3 h-4 w-64" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" aria-hidden="true">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i}>
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="mt-3 h-9 w-20" />
+                <Skeleton className="mt-3 h-4 w-28" />
+              </Card>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8" aria-hidden="true">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <Card key={i}>
+                <Skeleton className="h-5 w-40" />
+                <div className="mt-5 space-y-3">
+                  {Array.from({ length: 5 }).map((__, j) => (
+                    <Skeleton key={j} className="h-6 w-full" />
+                  ))}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </main>
     );
   }
 
-  const statusColors: Record<string, string> = {
-    applied: "bg-gray-100 text-gray-700",
-    screening: "bg-blue-100 text-blue-700",
-    interview: "bg-purple-100 text-purple-700",
-    offer: "bg-amber-100 text-amber-700",
-    hired: "bg-green-100 text-green-700",
-    rejected: "bg-red-100 text-red-700",
-  };
+  const totalApplications = data.overview.applications || 1;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main className="min-h-screen bg-gray-50">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 mt-1">Hiring platform overview</p>
-        </div>
+        <header className="mb-8">
+          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">Dashboard</h1>
+          <p className="mt-1 text-gray-600">Hiring platform overview</p>
+        </header>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Link href="/jobs" className="block">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:border-blue-300 transition-colors">
-              <div className="text-sm font-medium text-gray-500">Active Jobs</div>
-              <div className="text-3xl font-bold text-gray-900 mt-2">{data.overview.jobs}</div>
-              <div className="text-sm text-blue-600 mt-2">Manage jobs →</div>
-            </div>
+          <Link
+            href="/jobs"
+            className="group block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+          >
+            <Card className="h-full transition-shadow group-hover:shadow-md">
+              <div className="text-sm font-medium text-gray-600">Active Jobs</div>
+              <div className="mt-2 text-3xl font-semibold text-gray-900">{data.overview.jobs}</div>
+              <div className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-blue-600">
+                Manage jobs <ArrowRightIcon className="h-4 w-4" />
+              </div>
+            </Card>
           </Link>
-          <Link href="/applications" className="block">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:border-blue-300 transition-colors">
-              <div className="text-sm font-medium text-gray-500">Total Applications</div>
-              <div className="text-3xl font-bold text-gray-900 mt-2">{data.overview.applications}</div>
-              <div className="text-sm text-blue-600 mt-2">View pipeline →</div>
-            </div>
+
+          <Link
+            href="/applications"
+            className="group block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+          >
+            <Card className="h-full transition-shadow group-hover:shadow-md">
+              <div className="text-sm font-medium text-gray-600">Total Applications</div>
+              <div className="mt-2 text-3xl font-semibold text-gray-900">{data.overview.applications}</div>
+              <div className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-blue-600">
+                View pipeline <ArrowRightIcon className="h-4 w-4" />
+              </div>
+            </Card>
           </Link>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="text-sm font-medium text-gray-500">Team Members</div>
-            <div className="text-3xl font-bold text-gray-900 mt-2">{data.overview.users}</div>
-            <div className="text-sm text-gray-400 mt-2">Across all roles</div>
-          </div>
+
+          <Card>
+            <div className="text-sm font-medium text-gray-600">Team Members</div>
+            <div className="mt-2 text-3xl font-semibold text-gray-900">{data.overview.users}</div>
+            <div className="mt-3 text-sm text-gray-500">Across all roles</div>
+          </Card>
 
           {/* Subscription card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="text-sm font-medium text-gray-500">Current Plan</div>
-            <div className="text-2xl font-bold text-gray-900 mt-2 capitalize">
-              {sub?.plan || "Free"}
-              {sub?.subscriptionStatus === "active" && (
-                <span className="ml-2 text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full align-middle">Active</span>
-              )}
+          <Card>
+            <div className="text-sm font-medium text-gray-600">Current Plan</div>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-2xl font-semibold capitalize text-gray-900">{sub?.plan || "Free"}</span>
+              {sub?.subscriptionStatus === "active" && <Badge tone="success">Active</Badge>}
             </div>
             {sub?.aiEnabled ? (
-              <div className="mt-2">
-                <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+              <div className="mt-3">
+                <div className="mb-1 flex items-center justify-between text-xs text-gray-600">
                   <span>AI Credits</span>
-                  <span>{sub.aiCreditsRemaining}/{sub.aiCreditsTotal}</span>
+                  <span className="font-medium text-gray-900">
+                    {sub.aiCreditsRemaining}/{sub.aiCreditsTotal}
+                  </span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-1.5">
+                <div
+                  className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100"
+                  role="progressbar"
+                  aria-valuenow={sub.aiCreditsRemaining}
+                  aria-valuemin={0}
+                  aria-valuemax={sub.aiCreditsTotal}
+                  aria-label="AI credits remaining"
+                >
                   <div
-                    className="bg-purple-500 rounded-full h-1.5 transition-all"
-                    style={{ width: `${Math.min(100, (sub.aiCreditsRemaining / Math.max(1, sub.aiCreditsTotal)) * 100)}%` }}
+                    className="h-1.5 rounded-full bg-blue-600 transition-all"
+                    style={{
+                      width: `${Math.min(100, (sub.aiCreditsRemaining / Math.max(1, sub.aiCreditsTotal)) * 100)}%`,
+                    }}
                   />
                 </div>
               </div>
             ) : (
-              <div className="text-sm text-gray-400 mt-2">Upgrade for AI features</div>
+              <div className="mt-3 text-sm text-gray-500">Upgrade for AI features</div>
             )}
-          </div>
+          </Card>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Pipeline Breakdown */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Application Pipeline</h2>
+          <Card>
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">Application Pipeline</h2>
             <div className="space-y-3">
               {["applied", "screening", "interview", "offer", "hired", "rejected"].map((status) => {
                 const count = data.pipeline[status] || 0;
-                const total = data.overview.applications || 1;
-                const pct = Math.round((count / total) * 100);
+                const pct = Math.round((count / totalApplications) * 100);
                 return (
                   <div key={status} className="flex items-center gap-3">
-                    <div className="w-24 text-sm capitalize text-gray-600">{status}</div>
-                    <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+                    <div className="w-24 text-sm capitalize text-gray-700">{status}</div>
+                    <div className="h-3 flex-1 overflow-hidden rounded-full bg-gray-100">
                       <div
-                        className={`h-full rounded-full ${
-                          status === "hired"
-                            ? "bg-green-500"
-                            : status === "rejected"
-                            ? "bg-red-400"
-                            : "bg-blue-500"
-                        }`}
+                        className={`h-full rounded-full ${PIPELINE_FILL[status] ?? "bg-blue-500"}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <div className="w-10 text-sm text-gray-500 text-right">{count}</div>
+                    <div className="w-10 text-right text-sm font-medium text-gray-700">{count}</div>
                   </div>
                 );
               })}
             </div>
-          </div>
+          </Card>
 
           {/* Recent Applications */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
+          <Card>
+            <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Recent Applications</h2>
-              <Link href="/applications" className="text-sm text-blue-600 hover:text-blue-800">
-                View all →
+              <Link
+                href="/applications"
+                className="inline-flex items-center gap-1 rounded-md text-sm font-medium text-blue-600 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+              >
+                View all <ArrowRightIcon className="h-4 w-4" />
               </Link>
             </div>
-            <div className="space-y-3">
-              {data.recentApplications.slice(0, 5).map((app) => (
-                <div key={app.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                  <div>
-                    <div className="font-medium text-sm text-gray-900">
-                      {app.firstName} {app.lastName}
+            {data.recentApplications.length === 0 ? (
+              <p className="py-8 text-center text-sm text-gray-600">No applications yet</p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {data.recentApplications.slice(0, 5).map((app) => (
+                  <li key={app.id} className="flex items-center justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-gray-900">
+                        {app.firstName} {app.lastName}
+                      </div>
+                      <div className="truncate text-xs text-gray-600">{app.job.title}</div>
                     </div>
-                    <div className="text-xs text-gray-500">{app.job.title}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[app.status] || "bg-gray-100"}`}>
-                      {app.status}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      {new Date(app.submittedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              ))}
-              {data.recentApplications.length === 0 && (
-                <p className="text-sm text-gray-500 py-4 text-center">No applications yet</p>
-              )}
-            </div>
-          </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge tone={STATUS_TONE[app.status] ?? "neutral"}>{app.status}</Badge>
+                      <span className="text-xs text-gray-500">
+                        {new Date(app.submittedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+        <Card className="mt-8">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">Quick Actions</h2>
           <div className="flex flex-wrap gap-3">
-            <Link
-              href="/analytics"
-              className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm"
-            >
-              📊 Analytics
-            </Link>
-            <Link
-              href="/jobs"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-            >
-              + Create Job
-            </Link>
-            <Link
-              href="/editor"
-              className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-            >
-              Edit Pages
-            </Link>
-            <Link
-              href="/editor?openSiteGen=true"
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm"
-            >
-              🌐 Generate Full Site
-            </Link>
-            <Link
-              href="/applications"
-              className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-            >
-              Review Applications
-            </Link>
-            <Link
-              href="/settings"
-              className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-            >
-              Settings
-            </Link>
-            <Link
-              href="/theme"
-              className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-            >
-              Brand & Theme
-            </Link>
+            <ButtonLink href="/analytics" variant="primary">View Analytics</ButtonLink>
+            <ButtonLink href="/jobs" variant="primary">Create Job</ButtonLink>
+            <ButtonLink href="/editor?openSiteGen=true" variant="primary">Generate Full Site</ButtonLink>
+            <ButtonLink href="/editor" variant="secondary">Edit Pages</ButtonLink>
+            <ButtonLink href="/applications" variant="secondary">Review Applications</ButtonLink>
+            <ButtonLink href="/settings" variant="secondary">Settings</ButtonLink>
+            <ButtonLink href="/theme" variant="secondary">Brand &amp; Theme</ButtonLink>
           </div>
-        </div>
+        </Card>
       </div>
-    </div>
+    </main>
   );
 }
