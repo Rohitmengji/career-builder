@@ -1,8 +1,20 @@
 "use client";
 
+import * as React from "react";
 import { useEffect, useState, useCallback, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/lib/useAuthGuard";
+import {
+  Button,
+  ButtonLink,
+  Field,
+  PasswordField,
+  Card,
+  Badge,
+  Alert,
+  Skeleton,
+  ArrowLeftIcon,
+} from "@/components/ui";
 
 interface SessionUser {
   id: string;
@@ -28,9 +40,71 @@ interface AuditEntry {
   details?: string;
 }
 
+type Toast = { tone: "success" | "error" | "info"; message: string } | null;
+
 function getCsrfToken(): string {
   const match = document.cookie.match(/(?:^|;\s*)cb_csrf=([^;]*)/);
   return match ? match[1] : "";
+}
+
+/* ─── Icons (decorative, aria-hidden) ───────────────────────────── */
+function UserIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+function UsersIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  );
+}
+function LogIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+      <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+    </svg>
+  );
+}
+function RefreshIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M23 4v6h-6M1 20v-6h6" />
+      <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+    </svg>
+  );
+}
+
+/* ─── Role badge ────────────────────────────────────────────────── */
+const ROLE_LABEL: Record<SessionUser["role"], string> = {
+  super_admin: "Super Admin",
+  admin: "Admin",
+  hiring_manager: "Hiring Manager",
+  recruiter: "Recruiter",
+  viewer: "Viewer",
+};
+
+const ROLE_BADGE: Record<SessionUser["role"], string> = {
+  super_admin: "bg-red-50 text-red-700",
+  admin: "bg-purple-50 text-purple-700",
+  hiring_manager: "bg-blue-50 text-blue-700",
+  recruiter: "bg-teal-50 text-teal-700",
+  viewer: "bg-gray-100 text-gray-700",
+};
+
+function RoleBadge({ role }: { role: SessionUser["role"] }) {
+  return (
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${ROLE_BADGE[role]}`}>
+      {ROLE_LABEL[role]}
+    </span>
+  );
 }
 
 export default function SettingsPage() {
@@ -38,7 +112,7 @@ export default function SettingsPage() {
   const { user: authUser, loading: authLoading } = useAuthGuard();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [tab, setTab] = useState<"profile" | "users" | "audit">("profile");
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState<Toast>(null);
 
   // Profile form
   const [newName, setNewName] = useState("");
@@ -63,9 +137,9 @@ export default function SettingsPage() {
   const [resetPassword, setResetPassword] = useState("");
   const [resetConfirm, setResetConfirm] = useState("");
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+  const showToast = (tone: "success" | "error" | "info", message: string) => {
+    setToast({ tone, message });
+    setTimeout(() => setToast(null), 3500);
   };
 
   /* ── Auth check ───────────────────────────────────────────────── */
@@ -118,11 +192,11 @@ export default function SettingsPage() {
     if (!user) return;
 
     if (newPassword && newPassword !== confirmPassword) {
-      showToast("❌ Passwords don't match");
+      showToast("error", "Passwords don't match");
       return;
     }
     if (newPassword && newPassword.length < 6) {
-      showToast("❌ Password must be at least 6 characters");
+      showToast("error", "Password must be at least 6 characters");
       return;
     }
 
@@ -131,7 +205,7 @@ export default function SettingsPage() {
     if (newPassword) updates.password = newPassword;
 
     if (!updates.name && !updates.password) {
-      showToast("ℹ️ No changes to save");
+      showToast("info", "No changes to save");
       return;
     }
 
@@ -146,10 +220,10 @@ export default function SettingsPage() {
       setUser((prev) => prev ? { ...prev, name: data.user.name } : prev);
       setNewPassword("");
       setConfirmPassword("");
-      showToast("✅ Profile updated");
+      showToast("success", "Profile updated");
     } else {
       const data = await res.json().catch(() => ({}));
-      showToast(`❌ ${data.error || "Update failed"}`);
+      showToast("error", data.error || "Update failed");
     }
   };
 
@@ -170,10 +244,10 @@ export default function SettingsPage() {
       setNuPassword("");
       setNuRole("viewer");
       loadUsers();
-      showToast("✅ User created");
+      showToast("success", "User created");
     } else {
       const data = await res.json().catch(() => ({}));
-      showToast(`❌ ${data.error || "Failed to create user"}`);
+      showToast("error", data.error || "Failed to create user");
     }
   };
 
@@ -188,10 +262,10 @@ export default function SettingsPage() {
 
     if (res.ok) {
       loadUsers();
-      showToast("✅ User deleted");
+      showToast("success", "User deleted");
     } else {
       const data = await res.json().catch(() => ({}));
-      showToast(`❌ ${data.error || "Failed to delete user"}`);
+      showToast("error", data.error || "Failed to delete user");
     }
   };
 
@@ -204,7 +278,7 @@ export default function SettingsPage() {
     );
     if (isDemotion) {
       const confirmed = confirm(
-        `⚠️ You are about to change YOUR OWN role to "${newRole}". You will lose admin access and won't be able to undo this yourself. Continue?`
+        `You are about to change YOUR OWN role to "${newRole}". You will lose admin access and won't be able to undo this yourself. Continue?`
       );
       if (!confirmed) {
         // Re-render to reset the select back to the original value
@@ -226,16 +300,16 @@ export default function SettingsPage() {
         setUser((prev) => prev ? { ...prev, role: newRoleTyped } : prev);
         const isStillAdmin = newRole === "admin" || newRole === "super_admin";
         if (!isStillAdmin) {
-          showToast("✅ Role updated — redirecting (you no longer have admin access)");
+          showToast("success", "Role updated — redirecting (you no longer have admin access)");
           setTimeout(() => router.push("/editor"), 1500);
           return;
         }
       }
       loadUsers();
-      showToast("✅ Role updated");
+      showToast("success", "Role updated");
     } else {
       const data = await res.json().catch(() => ({}));
-      showToast(`❌ ${data.error || "Failed to update role"}`);
+      showToast("error", data.error || "Failed to update role");
       // Reset the select to the original value on failure
       loadUsers();
     }
@@ -247,11 +321,11 @@ export default function SettingsPage() {
     if (!resetPasswordUser) return;
 
     if (resetPassword.length < 6) {
-      showToast("❌ Password must be at least 6 characters");
+      showToast("error", "Password must be at least 6 characters");
       return;
     }
     if (resetPassword !== resetConfirm) {
-      showToast("❌ Passwords don't match");
+      showToast("error", "Passwords don't match");
       return;
     }
 
@@ -265,18 +339,25 @@ export default function SettingsPage() {
       setResetPasswordUser(null);
       setResetPassword("");
       setResetConfirm("");
-      showToast(`✅ Password reset for ${resetPasswordUser.email}`);
+      showToast("success", `Password reset for ${resetPasswordUser.email}`);
     } else {
       const data = await res.json().catch(() => ({}));
-      showToast(`❌ ${data.error || "Failed to reset password"}`);
+      showToast("error", data.error || "Failed to reset password");
     }
   };
 
   if (!user) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-sm text-gray-400">Loading…</p>
-      </div>
+      <main className="min-h-screen bg-gray-50">
+        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+          <Skeleton className="h-8 w-48" />
+          <div className="mt-8 space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-2/3" />
+          </div>
+        </div>
+      </main>
     );
   }
 
@@ -285,53 +366,74 @@ export default function SettingsPage() {
   /** All admins can manage lower-level roles. Only super_admin can manage admin-level roles. */
   const canManageRoles = isAdmin;
 
+  const tabBtn = (active: boolean) =>
+    `inline-flex min-h-[44px] items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-t-md ${
+      active
+        ? "border-blue-600 text-blue-700"
+        : "border-transparent text-gray-600 hover:text-gray-900"
+    }`;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-gray-200 bg-white">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-3">
-            <a href="/editor" className="text-gray-400 hover:text-gray-600 text-sm">← Editor</a>
-            <h1 className="text-lg font-bold text-gray-900">⚙ Settings</h1>
+            <ButtonLink href="/editor" variant="ghost" size="sm" aria-label="Back to editor">
+              <ArrowLeftIcon className="h-4 w-4" />
+              Editor
+            </ButtonLink>
+            <h1 className="text-lg font-semibold text-gray-900">Settings</h1>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white" aria-hidden="true">
               {user.name.charAt(0).toUpperCase()}
-            </div>
-            <span className="text-sm text-gray-600">{user.name}</span>
+            </span>
+            <span className="hidden text-sm text-gray-700 sm:inline">{user.name}</span>
           </div>
         </div>
       </header>
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-gray-900 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium animate-fade-in">
-          {toast}
-        </div>
-      )}
+      {/* Toast / live region */}
+      <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4" role="status" aria-live="polite">
+        {toast && (
+          <div className="pointer-events-auto w-full max-w-sm animate-fade-in">
+            <Alert tone={toast.tone}>{toast.message}</Alert>
+          </div>
+        )}
+      </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         {/* Tabs */}
-        <div className="flex gap-1 mb-8 border-b border-gray-200">
+        <div className="mb-8 flex gap-1 overflow-x-auto border-b border-gray-200" role="tablist" aria-label="Settings sections">
           <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "profile"}
             onClick={() => setTab("profile")}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === "profile" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            className={tabBtn(tab === "profile")}
           >
-            👤 Profile
+            <UserIcon /> Profile
           </button>
           {isAdmin && (
             <>
               <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "users"}
                 onClick={() => setTab("users")}
-                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === "users" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                className={tabBtn(tab === "users")}
               >
-                👥 Users
+                <UsersIcon /> Users
               </button>
               <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "audit"}
                 onClick={() => setTab("audit")}
-                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === "audit" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                className={tabBtn(tab === "audit")}
               >
-                📋 Audit Log
+                <LogIcon /> Audit Log
               </button>
             </>
           )}
@@ -339,341 +441,298 @@ export default function SettingsPage() {
 
         {/* ── Profile tab ───────────────────────────────────────────── */}
         {tab === "profile" && (
-          <div className="max-w-md">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Your Profile</h2>
-            <p className="text-sm text-gray-500 mb-6">Update your name or change your password.</p>
+          <Card className="max-w-xl">
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">Your Profile</h2>
+              <p className="mt-1 text-sm text-gray-600">Update your name or change your password.</p>
+            </div>
 
             <form onSubmit={handleUpdateProfile} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={user.email}
-                  disabled
-                  className="w-full bg-gray-100 border border-gray-200 text-gray-500 px-3 py-2.5 rounded-lg text-sm"
-                />
-                <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
-              </div>
+              <Field
+                label="Email"
+                type="email"
+                value={user.email}
+                disabled
+                readOnly
+                hint="Email cannot be changed"
+              />
+
+              <Field
+                label="Display Name"
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                autoComplete="name"
+              />
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
-                <input
-                  type="text"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="w-full bg-white border border-gray-300 text-gray-900 px-3 py-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                <div className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold ${
-                  user.role === "super_admin" ? "bg-red-100 text-red-700" :
-                  user.role === "admin" ? "bg-purple-100 text-purple-700" :
-                  user.role === "hiring_manager" ? "bg-blue-100 text-blue-700" :
-                  user.role === "recruiter" ? "bg-teal-100 text-teal-700" :
-                  "bg-gray-100 text-gray-600"
-                }`}>
-                  {user.role === "super_admin" ? "Super Admin" :
-                   user.role === "hiring_manager" ? "Hiring Manager" :
-                   user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                </div>
+                <span className="mb-1.5 block text-sm font-medium text-gray-700">Role</span>
+                <RoleBadge role={user.role} />
               </div>
 
               <hr className="border-gray-200" />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Leave blank to keep current"
-                  autoComplete="new-password"
-                  className="w-full bg-white border border-gray-300 text-gray-900 px-3 py-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-400"
-                />
-              </div>
+              <PasswordField
+                label="New Password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Leave blank to keep current"
+                autoComplete="new-password"
+                hint="Minimum 6 characters."
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-type new password"
-                  autoComplete="new-password"
-                  className="w-full bg-white border border-gray-300 text-gray-900 px-3 py-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-400"
-                />
-              </div>
+              <PasswordField
+                label="Confirm Password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-type new password"
+                autoComplete="new-password"
+              />
 
-              <button
-                type="submit"
-                className="bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-6 rounded-lg text-sm transition-colors"
-              >
-                Save Changes
-              </button>
+              <Button type="submit">Save Changes</Button>
             </form>
-          </div>
+          </Card>
         )}
 
         {/* ── Users tab (admin only) ────────────────────────────────── */}
         {tab === "users" && isAdmin && (
           <div>
-            <div className="flex items-center justify-between mb-6">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-1">User Management</h2>
-                <p className="text-sm text-gray-500">Create and manage user accounts.</p>
+                <h2 className="text-lg font-semibold text-gray-900">User Management</h2>
+                <p className="mt-1 text-sm text-gray-600">Create and manage user accounts.</p>
               </div>
-              <button
+              <Button
+                variant={showNewUser ? "secondary" : "primary"}
                 onClick={() => setShowNewUser(!showNewUser)}
-                className="bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors"
+                aria-expanded={showNewUser}
               >
                 {showNewUser ? "Cancel" : "+ Add User"}
-              </button>
+              </Button>
             </div>
 
             {/* New user form */}
             {showNewUser && (
-              <form onSubmit={handleCreateUser} className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6 space-y-4">
-                <h3 className="text-sm font-semibold text-blue-900">New User</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
-                    <input
+              <Card className="mb-6 border-blue-200 bg-blue-50/60">
+                <form onSubmit={handleCreateUser} className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-900">New User</h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field
+                      label="Email"
                       type="email"
                       value={nuEmail}
                       onChange={(e) => setNuEmail(e.target.value)}
                       required
-                      className="w-full bg-white border border-gray-300 text-gray-900 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                      autoComplete="off"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
-                    <input
+                    <Field
+                      label="Name"
                       type="text"
                       value={nuName}
                       onChange={(e) => setNuName(e.target.value)}
                       required
-                      className="w-full bg-white border border-gray-300 text-gray-900 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
-                    <input
-                      type="password"
+                    <PasswordField
+                      label="Password"
                       value={nuPassword}
                       onChange={(e) => setNuPassword(e.target.value)}
                       required
                       minLength={6}
                       autoComplete="new-password"
-                      className="w-full bg-white border border-gray-300 text-gray-900 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                     />
+                    <div>
+                      <label htmlFor="nu-role" className="mb-1.5 block text-sm font-medium text-gray-700">Role</label>
+                      <select
+                        id="nu-role"
+                        value={nuRole}
+                        onChange={(e) => setNuRole(e.target.value as typeof nuRole)}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-blue-600 transition"
+                      >
+                        <option value="viewer">Viewer</option>
+                        <option value="recruiter">Recruiter</option>
+                        <option value="hiring_manager">Hiring Manager</option>
+                        {isSuperAdmin && <option value="admin">Admin</option>}
+                        {isSuperAdmin && <option value="super_admin">Super Admin</option>}
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
-                    <select
-                      value={nuRole}
-                      onChange={(e) => setNuRole(e.target.value as "super_admin" | "admin" | "hiring_manager" | "recruiter" | "viewer")}
-                      className="w-full bg-white border border-gray-300 text-gray-900 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="viewer">Viewer</option>
-                      <option value="recruiter">Recruiter</option>
-                      <option value="hiring_manager">Hiring Manager</option>
-                      {isSuperAdmin && <option value="admin">Admin</option>}
-                      {isSuperAdmin && <option value="super_admin">Super Admin</option>}
-                    </select>
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-5 rounded-lg text-sm"
-                >
-                  Create User
-                </button>
-              </form>
+                  <Button type="submit">Create User</Button>
+                </form>
+              </Card>
             )}
 
             {/* Users table */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">User</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Role</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Last Login</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => (
-                    <tr key={u.id} className="border-b border-gray-100 last:border-0">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-purple-500 text-white text-xs font-bold flex items-center justify-center">
-                            {u.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{u.name}</p>
-                            <p className="text-xs text-gray-400">{u.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {(() => {
-                          /* superadmin@company.com role is always immutable — nobody can change it */
-                          const isSuperAdminAccount = u.email === "superadmin@company.com";
-                          /* admin@company.com can only be changed by super_admin */
-                          const isRootAdmin = u.email === "admin@company.com";
-                          const isRootAdminLocked = isRootAdmin && !isSuperAdmin;
-                          /* Disabled only for: immutable superadmin account, locked root admin, or non-admin users */
-                          const isDisabled = isSuperAdminAccount || isRootAdminLocked || !canManageRoles;
-                          return (
-                            <select
-                              value={u.role}
-                              onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                              disabled={isDisabled}
-                              title={
-                                isSuperAdminAccount ? "Protected account — role cannot be changed" :
-                                isRootAdminLocked ? "Only Super Admin can change the root admin role" :
-                                !canManageRoles ? "Admin access required to change roles" :
-                                undefined
-                              }
-                              className={`text-xs font-semibold px-2 py-1 rounded-lg border ${
-                                u.role === "super_admin" ? "bg-red-50 text-red-700 border-red-200" :
-                                u.role === "admin" ? "bg-purple-50 text-purple-700 border-purple-200" :
-                                u.role === "hiring_manager" ? "bg-blue-50 text-blue-700 border-blue-200" :
-                                u.role === "recruiter" ? "bg-teal-50 text-teal-700 border-teal-200" :
-                                "bg-gray-50 text-gray-600 border-gray-200"
-                              } ${isDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                            >
-                              <option value="viewer">Viewer</option>
-                              <option value="recruiter">Recruiter</option>
-                              <option value="hiring_manager">Hiring Manager</option>
-                              {/* Only super_admin can assign admin or super_admin roles; show if user already has that role */}
-                              {(isSuperAdmin || u.role === "admin") && <option value="admin">Admin</option>}
-                              {(isSuperAdmin || u.role === "super_admin") && <option value="super_admin">Super Admin</option>}
-                            </select>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">
-                        {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : "Never"}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {u.id !== user.id && u.email !== "admin@company.com" && u.email !== "superadmin@company.com" && (
-                          <div className="flex items-center justify-end gap-3">
-                            {/* Admin/super_admin passwords can only be changed by themselves */}
-                            {u.role !== "admin" && u.role !== "super_admin" && (
-                              <button
-                                onClick={() => {
-                                  setResetPasswordUser({ id: u.id, email: u.email, name: u.name });
-                                  setResetPassword("");
-                                  setResetConfirm("");
-                                }}
-                                className="text-xs text-blue-500 hover:text-blue-700 font-medium"
-                              >
-                                Reset Password
-                              </button>
-                            )}
-                            {(u.role === "admin" || u.role === "super_admin") && (
-                              <span className="text-[10px] text-gray-400 italic">Self-managed password</span>
-                            )}
-                            <button
-                              onClick={() => handleDeleteUser(u.id, u.email)}
-                              className="text-xs text-red-500 hover:text-red-700 font-medium"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                        {u.id === user.id && (
-                          <span className="text-xs text-gray-300">You</span>
-                        )}
-                        {u.id !== user.id && (u.email === "admin@company.com" || u.email === "superadmin@company.com") && (
-                          <span className="text-[10px] text-gray-400 italic">Protected account</span>
-                        )}
-                      </td>
+            <Card className="overflow-hidden p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th scope="col" className="px-4 py-3 text-left font-medium text-gray-700">User</th>
+                      <th scope="col" className="px-4 py-3 text-left font-medium text-gray-700">Role</th>
+                      <th scope="col" className="px-4 py-3 text-left font-medium text-gray-700">Last Login</th>
+                      <th scope="col" className="px-4 py-3 text-right font-medium text-gray-700">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr key={u.id} className="border-b border-gray-100 last:border-0">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-purple-500 text-xs font-bold text-white" aria-hidden="true">
+                              {u.name.charAt(0).toUpperCase()}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-900">{u.name}</p>
+                              <p className="text-xs text-gray-600">{u.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {(() => {
+                            /* superadmin@company.com role is always immutable — nobody can change it */
+                            const isSuperAdminAccount = u.email === "superadmin@company.com";
+                            /* admin@company.com can only be changed by super_admin */
+                            const isRootAdmin = u.email === "admin@company.com";
+                            const isRootAdminLocked = isRootAdmin && !isSuperAdmin;
+                            /* Disabled only for: immutable superadmin account, locked root admin, or non-admin users */
+                            const isDisabled = isSuperAdminAccount || isRootAdminLocked || !canManageRoles;
+                            return (
+                              <select
+                                aria-label={`Role for ${u.name}`}
+                                value={u.role}
+                                onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                                disabled={isDisabled}
+                                title={
+                                  isSuperAdminAccount ? "Protected account — role cannot be changed" :
+                                  isRootAdminLocked ? "Only Super Admin can change the root admin role" :
+                                  !canManageRoles ? "Admin access required to change roles" :
+                                  undefined
+                                }
+                                className={`rounded-lg border px-2 py-1.5 text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                                  u.role === "super_admin" ? "border-red-200 bg-red-50 text-red-700" :
+                                  u.role === "admin" ? "border-purple-200 bg-purple-50 text-purple-700" :
+                                  u.role === "hiring_manager" ? "border-blue-200 bg-blue-50 text-blue-700" :
+                                  u.role === "recruiter" ? "border-teal-200 bg-teal-50 text-teal-700" :
+                                  "border-gray-200 bg-gray-50 text-gray-700"
+                                } ${isDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                              >
+                                <option value="viewer">Viewer</option>
+                                <option value="recruiter">Recruiter</option>
+                                <option value="hiring_manager">Hiring Manager</option>
+                                {/* Only super_admin can assign admin or super_admin roles; show if user already has that role */}
+                                {(isSuperAdmin || u.role === "admin") && <option value="admin">Admin</option>}
+                                {(isSuperAdmin || u.role === "super_admin") && <option value="super_admin">Super Admin</option>}
+                              </select>
+                            );
+                          })()}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-600">
+                          {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : "Never"}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {u.id !== user.id && u.email !== "admin@company.com" && u.email !== "superadmin@company.com" && (
+                            <div className="flex items-center justify-end gap-3">
+                              {/* Admin/super_admin passwords can only be changed by themselves */}
+                              {u.role !== "admin" && u.role !== "super_admin" && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setResetPasswordUser({ id: u.id, email: u.email, name: u.name });
+                                    setResetPassword("");
+                                    setResetConfirm("");
+                                  }}
+                                  className="rounded px-1 text-xs font-medium text-blue-700 hover:text-blue-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                                >
+                                  Reset Password
+                                </button>
+                              )}
+                              {(u.role === "admin" || u.role === "super_admin") && (
+                                <span className="text-[11px] italic text-gray-600">Self-managed password</span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(u.id, u.email)}
+                                className="rounded px-1 text-xs font-medium text-red-700 hover:text-red-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                          {u.id === user.id && (
+                            <Badge tone="neutral">You</Badge>
+                          )}
+                          {u.id !== user.id && (u.email === "admin@company.com" || u.email === "superadmin@company.com") && (
+                            <span className="text-[11px] italic text-gray-600">Protected account</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               {users.length === 0 && (
-                <div className="py-12 text-center text-gray-400 text-sm">No users found</div>
+                <div className="py-12 text-center text-sm text-gray-600">No users found</div>
               )}
-            </div>
+            </Card>
 
             {/* Role legend */}
-            <div className="mt-6 bg-gray-50 rounded-xl p-4 text-xs text-gray-500 space-y-1.5">
-              <p className="font-semibold text-gray-700 mb-2">Role Permissions</p>
-              <p><span className="font-semibold text-red-600">Super Admin</span> — Full platform control: all admin access + AI config, system settings, credit overrides</p>
-              <p><span className="font-semibold text-purple-600">Admin</span> — Full access: edit pages, manage users, reset passwords, view audit log</p>
-              <p><span className="font-semibold text-blue-600">Hiring Manager</span> — Manage job postings, review applications, edit pages</p>
-              <p><span className="font-semibold text-teal-600">Recruiter</span> — Post jobs, manage candidates, upload media</p>
-              <p><span className="font-semibold text-gray-600">Viewer</span> — Preview pages only (read-only)</p>
+            <div className="mt-6 space-y-1.5 rounded-2xl bg-gray-50 p-4 text-xs text-gray-600">
+              <p className="mb-2 text-sm font-semibold text-gray-900">Role Permissions</p>
+              <p><span className="font-semibold text-red-700">Super Admin</span> — Full platform control: all admin access + AI config, system settings, credit overrides</p>
+              <p><span className="font-semibold text-purple-700">Admin</span> — Full access: edit pages, manage users, reset passwords, view audit log</p>
+              <p><span className="font-semibold text-blue-700">Hiring Manager</span> — Manage job postings, review applications, edit pages</p>
+              <p><span className="font-semibold text-teal-700">Recruiter</span> — Post jobs, manage candidates, upload media</p>
+              <p><span className="font-semibold text-gray-700">Viewer</span> — Preview pages only (read-only)</p>
             </div>
 
             {/* Reset Password Modal */}
             {resetPasswordUser && (
               <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
                 onClick={(e) => { if (e.target === e.currentTarget) setResetPasswordUser(null); }}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="reset-pw-title"
               >
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-fade-in">
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-lg font-bold">
+                <div className="w-full max-w-sm animate-fade-in rounded-2xl bg-white p-6 shadow-xl">
+                  <div className="mb-5 flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-lg font-bold text-blue-700" aria-hidden="true">
                       {resetPasswordUser.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900">Reset Password</h3>
-                      <p className="text-xs text-gray-500">{resetPasswordUser.email}</p>
+                    </span>
+                    <div className="min-w-0">
+                      <h3 id="reset-pw-title" className="text-sm font-semibold text-gray-900">Reset Password</h3>
+                      <p className="truncate text-xs text-gray-600">{resetPasswordUser.email}</p>
                     </div>
                   </div>
 
                   <form onSubmit={handleResetPassword} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">New Password</label>
-                      <input
-                        type="password"
-                        value={resetPassword}
-                        onChange={(e) => setResetPassword(e.target.value)}
-                        required
-                        minLength={6}
-                        autoComplete="new-password"
-                        placeholder="Min 6 characters"
-                        className="w-full bg-white border border-gray-300 text-gray-900 px-3 py-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Confirm Password</label>
-                      <input
-                        type="password"
-                        value={resetConfirm}
-                        onChange={(e) => setResetConfirm(e.target.value)}
-                        required
-                        minLength={6}
-                        autoComplete="new-password"
-                        placeholder="Re-type password"
-                        className="w-full bg-white border border-gray-300 text-gray-900 px-3 py-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-400"
-                      />
-                    </div>
+                    <PasswordField
+                      label="New Password"
+                      value={resetPassword}
+                      onChange={(e) => setResetPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      autoComplete="new-password"
+                      placeholder="Min 6 characters"
+                    />
+                    <PasswordField
+                      label="Confirm Password"
+                      value={resetConfirm}
+                      onChange={(e) => setResetConfirm(e.target.value)}
+                      required
+                      minLength={6}
+                      autoComplete="new-password"
+                      placeholder="Re-type password"
+                    />
                     <div className="flex gap-3 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setResetPasswordUser(null)}
-                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-lg text-sm transition-colors"
-                      >
+                      <Button type="button" variant="secondary" fullWidth onClick={() => setResetPasswordUser(null)}>
                         Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
-                      >
-                        Reset Password
-                      </button>
+                      </Button>
+                      <Button type="submit" fullWidth>Reset Password</Button>
                     </div>
                   </form>
 
-                  <p className="text-[10px] text-gray-400 mt-4 text-center">
+                  <p className="mt-4 text-center text-[11px] text-gray-600">
                     The user will need to sign in with the new password. Active sessions will remain until they expire.
                   </p>
                 </div>
@@ -685,64 +744,63 @@ export default function SettingsPage() {
         {/* ── Audit tab (admin only) ────────────────────────────────── */}
         {tab === "audit" && isAdmin && (
           <div>
-            <div className="flex items-center justify-between mb-6">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-1">Audit Log</h2>
-                <p className="text-sm text-gray-500">Track who changed what and when.</p>
+                <h2 className="text-lg font-semibold text-gray-900">Audit Log</h2>
+                <p className="mt-1 text-sm text-gray-600">Track who changed what and when.</p>
               </div>
-              <button
-                onClick={loadAudit}
-                className="text-sm text-blue-600 hover:text-blue-500 font-medium"
-              >
-                ↻ Refresh
-              </button>
+              <Button variant="ghost" size="sm" onClick={loadAudit}>
+                <RefreshIcon /> Refresh
+              </Button>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Time</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">User</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Action</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditEntries.slice(0, 100).map((entry, i) => (
-                    <tr key={i} className="border-b border-gray-100 last:border-0">
-                      <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">
-                        {new Date(entry.timestamp).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-2.5 text-xs font-medium text-gray-700">
-                        {entry.email}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                          entry.action === "login" ? "bg-green-100 text-green-700" :
-                          entry.action === "logout" ? "bg-gray-100 text-gray-600" :
-                          entry.action.startsWith("page") ? "bg-blue-100 text-blue-700" :
-                          entry.action.startsWith("user") ? "bg-purple-100 text-purple-700" :
-                          entry.action.startsWith("media") ? "bg-amber-100 text-amber-700" :
-                          "bg-gray-100 text-gray-600"
-                        }`}>
-                          {entry.action}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-gray-500 max-w-50 truncate">
-                        {entry.details || "—"}
-                      </td>
+            <Card className="overflow-hidden p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th scope="col" className="px-4 py-3 text-left font-medium text-gray-700">Time</th>
+                      <th scope="col" className="px-4 py-3 text-left font-medium text-gray-700">User</th>
+                      <th scope="col" className="px-4 py-3 text-left font-medium text-gray-700">Action</th>
+                      <th scope="col" className="px-4 py-3 text-left font-medium text-gray-700">Details</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {auditEntries.slice(0, 100).map((entry, i) => (
+                      <tr key={i} className="border-b border-gray-100 last:border-0">
+                        <td className="whitespace-nowrap px-4 py-2.5 text-xs text-gray-600">
+                          {new Date(entry.timestamp).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs font-medium text-gray-700">
+                          {entry.email}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            entry.action === "login" ? "bg-emerald-50 text-emerald-700" :
+                            entry.action === "logout" ? "bg-gray-100 text-gray-700" :
+                            entry.action.startsWith("page") ? "bg-blue-50 text-blue-700" :
+                            entry.action.startsWith("user") ? "bg-purple-50 text-purple-700" :
+                            entry.action.startsWith("media") ? "bg-amber-50 text-amber-700" :
+                            "bg-gray-100 text-gray-700"
+                          }`}>
+                            {entry.action}
+                          </span>
+                        </td>
+                        <td className="max-w-50 truncate px-4 py-2.5 text-xs text-gray-600">
+                          {entry.details || "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               {auditEntries.length === 0 && (
-                <div className="py-12 text-center text-gray-400 text-sm">No activity logged yet</div>
+                <div className="py-12 text-center text-sm text-gray-600">No activity logged yet</div>
               )}
-            </div>
+            </Card>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

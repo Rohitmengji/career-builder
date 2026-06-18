@@ -14,6 +14,25 @@ import { useState, useEffect, useCallback } from "react";
 import AiJobAssistant from "@/components/jobs/AiJobAssistant";
 import type { AiJobFormData } from "@/lib/ai/types";
 import { useAuthGuard } from "@/lib/useAuthGuard";
+import {
+  Button,
+  ButtonLink,
+  Card,
+  Badge,
+  Alert,
+  EmptyState,
+  Field,
+  TextareaField,
+  Skeleton,
+  ArrowLeftIcon,
+} from "@/components/ui";
+import {
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  ExternalLinkIcon,
+  BriefcaseIcon,
+} from "@/components/jobs/icons";
 
 /* ================================================================== */
 /*  Types                                                              */
@@ -82,6 +101,15 @@ const EMPTY_FORM: JobFormData = {
 const DEPARTMENTS = ["Engineering", "Design", "Marketing", "Sales", "People", "Finance", "Operations"];
 const EMPLOYMENT_TYPES = ["full-time", "part-time", "contract", "internship"];
 const EXPERIENCE_LEVELS = ["entry", "mid", "senior", "lead", "executive"];
+
+/* shared select styles — mirrors the Field input baseline for visual parity */
+const SELECT_CLS =
+  "w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 " +
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-blue-600 transition";
+
+function titleCase(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 /* ================================================================== */
 /*  Component                                                          */
@@ -275,168 +303,277 @@ export default function AdminJobsPage() {
     });
   }
 
+  const publishedCount = jobs.filter((j) => j.isPublished).length;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
   /* ─── Render ───────────────────────────────────────────────── */
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main className="min-h-screen bg-gray-50">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 md:py-10">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Job Management</h1>
-            <p className="text-gray-500 mt-1">
-              {jobs.length} job{jobs.length !== 1 ? "s" : ""} ·{" "}
-              {jobs.filter((j) => j.isPublished).length} published
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
+              Job Management
+            </h1>
+            <p className="mt-1 text-sm text-gray-600" role="status">
+              {loading
+                ? "Loading jobs…"
+                : `${jobs.length} job${jobs.length !== 1 ? "s" : ""} · ${publishedCount} published`}
             </p>
           </div>
           <div className="flex gap-3">
             {view === "form" && (
-              <button
-                onClick={() => setView("list")}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                ← Back to List
-              </button>
+              <Button variant="secondary" onClick={() => setView("list")}>
+                <ArrowLeftIcon className="h-4 w-4" />
+                Back to list
+              </Button>
             )}
             {view === "list" && (
-              <button
-                onClick={openCreate}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-              >
-                <span>+</span> New Job
-              </button>
+              <Button onClick={openCreate}>
+                <PlusIcon className="h-4 w-4" />
+                New job
+              </Button>
             )}
           </div>
         </div>
 
+        {/* Loading skeleton */}
+        {loading && (
+          <Card className="overflow-hidden p-0" aria-busy="true">
+            <div className="space-y-3 p-6" role="status" aria-label="Loading jobs">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-10 flex-1 rounded-lg" />
+                  <Skeleton className="h-10 w-24 rounded-lg" />
+                  <Skeleton className="h-10 w-20 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
         {/* Job List */}
-        {view === "list" && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Title</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Department</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Location</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Applications</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
+        {!loading && view === "list" && (
+          jobs.length === 0 ? (
+            <Card>
+              <EmptyState
+                icon={<BriefcaseIcon className="h-7 w-7" />}
+                title="No jobs yet"
+                body="Create your first job posting to start receiving applications."
+                action={
+                  <Button onClick={openCreate}>
+                    <PlusIcon className="h-4 w-4" />
+                    New job
+                  </Button>
+                }
+              />
+            </Card>
+          ) : (
+            <Card className="overflow-hidden p-0">
+              {/* Desktop / tablet table */}
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full text-left">
+                  <caption className="sr-only">List of job postings</caption>
+                  <thead className="border-b border-gray-200 bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Title</th>
+                      <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Department</th>
+                      <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Location</th>
+                      <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Applications</th>
+                      <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Status</th>
+                      <th scope="col" className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-600">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {jobs.map((job) => (
+                      <tr key={job.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 align-middle">
+                          <div className="font-medium text-gray-900">{job.title}</div>
+                          <div className="mt-0.5 text-sm text-gray-600">
+                            {titleCase(job.employmentType)} · {titleCase(job.experienceLevel)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 align-middle text-sm text-gray-700">{job.department}</td>
+                        <td className="px-6 py-4 align-middle text-sm text-gray-700">
+                          <span className="inline-flex flex-wrap items-center gap-2">
+                            {job.location}
+                            {job.isRemote && <Badge tone="info">Remote</Badge>}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 align-middle text-sm text-gray-700">{job._count?.applications ?? 0}</td>
+                        <td className="px-6 py-4 align-middle">
+                          <button
+                            onClick={() => handleTogglePublish(job)}
+                            aria-label={
+                              job.isPublished
+                                ? `Unpublish ${job.title}`
+                                : `Publish ${job.title}`
+                            }
+                            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1"
+                          >
+                            <Badge tone={job.isPublished ? "success" : "warning"}>
+                              <span
+                                aria-hidden="true"
+                                className={`h-1.5 w-1.5 rounded-full ${job.isPublished ? "bg-emerald-500" : "bg-amber-500"}`}
+                              />
+                              {job.isPublished ? "Published" : "Draft"}
+                            </Badge>
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 align-middle">
+                          <div className="flex items-center justify-end gap-1">
+                            {job.isPublished && (
+                              <a
+                                href={`${siteUrl}/jobs/${job.id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                aria-label={`Preview ${job.title} live (opens in new tab)`}
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                              >
+                                <ExternalLinkIcon className="h-5 w-5" />
+                              </a>
+                            )}
+                            <button
+                              onClick={() => openEdit(job)}
+                              aria-label={`Edit ${job.title}`}
+                              className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                            >
+                              <PencilIcon className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(job)}
+                              aria-label={`Delete ${job.title}`}
+                              className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-gray-600 hover:bg-red-50 hover:text-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                            >
+                              <TrashIcon className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile card list */}
+              <ul className="divide-y divide-gray-100 md:hidden">
                 {jobs.map((job) => (
-                  <tr key={job.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{job.title}</div>
-                      <div className="text-sm text-gray-500">{job.employmentType} · {job.experienceLevel}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">{job.department}</td>
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      {job.location}
-                      {job.isRemote && (
-                        <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Remote</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">{job._count?.applications ?? 0}</td>
-                    <td className="px-6 py-4">
+                  <li key={job.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900">{job.title}</p>
+                        <p className="mt-0.5 text-sm text-gray-600">
+                          {titleCase(job.employmentType)} · {titleCase(job.experienceLevel)}
+                        </p>
+                      </div>
                       <button
                         onClick={() => handleTogglePublish(job)}
-                        className={`text-xs px-3 py-1 rounded-full font-medium ${
-                          job.isPublished
-                            ? "bg-green-100 text-green-700 hover:bg-green-200"
-                            : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
-                        }`}
+                        aria-label={job.isPublished ? `Unpublish ${job.title}` : `Publish ${job.title}`}
+                        className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                       >
-                        {job.isPublished ? "Published" : "Draft"}
+                        <Badge tone={job.isPublished ? "success" : "warning"}>
+                          <span
+                            aria-hidden="true"
+                            className={`h-1.5 w-1.5 rounded-full ${job.isPublished ? "bg-emerald-500" : "bg-amber-500"}`}
+                          />
+                          {job.isPublished ? "Published" : "Draft"}
+                        </Badge>
                       </button>
-                    </td>
-                    <td className="px-6 py-4 text-right space-x-3">
+                    </div>
+                    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                      <div>
+                        <dt className="text-gray-500">Department</dt>
+                        <dd className="text-gray-800">{job.department}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-gray-500">Location</dt>
+                        <dd className="flex flex-wrap items-center gap-1.5 text-gray-800">
+                          {job.location}
+                          {job.isRemote && <Badge tone="info">Remote</Badge>}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-gray-500">Applications</dt>
+                        <dd className="text-gray-800">{job._count?.applications ?? 0}</dd>
+                      </div>
+                    </dl>
+                    <div className="mt-3 flex items-center gap-2">
                       {job.isPublished && (
-                        <a
-                          href={`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/jobs/${job.id}`}
+                        <ButtonLink
+                          href={`${siteUrl}/jobs/${job.id}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-sm text-gray-500 hover:text-gray-700"
-                          title="Preview live"
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Preview ${job.title} live (opens in new tab)`}
                         >
-                          ↗
-                        </a>
+                          <ExternalLinkIcon className="h-4 w-4" />
+                          Preview
+                        </ButtonLink>
                       )}
-                      <button
-                        onClick={() => openEdit(job)}
-                        className="text-sm text-blue-600 hover:text-blue-800"
-                      >
+                      <Button variant="secondary" size="sm" onClick={() => openEdit(job)}>
+                        <PencilIcon className="h-4 w-4" />
                         Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(job)}
-                        className="text-sm text-red-600 hover:text-red-800"
-                      >
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(job)} className="text-red-700 hover:bg-red-50">
+                        <TrashIcon className="h-4 w-4" />
                         Delete
-                      </button>
-                    </td>
-                  </tr>
+                      </Button>
+                    </div>
+                  </li>
                 ))}
-                {jobs.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                      No jobs yet. Create your first job posting!
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              </ul>
+            </Card>
+          )
         )}
 
         {/* Job Form */}
-        {view === "form" && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 max-w-3xl">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">
-              {editingId ? "Edit Job" : "Create New Job"}
+        {!loading && view === "form" && (
+          <Card className="max-w-3xl">
+            <h2 className="mb-6 text-lg font-semibold text-gray-900">
+              {editingId ? "Edit job" : "Create new job"}
             </h2>
 
             {/* AI Job Assistant */}
-            <AiJobAssistant
-              currentForm={form}
-              onApply={handleAiApply}
-            />
+            <AiJobAssistant currentForm={form} onApply={handleAiApply} />
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                {error}
+              <div className="mb-4">
+                <Alert tone="error">{error}</Alert>
               </div>
             )}
 
-            <div className="space-y-5">
+            <form
+              className="space-y-5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSave();
+              }}
+            >
               {/* Title */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Job Title *</label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Senior Frontend Engineer"
-                />
-              </div>
+              <Field
+                label="Job title"
+                required
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="Senior Frontend Engineer"
+              />
 
               {/* Department + Location */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
+                  <label htmlFor="job-department" className="mb-1.5 block text-sm font-medium text-gray-700">
+                    Department <span className="text-red-600" aria-hidden="true">*</span>
+                    <span className="sr-only"> (required)</span>
+                  </label>
                   <select
+                    id="job-department"
+                    required
                     value={form.department}
                     onChange={(e) => setForm({ ...form, department: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className={SELECT_CLS}
                   >
                     <option value="">Select department</option>
                     {DEPARTMENTS.map((d) => (
@@ -444,160 +581,146 @@ export default function AdminJobsPage() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Location *</label>
-                  <input
-                    type="text"
-                    value={form.location}
-                    onChange={(e) => setForm({ ...form, location: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="San Francisco, CA"
-                  />
-                </div>
+                <Field
+                  label="Location"
+                  required
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  placeholder="San Francisco, CA"
+                />
               </div>
 
               {/* Employment Type + Experience Level */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
+                  <label htmlFor="job-employment" className="mb-1.5 block text-sm font-medium text-gray-700">
+                    Employment type
+                  </label>
                   <select
+                    id="job-employment"
                     value={form.employmentType}
                     onChange={(e) => setForm({ ...form, employmentType: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className={SELECT_CLS}
                   >
                     {EMPLOYMENT_TYPES.map((t) => (
-                      <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                      <option key={t} value={t}>{titleCase(t)}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Experience Level</label>
+                  <label htmlFor="job-experience" className="mb-1.5 block text-sm font-medium text-gray-700">
+                    Experience level
+                  </label>
                   <select
+                    id="job-experience"
                     value={form.experienceLevel}
                     onChange={(e) => setForm({ ...form, experienceLevel: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className={SELECT_CLS}
                   >
                     {EXPERIENCE_LEVELS.map((l) => (
-                      <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>
+                      <option key={l} value={l}>{titleCase(l)}</option>
                     ))}
                   </select>
                 </div>
               </div>
 
               {/* Salary */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Salary Min ($)</label>
-                  <input
-                    type="number"
-                    value={form.salaryMin}
-                    onChange={(e) => setForm({ ...form, salaryMin: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="80000"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Salary Max ($)</label>
-                  <input
-                    type="number"
-                    value={form.salaryMax}
-                    onChange={(e) => setForm({ ...form, salaryMax: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="150000"
-                  />
-                </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field
+                  label="Salary min ($)"
+                  type="number"
+                  value={form.salaryMin}
+                  onChange={(e) => setForm({ ...form, salaryMin: e.target.value })}
+                  placeholder="80000"
+                />
+                <Field
+                  label="Salary max ($)"
+                  type="number"
+                  value={form.salaryMax}
+                  onChange={(e) => setForm({ ...form, salaryMax: e.target.value })}
+                  placeholder="150000"
+                />
               </div>
 
               {/* Remote + Published toggles */}
-              <div className="flex gap-6">
-                <label className="flex items-center gap-2 cursor-pointer">
+              <fieldset className="flex flex-wrap gap-6">
+                <legend className="sr-only">Visibility options</legend>
+                <label className="flex min-h-11 cursor-pointer items-center gap-2.5">
                   <input
                     type="checkbox"
                     checked={form.isRemote}
                     onChange={(e) => setForm({ ...form, isRemote: e.target.checked })}
-                    className="h-4 w-4 text-blue-600 rounded"
+                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600"
                   />
-                  <span className="text-sm text-gray-700">Remote Friendly</span>
+                  <span className="text-sm text-gray-700">Remote friendly</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex min-h-11 cursor-pointer items-center gap-2.5">
                   <input
                     type="checkbox"
                     checked={form.isPublished}
                     onChange={(e) => setForm({ ...form, isPublished: e.target.checked })}
-                    className="h-4 w-4 text-blue-600 rounded"
+                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600"
                   />
-                  <span className="text-sm text-gray-700">Publish Immediately</span>
+                  <span className="text-sm text-gray-700">Publish immediately</span>
                 </label>
-              </div>
+              </fieldset>
 
               {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={6}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Describe the role, responsibilities, and team..."
-                />
-              </div>
+              <TextareaField
+                label="Description"
+                required
+                rows={6}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Describe the role, responsibilities, and team…"
+              />
 
               {/* Requirements */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Requirements (one per line)</label>
-                <textarea
-                  value={form.requirements}
-                  onChange={(e) => setForm({ ...form, requirements: e.target.value })}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder={"5+ years experience with React\nTypeScript proficiency\nStrong CS fundamentals"}
-                />
-              </div>
+              <TextareaField
+                label="Requirements"
+                hint="One per line."
+                rows={4}
+                value={form.requirements}
+                onChange={(e) => setForm({ ...form, requirements: e.target.value })}
+                placeholder={"5+ years experience with React\nTypeScript proficiency\nStrong CS fundamentals"}
+              />
 
               {/* Benefits */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Benefits (one per line)</label>
-                <textarea
-                  value={form.benefits}
-                  onChange={(e) => setForm({ ...form, benefits: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder={"Health insurance\nRemote work flexibility\nStock options"}
-                />
-              </div>
+              <TextareaField
+                label="Benefits"
+                hint="One per line."
+                rows={3}
+                value={form.benefits}
+                onChange={(e) => setForm({ ...form, benefits: e.target.value })}
+                placeholder={"Health insurance\nRemote work flexibility\nStock options"}
+              />
 
               {/* Tags */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma separated)</label>
-                <input
-                  type="text"
-                  value={form.tags}
-                  onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="react, typescript, frontend"
-                />
-              </div>
+              <Field
+                label="Tags"
+                hint="Comma separated."
+                value={form.tags}
+                onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                placeholder="react, typescript, frontend"
+              />
 
               {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t">
-                <button
-                  onClick={handleSave}
+              <div className="flex flex-col gap-3 border-t border-gray-200 pt-5 sm:flex-row">
+                <Button
+                  type="submit"
+                  loading={saving}
                   disabled={saving || !form.title || !form.department || !form.location || !form.description}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {saving ? "Saving..." : editingId ? "Update Job" : "Create Job"}
-                </button>
-                <button
-                  onClick={() => setView("list")}
-                  className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
+                  {saving ? "Saving…" : editingId ? "Update job" : "Create job"}
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => setView("list")}>
                   Cancel
-                </button>
+                </Button>
               </div>
-            </div>
-          </div>
+            </form>
+          </Card>
         )}
       </div>
-    </div>
+    </main>
   );
 }

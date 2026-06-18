@@ -146,45 +146,51 @@ export default function VersionHistory({
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <section className="flex flex-col h-full" aria-label="Version history">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          <span className="text-sm">🕒</span>
+          <svg className="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l3 2" />
+          </svg>
           <h3 className="text-sm font-bold text-gray-900">Version History</h3>
           {total > 0 && (
-            <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full font-medium">
+            <span className="text-[10px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded-full font-medium">
               {total}
             </span>
           )}
         </div>
         <button
           onClick={onClose}
-          className="w-6 h-6 rounded hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 text-xs transition-colors"
+          aria-label="Close version history"
+          className="w-9 h-9 rounded hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
         >
-          ✕
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </button>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {loading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="flex items-center justify-center py-12" role="status" aria-live="polite">
+            <span className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+            <span className="sr-only">Loading version history…</span>
           </div>
         )}
 
         {error && (
-          <div className="mx-3 mt-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mx-3 mt-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg" role="alert">
             <p className="text-xs text-red-700">{error}</p>
           </div>
         )}
 
         {!loading && versions.length === 0 && !error && (
           <div className="text-center py-12">
-            <p className="text-2xl mb-2">📝</p>
-            <p className="text-xs text-gray-500">No version history yet.</p>
-            <p className="text-[10px] text-gray-400 mt-1">
+            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-500" aria-hidden="true">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+            </div>
+            <p className="text-xs text-gray-700">No version history yet.</p>
+            <p className="text-[10px] text-gray-500 mt-1">
               Versions are created automatically when you save.
             </p>
           </div>
@@ -220,12 +226,12 @@ export default function VersionHistory({
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-gray-500 mt-0.5">
+                      <p className="text-[10px] text-gray-600 mt-0.5">
                         {v.blockCount} block{v.blockCount !== 1 ? "s" : ""} ·{" "}
                         {formatTimeAgo(v.createdAt)}
                       </p>
                       {v.savedByEmail && (
-                        <p className="text-[10px] text-gray-400 mt-0.5 truncate">
+                        <p className="text-[10px] text-gray-500 mt-0.5 truncate">
                           by {v.savedByEmail}
                         </p>
                       )}
@@ -235,10 +241,11 @@ export default function VersionHistory({
                       <button
                         onClick={() => handleRestore(v.version)}
                         disabled={restoring !== null}
-                        className={`shrink-0 px-2.5 py-1 text-[10px] font-semibold rounded-md transition-colors ${
+                        aria-label={`Restore version ${v.version}`}
+                        className={`shrink-0 px-2.5 py-1.5 text-[10px] font-semibold rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
                           restoring === v.version
-                            ? "bg-blue-100 text-blue-400 cursor-wait"
-                            : "bg-white border border-gray-200 text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                            ? "bg-blue-100 text-blue-500 cursor-wait"
+                            : "bg-white border border-gray-300 text-gray-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
                         }`}
                       >
                         {restoring === v.version ? "Restoring…" : "Restore"}
@@ -253,11 +260,11 @@ export default function VersionHistory({
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50">
-        <p className="text-[10px] text-gray-400 text-center">
+      <div className="px-4 py-2.5 border-t border-gray-200 bg-gray-50">
+        <p className="text-[10px] text-gray-500 text-center">
           Up to 50 versions kept per page
         </p>
       </div>
-    </div>
+    </section>
   );
 }
