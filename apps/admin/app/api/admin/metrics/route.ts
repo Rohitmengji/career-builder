@@ -4,7 +4,7 @@ import { alertManager } from "@career-builder/observability/alerts";
 import { anomalyDetector, ANOMALY_METRIC } from "@career-builder/observability/anomaly";
 import { getBlockedIps, unblockIp } from "@career-builder/observability/bot-detection";
 import { getBudgetViolations } from "@career-builder/observability/performance";
-import { getSession, getSessionReadOnly } from "@/lib/auth";
+import { getSession, getSessionReadOnly, validateCsrf } from "@/lib/auth";
 
 // Side-effect: wire up DB alert persistence on first import
 import "@/lib/observability-init";
@@ -69,6 +69,11 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session || (session.role !== "admin" && session.role !== "super_admin")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const csrfValid = await validateCsrf(req);
+  if (!csrfValid) {
+    return NextResponse.json({ error: "Invalid CSRF token" }, { status: 403 });
   }
 
   const body = await req.json();

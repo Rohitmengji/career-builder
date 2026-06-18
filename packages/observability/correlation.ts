@@ -66,8 +66,18 @@ export function createRequestContext(
   overrides?: Partial<RequestContext>,
 ): RequestContext {
   const url = new URL(request.url);
-  const forwarded = request.headers.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || "unknown";
+  // Trusted client IP: prefer platform headers, else the rightmost (trusted)
+  // XFF hop — the leftmost entry is client-spoofable.
+  const h = request.headers;
+  let ip = h.get("cf-connecting-ip")?.trim()
+    || h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim()
+    || h.get("x-real-ip")?.split(",")[0]?.trim()
+    || "";
+  if (!ip) {
+    const parts = (h.get("x-forwarded-for") || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const trusted = Math.max(1, parseInt(process.env.TRUSTED_PROXY_COUNT || "1", 10) || 1);
+    ip = parts.length > 0 ? parts[Math.max(0, parts.length - trusted)]! : "unknown";
+  }
 
   return {
     requestId:

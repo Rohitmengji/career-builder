@@ -20,8 +20,20 @@ out/
 # Prisma generated client (regenerated on install)
 node_modules/.prisma/
 
-# Local data (uploads, file-based stores)
+# Local data (uploads, file-based stores). The dev servers and the local
+# storage driver write resumes/media here; never commit uploaded files.
+data/
 apps/admin/data/
+apps/web/data/
+
+# Editor / backup scratch files
+*.bak
+
+# Playwright / UI-audit generated output
+test-results/
+playwright-report/
+ui-audit/reports/
+ui-audit/screenshots/
 
 # OS files
 .DS_Store

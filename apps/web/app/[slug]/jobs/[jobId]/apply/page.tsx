@@ -7,6 +7,8 @@ import { useParams } from "next/navigation";
 export default function ApplyPage() {
   const { slug, jobId } = useParams<{ slug: string; jobId: string }>();
   const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -18,10 +20,45 @@ export default function ApplyPage() {
     resume: null as File | null,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In production this would POST to an ATS API
-    setSubmitted(true);
+    if (!form.resume) {
+      setStatus("error");
+      setErrorMsg("Please attach your resume.");
+      return;
+    }
+    setStatus("submitting");
+    setErrorMsg("");
+
+    try {
+      // Build multipart payload matching POST /api/jobs/apply.
+      const payload = new globalThis.FormData();
+      payload.append("jobId", jobId);
+      payload.append("firstName", form.firstName);
+      payload.append("lastName", form.lastName);
+      payload.append("email", form.email);
+      if (form.phone) payload.append("phone", form.phone);
+      if (form.linkedin) payload.append("linkedinUrl", form.linkedin);
+      // The apply API has no portfolio field — fold it into the cover letter
+      // so the candidate's link is preserved rather than silently dropped.
+      let cover = form.coverLetter;
+      if (form.portfolio) cover = `${cover ? cover + "\n\n" : ""}Portfolio: ${form.portfolio}`;
+      if (cover) payload.append("coverLetter", cover);
+      payload.append("resume", form.resume);
+
+      const res = await fetch("/api/jobs/apply", { method: "POST", body: payload });
+      const data = await res.json().catch(() => ({ success: false, error: "Unexpected server response." }));
+
+      if (res.ok && data.success) {
+        setSubmitted(true);
+      } else {
+        setStatus("error");
+        setErrorMsg(data.error || "Application failed. Please try again.");
+      }
+    } catch {
+      setStatus("error");
+      setErrorMsg("Network error. Please check your connection and try again.");
+    }
   };
 
   if (submitted) {
@@ -79,6 +116,12 @@ export default function ApplyPage() {
           <h1 className="text-2xl font-semibold text-gray-900 mb-2">Apply for this position</h1>
           <p className="text-sm text-gray-500">Fill out the form below and we&apos;ll be in touch.</p>
         </div>
+
+        {status === "error" && errorMsg && (
+          <div className="mb-6 rounded-lg bg-red-50 border border-red-100 text-red-700 text-sm px-4 py-3">
+            {errorMsg}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Name */}
@@ -202,9 +245,10 @@ export default function ApplyPage() {
           <div className="pt-4 flex flex-col sm:flex-row items-center gap-3">
             <button
               type="submit"
-              className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/15 transition-all duration-200"
+              disabled={status === "submitting"}
+              className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/15 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Submit Application
+              {status === "submitting" ? "Submitting…" : "Submit Application"}
             </button>
             <Link
               href={`/${slug}/jobs/${jobId}`}

@@ -92,6 +92,8 @@ export function useSubscription() {
   /** Initial fetch on mount (shared / deduped) */
   useEffect(() => {
     if (_cachedStatus) {
+      // Hydrate from the shared module-level cache on mount (external store sync).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus(_cachedStatus);
       setLoading(false);
       return;

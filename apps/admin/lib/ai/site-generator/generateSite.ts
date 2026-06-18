@@ -84,8 +84,6 @@ export function createSitePlan(input: SiteGenerationInput): SitePagePlan[] {
   const pageTypes: PageType[] = [...SITE_LIMITS.REQUIRED_PAGE_TYPES];
 
   // Add optional pages based on company type / industry
-  const optionalPages: PageType[] = ["culture", "benefits"];
-
   // Startups/agencies get culture page, enterprise gets benefits
   if (input.companyType === "startup" || input.companyType === "agency") {
     if (!pageTypes.includes("culture")) pageTypes.push("culture");

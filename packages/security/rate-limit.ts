@@ -221,12 +221,35 @@ export function getRateLimiter(name: keyof typeof RATE_LIMITS): RateLimiter {
   return limiter;
 }
 
-/** Get client IP from request headers. */
+/**
+ * Resolve the client IP from a TRUSTED hop.
+ *
+ * The leftmost X-Forwarded-For entry is client-controlled and trivially
+ * spoofable (`X-Forwarded-For: 1.2.3.4`), so using it for rate-limit / lockout
+ * keys lets an attacker rotate keys at will and forge a victim's IP. We instead
+ * prefer platform-set headers (Cloudflare/Vercel) and otherwise take the
+ * RIGHTMOST XFF entry — the hop added by our own trusted proxy.
+ *
+ * TRUSTED_PROXY_COUNT (default 1) controls how many trusted proxies sit in
+ * front of the app; the client IP is taken that many hops from the right.
+ */
 export function getClientIp(request: Request): string {
   const headers = request.headers;
-  return (
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    headers.get("x-real-ip") ||
-    "unknown"
-  );
+
+  // Platform-set, non-spoofable headers first.
+  const cfIp = headers.get("cf-connecting-ip");
+  if (cfIp) return cfIp.trim();
+  const vercelIp = headers.get("x-vercel-forwarded-for") || headers.get("x-real-ip");
+  if (vercelIp) return vercelIp.split(",")[0]!.trim();
+
+  const xff = headers.get("x-forwarded-for");
+  if (xff) {
+    const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
+    if (parts.length > 0) {
+      const trusted = Math.max(1, parseInt(process.env.TRUSTED_PROXY_COUNT || "1", 10) || 1);
+      return parts[Math.max(0, parts.length - trusted)]!;
+    }
+  }
+
+  return "unknown";
 }

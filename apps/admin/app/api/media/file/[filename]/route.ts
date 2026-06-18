@@ -46,8 +46,14 @@ export async function GET(
       "Content-Type": contentType,
       "Cache-Control": "public, max-age=31536000, immutable",
       "X-Content-Type-Options": "nosniff",
-      // Prevent SVG from executing scripts in browser
-      ...(ext === "svg" ? { "Content-Disposition": "attachment" } : {}),
+      // Prevent SVG from executing scripts in the browser: force download AND
+      // sandbox via CSP so even a direct-navigation render can't run script.
+      ...(ext === "svg"
+        ? {
+            "Content-Disposition": `attachment; filename="${safeName}"`,
+            "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+          }
+        : {}),
     },
   });
 }

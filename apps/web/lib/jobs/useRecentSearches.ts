@@ -93,6 +93,8 @@ export function useRecentSearches(): UseRecentSearchesResult {
   useEffect(() => {
     if (!initialized.current) {
       initialized.current = true;
+      // Hydrate from localStorage (external, client-only) once on mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHistory(loadHistory());
     }
   }, []);

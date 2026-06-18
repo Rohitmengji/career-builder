@@ -18,12 +18,22 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24, // 24 hours
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**",
-      },
-    ],
+    // Lock the Next image optimizer to an allowlist in production to avoid
+    // acting as an open image proxy (SSRF-adjacent / bandwidth abuse). Set
+    // IMAGE_REMOTE_HOSTS to a comma-separated list of allowed hostnames
+    // (wildcards like `*.cloudinary.com` are supported). Falls back to the
+    // permissive default only when unset, so existing tenant logos keep working
+    // until the allowlist is configured.
+    remotePatterns: (process.env.IMAGE_REMOTE_HOSTS || "")
+      .split(",")
+      .map((h) => h.trim())
+      .filter(Boolean)
+      .map((hostname) => ({ protocol: "https" as const, hostname }))
+      .concat(
+        process.env.IMAGE_REMOTE_HOSTS
+          ? []
+          : [{ protocol: "https" as const, hostname: "**" }],
+      ),
   },
 
   // ── Compression ─────────────────────────────────────────────────

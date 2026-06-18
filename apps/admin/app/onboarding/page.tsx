@@ -47,7 +47,7 @@ export default function OnboardingPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const { authenticated, loading: authLoading } = useAuthGuard();
+  useAuthGuard();
 
   // Load templates
   useEffect(() => {

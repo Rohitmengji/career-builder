@@ -143,12 +143,30 @@ export async function verifyPassword(
   const salt = parts[5]!;
   const expectedHash = parts[6]!;
 
-  const hash = await new Promise<Buffer>((resolve, reject) => {
-    crypto.scrypt(password, salt, SCRYPT_PARAMS.keyLen, { N, r, p }, (err, derivedKey) => {
-      if (err) reject(err);
-      else resolve(derivedKey);
+  // Clamp the cost parameters to a safe envelope. They are read from the stored
+  // hash; if an attacker could influence that value, an unbounded N/r/p would
+  // let them pin the CPU and exhaust memory (DoS) on every verify. Reject
+  // anything outside the range we ever produce (SCRYPT_PARAMS = N=16384,r=8,p=1).
+  const isPow2 = (n: number) => Number.isInteger(n) && n > 1 && (n & (n - 1)) === 0;
+  if (!isPow2(N) || N < 16384 || N > 1 << 17) return false; // 2^14 .. 2^17
+  if (!Number.isInteger(r) || r < 1 || r > 16) return false;
+  if (!Number.isInteger(p) || p < 1 || p > 4) return false;
+
+  let hash: Buffer;
+  try {
+    hash = await new Promise<Buffer>((resolve, reject) => {
+      // 128 * N * r bytes of memory; cap so a crafted hash can't OOM us.
+      crypto.scrypt(
+        password,
+        salt,
+        SCRYPT_PARAMS.keyLen,
+        { N, r, p, maxmem: 256 * 1024 * 1024 },
+        (err, derivedKey) => (err ? reject(err) : resolve(derivedKey)),
+      );
     });
-  });
+  } catch {
+    return false;
+  }
 
   return timingSafeEqual(hash.toString("hex"), expectedHash);
 }

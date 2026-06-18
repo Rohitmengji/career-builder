@@ -1,17 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback, type ChangeEvent } from "react";
+import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthGuard } from "@/lib/useAuthGuard";
 import {
   type TenantConfig,
   type TenantTheme,
   type TenantBranding,
-  DEFAULT_THEME,
-  DEFAULT_BRANDING,
   mergeTenantConfig,
   getGoogleFontsUrl,
-  lightenHex,
   isLightColor,
 } from "@career-builder/tenant-config";
 
@@ -235,7 +233,18 @@ function ThemePreview({ theme, branding }: { theme: TenantTheme; branding: Tenan
 export default function ThemeEditorPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tenantId = searchParams.get("tenant") || "default";
+  const { authenticated: authReady, loading: authLoading, user } = useAuthGuard();
+  const requestedTenant = searchParams.get("tenant");
+  // The tenant is derived from the authenticated session — NOT trusted from the
+  // query string. Only platform operators (super_admin) may switch tenants via
+  // ?tenant=; everyone else is pinned to their own tenant. The /api/tenants
+  // endpoint enforces the same rule server-side.
+  const tenantId =
+    user
+      ? user.role === "super_admin" && requestedTenant
+        ? requestedTenant
+        : user.tenantId
+      : "default";
 
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
@@ -255,8 +264,6 @@ export default function ThemeEditorPage() {
   };
 
   /* ── Auth ──────────────────────────────────────────────────────── */
-  const { authenticated: authReady, loading: authLoading } = useAuthGuard();
-
   useEffect(() => {
     if (!authLoading && authReady) setAuthenticated(true);
   }, [authLoading, authReady]);
@@ -353,7 +360,7 @@ export default function ThemeEditorPage() {
               <h1 className="text-sm font-bold text-gray-900">🎨 Theme Editor</h1>
               <p className="text-[10px] text-gray-400 mt-0.5">Configure branding & theme for each tenant</p>
             </div>
-            <a href="/" className="text-xs text-gray-400 hover:text-gray-600">← Home</a>
+            <Link href="/" className="text-xs text-gray-400 hover:text-gray-600">← Home</Link>
           </div>
 
           {/* Tenant selector */}

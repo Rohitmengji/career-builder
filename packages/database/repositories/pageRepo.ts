@@ -65,48 +65,70 @@ export const pageRepo = {
     savedBy?: string,
     savedByEmail?: string,
   ): Promise<SavePageResult> {
-    // Check for existing page
+    const whereUnique = { slug_tenantId: { slug, tenantId } } as const;
+
     const existing = await prisma.page.findUnique({
-      where: { slug_tenantId: { slug, tenantId } },
+      where: whereUnique,
       select: { id: true, version: true, updatedAt: true },
     });
 
-    // Optimistic locking: reject if version mismatch
-    if (expectedVersion !== undefined && existing && existing.version !== expectedVersion) {
-      return {
-        success: false,
-        version: existing.version,
-        updatedAt: existing.updatedAt,
-        conflict: true,
-      };
+    // ── CREATE path ────────────────────────────────────────────────
+    if (!existing) {
+      try {
+        const page = await prisma.page.create({
+          data: { slug, title: title || slug, blocks, version: 1, tenantId },
+        });
+        return { success: true, version: page.version, updatedAt: page.updatedAt };
+      } catch {
+        // Lost the create race to a concurrent request — fall through and
+        // treat it as an update below.
+      }
     }
 
-    const nextVersion = existing ? existing.version + 1 : 1;
-
-    const page = await prisma.page.upsert({
-      where: { slug_tenantId: { slug, tenantId } },
-      create: {
+    // ── UPDATE path (atomic compare-and-set) ────────────────────────
+    // Previously this read the version then wrote in a separate query, so two
+    // concurrent saves could both pass the check and one would clobber the
+    // other (lost update). We now increment atomically and, when an
+    // expectedVersion is supplied, gate the write on it in the same statement.
+    const result = await prisma.page.updateMany({
+      where: {
         slug,
-        title: title || slug,
-        blocks,
-        version: 1,
         tenantId,
+        ...(expectedVersion !== undefined ? { version: expectedVersion } : {}),
       },
-      update: {
+      data: {
         blocks,
-        version: nextVersion,
+        version: { increment: 1 },
         ...(title ? { title } : {}),
       },
     });
 
-    // NOTE: Version snapshots are NOT created on save.
-    // Snapshots are only created on PUBLISH to avoid storing every minor edit.
-    // The `version` field still increments on every save for optimistic locking.
+    if (result.count === 0) {
+      // No row matched. Either a version conflict (someone saved first) or the
+      // row vanished. Re-read to report the authoritative current version.
+      const current = await prisma.page.findUnique({
+        where: whereUnique,
+        select: { version: true, updatedAt: true },
+      });
+      return {
+        success: false,
+        version: current?.version ?? expectedVersion ?? 0,
+        updatedAt: current?.updatedAt ?? new Date(),
+        conflict: true,
+      };
+    }
 
+    // Read back the freshly-incremented version/timestamp.
+    const updated = await prisma.page.findUnique({
+      where: whereUnique,
+      select: { version: true, updatedAt: true },
+    });
+
+    // NOTE: Version snapshots are NOT created on save — only on PUBLISH.
     return {
       success: true,
-      version: page.version,
-      updatedAt: page.updatedAt,
+      version: updated?.version ?? (expectedVersion !== undefined ? expectedVersion + 1 : 1),
+      updatedAt: updated?.updatedAt ?? new Date(),
     };
   },
 

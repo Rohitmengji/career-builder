@@ -10,7 +10,7 @@
  *   - Role-specific requirement templates
  */
 
-import type { AiTone, AiJobFormData } from "@/lib/ai/types";
+import type { AiJobFormData } from "@/lib/ai/types";
 import type { AiGenerationContext, CompanyProfile } from "@/lib/ai/context/contextEngine";
 
 /* ================================================================== */

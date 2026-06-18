@@ -18,6 +18,8 @@
     "db:seed": "npx tsx seed.ts",
     "db:seed-prod": "npx tsx seed-production.ts",
     "db:push-turso": "npx tsx push-turso.ts",
+    "db:gen-turso-sql": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > prisma/turso-schema.sql && node -e \"const f='prisma/turso-schema.sql',fs=require('fs'),h='-- ============================================================\\n-- GENERATED FILE — DO NOT EDIT BY HAND.\\n-- Source of truth: prisma/schema.prisma\\n-- Regenerate with:  npm run db:gen-turso-sql   (in packages/database)\\n-- Parity is enforced in CI via:  npm run db:verify-turso\\n-- push-turso.ts executes these statements (idempotently) against Turso.\\n-- ============================================================\\n\\n';fs.writeFileSync(f,h+fs.readFileSync(f,'utf8'))\"",
+    "db:verify-turso": "npx tsx verify-turso-schema.ts",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset --force",
     "postinstall": "prisma generate"

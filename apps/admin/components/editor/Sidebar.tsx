@@ -139,6 +139,8 @@ function MediaLibrary({
   }, []);
 
   useEffect(() => {
+    // Initial async data fetch; setState runs after the request resolves.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchMedia();
   }, [fetchMedia]);
 
@@ -216,6 +218,8 @@ function MediaLibrary({
                   onClick={() => onSelect(item.url)}
                   className="group relative aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-blue-500 transition-colors"
                 >
+                  {/* User-uploaded media with arbitrary remote URLs — not a static asset. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={item.url}
                     alt={item.name}
@@ -256,6 +260,8 @@ function ImageField({
       {/* Preview */}
       {value ? (
         <div className="relative group">
+          {/* Arbitrary user-supplied image URL preview — not a static asset. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={value}
             alt=""

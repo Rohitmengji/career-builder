@@ -108,6 +108,25 @@ vercel link  # Create new project, Framework: Next.js, Root: apps/web
 | `ADMIN_API_URL` | `https://admin.yourdomain.com` | *(empty — auto)* |
 | `NEXT_PUBLIC_APP_URL` | `https://admin.yourdomain.com` | *(empty — auto)* |
 
+### 3b. Production durability & hardening env vars
+
+These are **optional in dev** (sensible local defaults) but recommended in
+production. See [CHANGELOG.md](./CHANGELOG.md) for context.
+
+| Variable | Example | Purpose |
+|----------|---------|---------|
+| `STORAGE_DRIVER` | `blob` \| `s3` \| `local` | Durable upload storage. Default `local` is **ephemeral on Vercel** — set `blob`/`s3` in prod. |
+| `BLOB_READ_WRITE_TOKEN` | `vercel_blob_rw_…` | Vercel Blob token (`STORAGE_DRIVER=blob`; `npm i @vercel/blob`). |
+| `S3_BUCKET` / `S3_PUBLIC_BASE_URL` / `S3_REGION` / `S3_ENDPOINT` | — | S3 / R2 / MinIO (`STORAGE_DRIVER=s3`; `npm i @aws-sdk/client-s3`). |
+| `KV_DRIVER` | `redis` \| `memory` | Durable KV for rate-limit / lockout / webhook idempotency. Default `memory` is per-instance. |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | — | Upstash Redis (`KV_DRIVER=redis`; `npm i @upstash/redis`). |
+| `TRUSTED_PROXY_COUNT` | `1` | Trusted reverse-proxy hops in front of the app, for client-IP/rate-limit keys. `1` is correct for a single Vercel/Cloudflare hop. |
+| `IMAGE_REMOTE_HOSTS` | `cdn.example.com,*.cloudinary.com` | Allowlist for the Next image optimizer (web app). Unset = permissive (`**`). Set in prod to avoid an open image proxy. |
+
+> Cloud SDKs (`@vercel/blob`, `@aws-sdk/client-s3`, `@upstash/redis`) are
+> **lazy-loaded** — only required when their driver is actually selected, so
+> they aren't needed for local dev, CI, or builds.
+
 ### 4. Deploy
 ```bash
 git push origin main  # Vercel auto-deploys

@@ -48,10 +48,25 @@ type RouteHandler = (req: Request, ctx?: unknown) => Promise<Response>;
 /* ================================================================== */
 
 function getClientIp(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  const real = req.headers.get("x-real-ip");
-  if (real) return real;
+  const headers = req.headers;
+
+  // Platform-set headers are non-spoofable; prefer them.
+  const cfIp = headers.get("cf-connecting-ip");
+  if (cfIp) return cfIp.trim();
+  const vercelIp = headers.get("x-vercel-forwarded-for") || headers.get("x-real-ip");
+  if (vercelIp) return vercelIp.split(",")[0]!.trim();
+
+  // The leftmost XFF entry is client-spoofable. Take the trusted RIGHTMOST hop
+  // (added by our own proxy) so IP blocklisting / bot detection can't be evaded
+  // and innocent IPs can't be framed. TRUSTED_PROXY_COUNT defaults to 1.
+  const forwarded = headers.get("x-forwarded-for");
+  if (forwarded) {
+    const parts = forwarded.split(",").map((s) => s.trim()).filter(Boolean);
+    if (parts.length > 0) {
+      const trusted = Math.max(1, parseInt(process.env.TRUSTED_PROXY_COUNT || "1", 10) || 1);
+      return parts[Math.max(0, parts.length - trusted)]!;
+    }
+  }
   return "unknown";
 }
 
@@ -221,15 +236,28 @@ export function withRequestLogging(
       }
 
       // ── Propagate request ID in response ───────────────────
-      const headers = new Headers(response.headers);
-      headers.set(REQUEST_ID_HEADER, reqCtx.requestId);
-      headers.set("X-Response-Time", `${duration}ms`);
-
-      return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers,
-      });
+      // Mutate headers IN PLACE. Re-wrapping `response.body` in a new Response
+      // breaks streamed / Server-Sent-Events responses (the SSE preview stream),
+      // so only fall back to a rebuild for non-streaming responses with
+      // immutable headers.
+      try {
+        response.headers.set(REQUEST_ID_HEADER, reqCtx.requestId);
+        response.headers.set("X-Response-Time", `${duration}ms`);
+        return response;
+      } catch {
+        const contentType = response.headers.get("content-type") || "";
+        if (response.body && contentType.includes("text/event-stream")) {
+          return response; // never re-wrap a live stream
+        }
+        const headers = new Headers(response.headers);
+        headers.set(REQUEST_ID_HEADER, reqCtx.requestId);
+        headers.set("X-Response-Time", `${duration}ms`);
+        return new Response(response.body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+        });
+      }
     });
   };
 }

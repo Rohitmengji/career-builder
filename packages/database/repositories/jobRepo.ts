@@ -126,7 +126,19 @@ export const jobRepo = {
     });
   },
 
-  async update(id: string, data: Partial<CreateJobInput>) {
+  /**
+   * Defense-in-depth tenant guard. When a tenantId is supplied, verify the
+   * row belongs to that tenant before a mutation. Throws (not silently no-ops)
+   * so a cross-tenant id surfaces as an error rather than mutating foreign data.
+   */
+  async assertOwned(id: string, tenantId?: string) {
+    if (!tenantId) return;
+    const owned = await prisma.job.findFirst({ where: { id, tenantId }, select: { id: true } });
+    if (!owned) throw new Error("Job not found");
+  },
+
+  async update(id: string, data: Partial<CreateJobInput>, tenantId?: string) {
+    await this.assertOwned(id, tenantId);
     const updateData: Prisma.JobUpdateInput = {};
     if (data.title !== undefined) updateData.title = data.title;
     if (data.slug !== undefined) updateData.slug = data.slug;
@@ -148,18 +160,21 @@ export const jobRepo = {
     return prisma.job.update({ where: { id }, data: updateData });
   },
 
-  async delete(id: string) {
+  async delete(id: string, tenantId?: string) {
+    await this.assertOwned(id, tenantId);
     return prisma.job.delete({ where: { id } });
   },
 
-  async publish(id: string) {
+  async publish(id: string, tenantId?: string) {
+    await this.assertOwned(id, tenantId);
     return prisma.job.update({
       where: { id },
       data: { isPublished: true, postedAt: new Date() },
     });
   },
 
-  async unpublish(id: string) {
+  async unpublish(id: string, tenantId?: string) {
+    await this.assertOwned(id, tenantId);
     return prisma.job.update({
       where: { id },
       data: { isPublished: false },

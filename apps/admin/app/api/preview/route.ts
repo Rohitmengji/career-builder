@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 declare global {
   var __previewListeners: Set<(slug: string) => void> | undefined;
 }

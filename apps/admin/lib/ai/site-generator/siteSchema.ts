@@ -133,7 +133,7 @@ export const PAGE_BLUEPRINTS: Record<PageType, {
       "hero",
       "search-bar",
       "job-category",
-      "job-list",
+      "search-results",
       "notification-banner",
       "join-talent-network",
       "cta-button",

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { savePage, loadPage, listPages, deletePage, publishPage, getPublishStatus } from "@/lib/store";
+import { savePage, loadPage, listPages, deletePage, getPublishStatus } from "@/lib/store";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
 import { savePageSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeSlug, sanitizeBlockProps } from "@career-builder/security/sanitize";
@@ -8,7 +8,7 @@ import { logger } from "@career-builder/observability/logger";
 import { metrics, METRIC } from "@career-builder/observability/metrics";
 import { pageRepo } from "@career-builder/database";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 declare global {
   var __previewListeners: Set<(slug: string) => void> | undefined;
 }

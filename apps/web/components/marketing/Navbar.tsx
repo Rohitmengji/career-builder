@@ -28,6 +28,9 @@ export default function Navbar() {
 
   // ── Close on route change ───────────────────────────────────────
   useEffect(() => {
+    // Reset the open drawer when the route changes; pathname is an external
+    // (router) signal we sync local UI state to.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsOpen(false);
   }, [pathname]);
 

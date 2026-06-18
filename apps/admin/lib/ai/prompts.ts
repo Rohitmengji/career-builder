@@ -103,7 +103,7 @@ Available block types:
 
 Popular page structures:
 - Careers: hero → features → testimonial → team → cta-button
-- Job listing: hero → search-bar → job-list → join-talent-network
+- Job listing: hero → search-bar → search-results → join-talent-network
 - Culture: hero → video-and-text → team → social-proof → cta-button`;
 }
 

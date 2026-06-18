@@ -57,8 +57,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const csrfErr = await validateCsrf(req);
-    if (csrfErr) {
+    // validateCsrf() returns TRUE when the token is valid. The previous code
+    // inverted this (rejecting valid tokens, accepting missing/invalid ones),
+    // which disabled CSRF protection entirely on this route.
+    const csrfValid = await validateCsrf(req);
+    if (!csrfValid) {
       return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
     }
 

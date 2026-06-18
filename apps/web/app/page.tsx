@@ -1,9 +1,5 @@
 import Link from "next/link";
-import {
-  type TenantConfig,
-  DEFAULT_BRANDING,
-  mergeTenantConfig,
-} from "@career-builder/tenant-config";
+import { mergeTenantConfig } from "@career-builder/tenant-config";
 
 function getAdminApiUrl(): string {
   const serverOnly = process.env.ADMIN_API_URL;

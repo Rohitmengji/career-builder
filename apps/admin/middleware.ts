@@ -61,27 +61,44 @@ export function middleware(request: NextRequest) {
   ) {
     const origin = request.headers.get("origin");
     const host = request.headers.get("host");
+    const referer = request.headers.get("referer");
+    const secFetchSite = request.headers.get("sec-fetch-site");
+    const isDev = process.env.NODE_ENV !== "production";
+
+    let rejected: string | null = null;
 
     if (origin) {
       try {
         const originHost = new URL(origin).host;
         if (host && originHost !== host) {
-          const isDev = process.env.NODE_ENV !== "production";
           const originHostname = new URL(origin).hostname;
           const hostHostname = host.split(":")[0];
           if (!(isDev && originHostname === "localhost" && hostHostname === "localhost")) {
-            return NextResponse.json(
-              { error: "CSRF: Origin mismatch" },
-              { status: 403 },
-            );
+            rejected = "CSRF: Origin mismatch";
           }
         }
       } catch {
-        return NextResponse.json(
-          { error: "CSRF: Invalid origin" },
-          { status: 403 },
-        );
+        rejected = "CSRF: Invalid origin";
       }
+    } else if (secFetchSite) {
+      // No Origin header — fall back to the Fetch Metadata signal that modern
+      // browsers always send. cross-site is the CSRF attack vector.
+      if (secFetchSite === "cross-site") rejected = "CSRF: cross-site request blocked";
+    } else if (referer) {
+      try {
+        if (host && new URL(referer).host !== host) rejected = "CSRF: Referer mismatch";
+      } catch {
+        rejected = "CSRF: Invalid referer";
+      }
+    } else if (!isDev) {
+      // No Origin, Sec-Fetch-Site, or Referer on a state-changing request in
+      // production is suspicious. The route-level double-submit token is the
+      // backstop, but reject here too. (Allowed in dev for curl/tests.)
+      rejected = "CSRF: missing Origin/Sec-Fetch-Site/Referer";
+    }
+
+    if (rejected) {
+      return NextResponse.json({ error: rejected }, { status: 403 });
     }
   }
 

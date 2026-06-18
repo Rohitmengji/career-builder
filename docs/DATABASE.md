@@ -177,20 +177,32 @@ npx prisma generate
 
 ### Production (Turso)
 
+The Turso DDL is **generated from `schema.prisma`** — never hand-edit the
+`CREATE TABLE` statements. CI fails if the generated file drifts from the schema.
+
 ```bash
-# 1-3: Same as local
-# 4. Manually migrate Turso
-echo 'ALTER TABLE "User" ADD COLUMN "newField" TEXT;' | turso db shell career-builder
+cd packages/database
 
-# 5. Update push-turso.ts (both CREATE TABLE and MIGRATION_STATEMENTS)
-# 6. Build and verify
-npm run build
+# 1. Edit prisma/schema.prisma, then regenerate the Turso DDL artifact:
+npm run db:gen-turso-sql      # → prisma/turso-schema.sql (commit this)
 
-# 7. Deploy
-git push
+# 2. For an EXISTING (already-deployed) table, add an additive ALTER to the
+#    MIGRATION_STATEMENTS array in push-turso.ts (fresh deploys get the column
+#    from the generated CREATE TABLE automatically).
+
+# 3. Verify schema ↔ DDL parity (also runs in CI):
+npm run db:verify-turso
+
+# 4. Apply to Turso (idempotent: CREATE IF NOT EXISTS + caught ALTERs):
+TURSO_DATABASE_URL="libsql://…" npx tsx push-turso.ts
+
+# 5. Build, commit, deploy
+npm run build && git push
 ```
 
-> **⚠️ CRITICAL:** `npm run db:push` only updates LOCAL SQLite. It does NOT touch production Turso. You MUST run `ALTER TABLE` manually. See `docs/TURSO_MIGRATION_GUIDE.md`.
+> **⚠️ CRITICAL:** `npm run db:push` only updates LOCAL SQLite. Production Turso
+> is migrated via `push-turso.ts`. The `db:verify-turso` CI gate guarantees
+> `prisma/turso-schema.sql` matches `schema.prisma`. See `docs/TURSO_MIGRATION_GUIDE.md`.
 
 ---
 

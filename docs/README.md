@@ -18,6 +18,7 @@
 | [TURSO_SETUP.md](./TURSO_SETUP.md) | Turso database setup for Vercel deployment | DevOps |
 | [TURSO_MIGRATION_GUIDE.md](./TURSO_MIGRATION_GUIDE.md) | Schema change workflow for production Turso DB | Engineers |
 | [RBAC_RULES.md](./RBAC_RULES.md) | Role-based access control rules and protected accounts | Engineers |
+| [CHANGELOG.md](./CHANGELOG.md) | Notable changes — security/reliability hardening, new env vars, follow-ups | Everyone |
 
 ---
 

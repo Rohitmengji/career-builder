@@ -61,6 +61,9 @@ export default function PricingSection() {
   const pricing = PRICING[region];
 
   useEffect(() => {
+    // detectRegion() reads browser-only APIs (locale/timezone) unavailable
+    // during SSR, so region is resolved on the client after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRegion(detectRegion());
     setReady(true);
   }, []);

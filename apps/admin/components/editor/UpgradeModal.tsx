@@ -78,8 +78,8 @@ function buildPlans(pricing: RegionPricing) {
   ];
 }
 
-export default function UpgradeModal({ currentPlan, hasStripeCustomer, subscriptionStatus, onUpgrade, onClose }: UpgradeModalProps) {
-  const { pricing, region, loading } = useGeoPricing();
+export default function UpgradeModal({ currentPlan, hasStripeCustomer, subscriptionStatus, onUpgrade: _onUpgrade, onClose }: UpgradeModalProps) {
+  const { pricing, loading } = useGeoPricing();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const plans = buildPlans(pricing);

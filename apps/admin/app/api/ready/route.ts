@@ -38,7 +38,7 @@ export async function GET() {
         headers: { "Cache-Control": "no-store, max-age=0" },
       },
     );
-  } catch (err: unknown) {
+  } catch (_err: unknown) {
     return NextResponse.json(
       {
         ready: false,

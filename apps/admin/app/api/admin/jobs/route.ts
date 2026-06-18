@@ -19,10 +19,6 @@ import {
 } from "@career-builder/security/validate";
 import { sanitizeString, sanitizeSlug, stripHtml } from "@career-builder/security/sanitize";
 import { getRateLimiter, getClientIp } from "@career-builder/security/rate-limit";
-import { withRequestLogging } from "@career-builder/observability/request-logger";
-import { logger } from "@career-builder/observability/logger";
-
-const log = logger.api;
 
 function slugify(title: string): string {
   return title
@@ -32,7 +28,7 @@ function slugify(title: string): string {
 }
 
 /** GET /api/admin/jobs — list all jobs for the tenant */
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   const session = await getSessionReadOnly();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -145,7 +141,7 @@ export async function PUT(req: Request) {
   if (data.location) sanitized.location = sanitizeString(data.location, 200);
 
   try {
-    const job = await jobRepo.update(id, sanitized);
+    const job = await jobRepo.update(id, sanitized, session.tenantId);
     await writeAuditLog(session.userId, session.email, "job_update", `${job.title} (${job.id})`);
     return NextResponse.json({ job });
   } catch (err: unknown) {
@@ -181,7 +177,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  await jobRepo.delete(id);
+  await jobRepo.delete(id, session.tenantId);
   await writeAuditLog(session.userId, session.email, "job_delete", `${existing.title} (${id})`);
 
   return NextResponse.json({ success: true });
@@ -213,13 +209,23 @@ export async function PATCH(req: Request) {
   const { action } = parsed.data;
 
   if (action === "publish" && "id" in parsed.data) {
-    const job = await jobRepo.publish(parsed.data.id);
+    // Verify job belongs to tenant (prevents cross-tenant publish IDOR).
+    const existing = await jobRepo.findById(parsed.data.id);
+    if (!existing || existing.tenantId !== session.tenantId) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+    const job = await jobRepo.publish(parsed.data.id, session.tenantId);
     await writeAuditLog(session.userId, session.email, "job_publish", `${job.title} (${job.id})`);
     return NextResponse.json({ job });
   }
 
   if (action === "unpublish" && "id" in parsed.data) {
-    const job = await jobRepo.unpublish(parsed.data.id);
+    // Verify job belongs to tenant (prevents cross-tenant unpublish IDOR).
+    const existing = await jobRepo.findById(parsed.data.id);
+    if (!existing || existing.tenantId !== session.tenantId) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+    const job = await jobRepo.unpublish(parsed.data.id, session.tenantId);
     await writeAuditLog(session.userId, session.email, "job_unpublish", `${job.title} (${job.id})`);
     return NextResponse.json({ job });
   }

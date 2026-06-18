@@ -10,7 +10,7 @@
 import { NextResponse } from "next/server";
 import { loadTenant, saveTenant, listTenants, deleteTenant } from "@/lib/tenantStore";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
-import { mergeTenantConfig, type TenantConfig } from "@career-builder/tenant-config";
+import { mergeTenantConfig } from "@career-builder/tenant-config";
 import { saveTenantSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeTenantId, sanitizeString, sanitizeThemeColors } from "@career-builder/security/sanitize";
 
@@ -21,6 +21,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Only platform operators (super_admin) may see/manage tenants other than
+  // their own. Everyone else is scoped to their session tenant.
+  const isSuperAdmin = session.role === "super_admin";
+
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
 
@@ -29,8 +33,17 @@ export async function GET(req: Request) {
     if (!safeId) {
       return NextResponse.json({ error: "Invalid tenant ID" }, { status: 400 });
     }
+    if (!isSuperAdmin && safeId !== session.tenantId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const tenant = await loadTenant(safeId);
     return NextResponse.json({ tenant });
+  }
+
+  if (!isSuperAdmin) {
+    // Scope the list to the caller's own tenant.
+    const tenant = await loadTenant(session.tenantId);
+    return NextResponse.json({ tenants: [tenant] });
   }
 
   const ids = await listTenants();
@@ -63,6 +76,12 @@ export async function POST(req: Request) {
   const id = sanitizeTenantId(parsed.data.id);
   if (!id) {
     return NextResponse.json({ error: "Invalid tenant ID" }, { status: 400 });
+  }
+
+  // A non-super_admin may only create/update their own tenant. This closes the
+  // gap where a client-supplied tenant id let any editor write another tenant.
+  if (session.role !== "super_admin" && id !== session.tenantId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // Sanitize tenant name and theme colors if present
@@ -105,6 +124,12 @@ export async function DELETE(req: Request) {
   const id = sanitizeTenantId(rawId);
   if (!id) {
     return NextResponse.json({ error: "Invalid tenant ID" }, { status: 400 });
+  }
+
+  // A tenant admin may only delete their own tenant; cross-tenant deletes are
+  // reserved for platform operators (super_admin).
+  if (session.role !== "super_admin" && id !== session.tenantId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const deleted = await deleteTenant(id);

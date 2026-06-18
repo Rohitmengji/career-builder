@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/lib/useAuthGuard";
+import { getCsrfToken } from "@/lib/csrf";
 
 /* ================================================================== */
 /*  Types (match API response)                                         */
@@ -131,8 +131,7 @@ export default function ObservabilityPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const router = useRouter();
-  const { loading: authLoading, authenticated } = useAuthGuard();
+  useAuthGuard();
 
   const fetchData = useCallback(async () => {
     try {
@@ -158,7 +157,7 @@ export default function ObservabilityPage() {
   const handleUnblock = async (ip: string) => {
     await fetch("/api/admin/metrics", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-csrf-token": getCsrfToken() },
       body: JSON.stringify({ action: "unblock_ip", ip }),
     });
     fetchData();

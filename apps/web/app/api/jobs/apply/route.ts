@@ -10,8 +10,8 @@
 
 import { NextResponse } from "next/server";
 import { getJobProvider } from "@/lib/jobs/provider";
-import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { createStorage } from "@career-builder/shared/storage";
 import { createApplicationSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString, sanitizeEmail, stripHtml } from "@career-builder/security/sanitize";
 import { validateUpload, UPLOAD_PRESETS, isPathSafe } from "@career-builder/security/file-upload";
@@ -121,8 +121,6 @@ export async function POST(request: Request) {
       }
 
       const uploadDir = path.join(process.cwd(), "data", "resumes");
-      await mkdir(uploadDir, { recursive: true });
-
       const filename = validation.safeFilename!;
 
       // Verify path safety
@@ -133,14 +131,15 @@ export async function POST(request: Request) {
         );
       }
 
-      const filePath = path.join(uploadDir, filename);
-      await writeFile(filePath, buffer);
-
-      if (process.env.VERCEL) {
-        console.warn("[apply] Resume written to ephemeral filesystem on Vercel — will be lost on next deployment. Consider migrating to cloud storage.");
-      }
-
-      savedResumeUrl = `/data/resumes/${filename}`;
+      // Route through the storage abstraction: durable object storage in
+      // production (STORAGE_DRIVER=blob|s3), local filesystem in dev.
+      const storage = createStorage({
+        localDir: uploadDir,
+        localPublicPrefix: "/data/resumes",
+        keyPrefix: "resumes",
+      });
+      const stored = await storage.put(filename, buffer, resumeFile.type || "application/octet-stream");
+      savedResumeUrl = stored.url;
     }
 
     const provider = getJobProvider();

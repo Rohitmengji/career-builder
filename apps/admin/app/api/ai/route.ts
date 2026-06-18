@@ -411,7 +411,7 @@ export async function POST(req: NextRequest) {
     let parsed: unknown;
     try {
       parsed = parseAiJson(rawOutput);
-    } catch (parseErr: any) {
+    } catch (_parseErr: any) {
       console.error("[AI] Parse error. Raw output:", rawOutput.slice(0, 500));
       return NextResponse.json({
         success: false,

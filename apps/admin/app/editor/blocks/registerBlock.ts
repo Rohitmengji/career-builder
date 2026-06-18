@@ -15,7 +15,7 @@
 import { getDefaultProps, blockSchemas } from "@/lib/blockSchemas";
 
 /** GrapesJS component definition — loosely typed since GrapesJS itself is untyped. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export type CanvasComponent = Record<string, any>;
 
 export interface BlockRegistration {
@@ -175,10 +175,27 @@ export function registerBlock(editor: any, reg: BlockRegistration) {
     const el = editedModel.getEl();
     const newValue = el?.innerText?.trim() || "";
 
-    const merged = {
-      ...ancestor.get("props"),
-      [fieldName]: newValue,
-    };
+    const base = ancestor.get("props") || {};
+
+    // List-item fields are addressed as `item-<index>-<key>` (e.g. item-0-icon).
+    // Previously these were written as a FLAT junk key (props["item-0-icon"]),
+    // so the edit never reached props.items[0].icon — the change was lost and
+    // the props object got polluted. Route them into the nested array instead.
+    let merged: Record<string, unknown>;
+    const itemMatch = /^item-(\d+)-(.+)$/.exec(fieldName);
+    if (itemMatch && Array.isArray(base.items)) {
+      const idx = parseInt(itemMatch[1]!, 10);
+      const key = itemMatch[2]!;
+      const items = base.items.map((it: unknown) => ({ ...(it as object) }));
+      if (items[idx]) {
+        items[idx] = { ...items[idx], [key]: newValue };
+        merged = { ...base, items };
+      } else {
+        merged = { ...base, [fieldName]: newValue };
+      }
+    } else {
+      merged = { ...base, [fieldName]: newValue };
+    }
 
     // Use silent set + manual trigger to guarantee event fires
     ancestor.set("props", merged, { silent: true });

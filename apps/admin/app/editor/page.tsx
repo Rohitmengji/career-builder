@@ -743,10 +743,27 @@ export default function EditorPage() {
     editor.on("component:remove", () => { if (mountedRef.current) scheduleAutoSaveRef.current(); });
     editor.on("component:update", () => { if (mountedRef.current) scheduleAutoSaveRef.current(); });
 
+    const isTextEditingTarget = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null;
+      if (!el) return false;
+      return (
+        ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable === true
+      );
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
         handleSaveRef.current();
+      }
+      // Undo / Redo — Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z (advertised in the footer
+      // but previously not wired). Skip when editing text so native undo works.
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !isTextEditingTarget(e.target)) {
+        e.preventDefault();
+        const um = editor.UndoManager;
+        // The editor's "undo"/"redo" events refresh the toolbar counts.
+        if (e.shiftKey) um?.redo?.();
+        else um?.undo?.();
       }
       // Delete/Backspace — delete selected block (unless focused on an input/textarea)
       // Protected: navbar and footer blocks cannot be deleted
@@ -922,7 +939,7 @@ export default function EditorPage() {
       } catch { /* noop */ }
       editorInstance.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [authenticated]);
 
   /* ── Version restore handler ─────────────────────────────────── */
