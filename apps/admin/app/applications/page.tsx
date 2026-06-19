@@ -98,6 +98,9 @@ export default function AdminApplicationsPage() {
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkNotice, setBulkNotice] = useState("");
   useAuthGuard();
 
   /* ─── Data loading ─────────────────────────────────────────── */
@@ -164,6 +167,89 @@ export default function AdminApplicationsPage() {
   }
 
   const totalApplications = Object.values(stats).reduce((sum, n) => sum + (n || 0), 0);
+
+  /* ─── Bulk selection + actions ─────────────────────────────── */
+
+  // Clear selection whenever the visible set changes (avoid acting on stale ids).
+  useEffect(() => {
+    setSelected(new Set());
+    setBulkNotice("");
+  }, [page, filterStatus]);
+
+  const allOnPageSelected = applications.length > 0 && applications.every((a) => selected.has(a.id));
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllOnPage() {
+    setSelected((prev) => {
+      if (applications.every((a) => prev.has(a.id))) return new Set();
+      return new Set(applications.map((a) => a.id));
+    });
+  }
+
+  async function bulkAct(action: "status" | "reject", status?: string) {
+    if (selected.size === 0 || bulkBusy) return;
+    if (action === "reject" && !window.confirm(`Reject ${selected.size} application(s) and email each candidate?`)) return;
+    setBulkBusy(true);
+    setBulkNotice("");
+    try {
+      const res = await fetch("/api/admin/applications/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-csrf-token": csrf },
+        body: JSON.stringify({ ids: Array.from(selected), action, status }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setBulkNotice(data.error || "Bulk action failed. Please try again.");
+        return;
+      }
+      setBulkNotice(`Updated ${data.updated ?? selected.size} application(s).`);
+      setSelected(new Set());
+      await loadApplications();
+    } catch {
+      setBulkNotice("Network error. Please try again.");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function bulkExport() {
+    if (selected.size === 0 || bulkBusy) return;
+    setBulkBusy(true);
+    setBulkNotice("");
+    try {
+      const res = await fetch("/api/admin/applications/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-csrf-token": csrf },
+        body: JSON.stringify({ ids: Array.from(selected), action: "export" }),
+      });
+      if (!res.ok) {
+        setBulkNotice("Export failed. Please try again.");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `applications-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setBulkNotice(`Exported ${selected.size} application(s).`);
+    } catch {
+      setBulkNotice("Export failed. Please try again.");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
 
   /* ─── Sub-components ────────────────────────────────────────── */
 
@@ -296,6 +382,50 @@ export default function AdminApplicationsPage() {
           </Card>
         )}
 
+        {/* Bulk action bar */}
+        {!loading && applications.length > 0 && selected.size > 0 && (
+          <div
+            className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3"
+            role="region"
+            aria-label="Bulk actions"
+          >
+            <span className="text-sm font-medium text-blue-900" aria-live="polite">
+              {selected.size} selected
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <label htmlFor="bulk-move" className="sr-only">Move selected to stage</label>
+              <select
+                id="bulk-move"
+                disabled={bulkBusy}
+                defaultValue=""
+                onChange={(e) => {
+                  const v = e.target.value;
+                  e.target.value = "";
+                  if (v) void bulkAct("status", v);
+                }}
+                className="h-9 cursor-pointer rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-60"
+              >
+                <option value="" disabled>Move to…</option>
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+              <Button size="sm" variant="danger" onClick={() => void bulkAct("reject")} disabled={bulkBusy}>
+                Reject
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => void bulkExport()} disabled={bulkBusy}>
+                Export CSV
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} disabled={bulkBusy}>
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+        {bulkNotice && (
+          <p className="mb-4 text-sm text-gray-700" role="status">{bulkNotice}</p>
+        )}
+
         {!loading && applications.length > 0 && (
           <Card className="overflow-hidden p-0">
             {/* Desktop / tablet table */}
@@ -304,6 +434,15 @@ export default function AdminApplicationsPage() {
                 <caption className="sr-only">List of candidate applications</caption>
                 <thead className="border-b border-gray-200 bg-gray-50">
                   <tr>
+                    <th scope="col" className="w-10 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={allOnPageSelected}
+                        onChange={toggleAllOnPage}
+                        aria-label="Select all applications on this page"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600"
+                      />
+                    </th>
                     <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Candidate</th>
                     <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Job</th>
                     <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">Status</th>
@@ -314,7 +453,16 @@ export default function AdminApplicationsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {applications.map((app) => (
-                    <tr key={app.id} className="hover:bg-gray-50">
+                    <tr key={app.id} className={selected.has(app.id) ? "bg-blue-50/40" : "hover:bg-gray-50"}>
+                      <td className="px-4 py-4 align-middle">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(app.id)}
+                          onChange={() => toggleOne(app.id)}
+                          aria-label={`Select ${app.firstName} ${app.lastName}`}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600"
+                        />
+                      </td>
                       <td className="px-6 py-4 align-middle">
                         <div className="font-medium text-gray-900">{app.firstName} {app.lastName}</div>
                         <div className="mt-0.5 text-sm text-gray-600">{app.email}</div>
@@ -370,9 +518,18 @@ export default function AdminApplicationsPage() {
               {applications.map((app) => (
                 <li key={app.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-900">{app.firstName} {app.lastName}</p>
-                      <p className="mt-0.5 truncate text-sm text-gray-600">{app.email}</p>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(app.id)}
+                        onChange={() => toggleOne(app.id)}
+                        aria-label={`Select ${app.firstName} ${app.lastName}`}
+                        className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900">{app.firstName} {app.lastName}</p>
+                        <p className="mt-0.5 truncate text-sm text-gray-600">{app.email}</p>
+                      </div>
                     </div>
                     <Badge tone={statusMeta(app.status).tone}>
                       <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[app.status]}`} aria-hidden="true" />

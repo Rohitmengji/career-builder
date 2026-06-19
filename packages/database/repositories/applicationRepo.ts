@@ -105,6 +105,32 @@ export const applicationRepo = {
     });
   },
 
+  /**
+   * Fetch multiple applications by id, SCOPED to a tenant. Foreign ids are
+   * silently dropped (not returned) — the tenant filter is the isolation
+   * boundary for bulk operations.
+   */
+  async findManyByIds(ids: string[], tenantId: string) {
+    if (ids.length === 0) return [];
+    return prisma.application.findMany({
+      where: { id: { in: ids }, tenantId },
+      include: { job: { select: { title: true, department: true, location: true } } },
+    });
+  },
+
+  /**
+   * Bulk status change, tenant-scoped via the where clause so a foreign id can
+   * never be mutated. Returns the number of rows actually changed.
+   */
+  async bulkUpdateStatus(ids: string[], tenantId: string, status: string) {
+    if (ids.length === 0) return 0;
+    const res = await prisma.application.updateMany({
+      where: { id: { in: ids }, tenantId },
+      data: { status },
+    });
+    return res.count;
+  },
+
   async updateStatus(id: string, status: string, notes?: string) {
     return prisma.application.update({
       where: { id },
