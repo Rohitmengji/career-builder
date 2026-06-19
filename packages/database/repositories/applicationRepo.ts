@@ -183,4 +183,15 @@ export const applicationRepo = {
       take: limit,
     });
   },
+
+  /** Find all applications by a candidate email, scoped to tenant. */
+  async findByCandidateEmail(email: string, tenantId: string) {
+    return prisma.application.findMany({
+      where: { email: email.toLowerCase(), tenantId },
+      include: {
+        job: { select: { id: true, title: true, department: true, location: true } },
+      },
+      orderBy: { submittedAt: "desc" },
+    });
+  },
 };
