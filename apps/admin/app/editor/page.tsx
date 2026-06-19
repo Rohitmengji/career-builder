@@ -1168,7 +1168,7 @@ export default function EditorPage() {
   if (authenticated === null) {
     return (
       <div className="h-screen flex flex-col items-center justify-center gap-3 bg-gray-50" role="status" aria-live="polite">
-        <span className="inline-block h-7 w-7 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" aria-hidden="true" />
+        <span className="inline-block h-8 w-8 rounded-full border-[3px] border-blue-600 border-t-transparent animate-spin" aria-hidden="true" />
         <p className="text-sm font-medium text-gray-600">Loading editor…</p>
       </div>
     );
@@ -1177,7 +1177,19 @@ export default function EditorPage() {
   const isViewer = user?.role === "viewer";
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <>
+    {/* ── Small screen blocker — editor requires tablet+ ──────── */}
+    <div className="flex md:hidden h-screen flex-col items-center justify-center gap-4 bg-gray-50 px-6 text-center">
+      <div className="text-4xl">🖥️</div>
+      <h1 className="text-lg font-semibold text-gray-900">Larger screen required</h1>
+      <p className="text-sm text-gray-500 max-w-xs">
+        The visual editor requires a tablet or desktop screen (768px+) for the best experience. Please switch to a larger device.
+      </p>
+      <a href="/dashboard" className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700">
+        ← Back to Dashboard
+      </a>
+    </div>
+    <div className="hidden md:flex h-screen bg-gray-50">
       {/* ── Left panel: Tabbed — Blocks / Pages ─────────────────── */}
       <aside className="w-56 bg-white border-r border-gray-200 flex flex-col overflow-hidden" aria-label="Editor blocks and pages">
         {/* Header */}
@@ -1523,22 +1535,21 @@ export default function EditorPage() {
               </Button>
               {/* Publish button — visible for admins/hiring managers */}
               {user?.role !== "recruiter" && (
-                <button
+                <Button
                   onClick={handlePublish}
                   disabled={publishStatus === "publishing"}
-                  aria-busy={publishStatus === "publishing" || undefined}
-                  className={`cb-btn flex-1 h-10 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-emerald-600 disabled:opacity-60 disabled:pointer-events-none ${
+                  loading={publishStatus === "publishing"}
+                  fullWidth
+                  className={
                     publishStatus === "published"
-                      ? "bg-green-600 text-white"
+                      ? "!bg-green-600 !text-white"
                       : publishStatus === "error"
-                        ? "bg-red-600 text-white"
-                        : publishStatus === "publishing"
-                          ? "bg-emerald-700 text-white"
-                          : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm"
-                  }`}
+                        ? "!bg-red-600 !text-white"
+                        : "!bg-emerald-600 hover:!bg-emerald-500 !text-white"
+                  }
                 >
                   {publishStatus === "publishing" ? (
-                    <><Spinner className="h-4 w-4" />Publishing…</>
+                    "Publishing…"
                   ) : publishStatus === "published" ? (
                     <><IconCheck />Published!</>
                   ) : publishStatus === "error" ? (
@@ -1546,7 +1557,7 @@ export default function EditorPage() {
                   ) : (
                     <><IconRocket />Publish</>
                   )}
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -1801,5 +1812,6 @@ export default function EditorPage() {
         />
       )}
     </div>
+    </>
   );
 }
