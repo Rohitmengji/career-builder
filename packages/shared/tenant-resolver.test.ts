@@ -9,6 +9,8 @@ vi.mock("@career-builder/database/client", () => ({
 import {
   resolveFromSlug,
   resolveFromSubdomain,
+  resolveFromDomain,
+  resolveFromHost,
   resolveTenant,
   tenantCacheKey,
   invalidateTenantCache,
@@ -18,6 +20,8 @@ const ACME = { id: "acme", name: "Acme", domain: "careers.acme.com", plan: "pro"
 
 beforeEach(() => {
   findFirst.mockReset();
+  // Deterministic subdomain-vs-custom-domain split for host parsing.
+  process.env.PLATFORM_ROOT_DOMAIN = "hirebase.dev";
 });
 
 describe("tenantCacheKey", () => {
@@ -52,6 +56,50 @@ describe("resolveFromSlug", () => {
     findFirst.mockRejectedValueOnce(new Error("db down"));
     const res = await resolveFromSlug("boom");
     expect(res.tenant).toBeNull();
+  });
+
+  it("queries by id only — no fuzzy domain OR", async () => {
+    findFirst.mockResolvedValueOnce(null);
+    await resolveFromSlug("acme-id-only");
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "acme-id-only" } }),
+    );
+  });
+});
+
+describe("resolveFromDomain", () => {
+  it("matches a custom domain exactly (normalized) and reports source 'domain'", async () => {
+    findFirst.mockResolvedValueOnce(ACME);
+    const res = await resolveFromDomain("Careers.Acme.com:443");
+    expect(res.tenant?.id).toBe("acme");
+    expect(res.source).toBe("domain");
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { domain: "careers.acme.com" } }),
+    );
+    invalidateTenantCache("acme");
+  });
+
+  it("returns null when no tenant owns the domain", async () => {
+    findFirst.mockResolvedValueOnce(null);
+    expect((await resolveFromDomain("unknown.example.com")).tenant).toBeNull();
+  });
+});
+
+describe("resolveFromHost", () => {
+  it("resolves a custom domain via exact match", async () => {
+    findFirst.mockResolvedValueOnce(ACME); // domain hit
+    const res = await resolveFromHost("careers.acme.com");
+    expect(res.tenant?.id).toBe("acme");
+    expect(res.source).toBe("domain");
+    invalidateTenantCache("acme");
+  });
+
+  it("resolves a platform subdomain via the slug path", async () => {
+    findFirst.mockResolvedValueOnce(ACME); // subdomain → slug hit
+    const res = await resolveFromHost("acme.hirebase.dev");
+    expect(res.tenant?.id).toBe("acme");
+    expect(res.source).toBe("subdomain");
+    invalidateTenantCache("acme");
   });
 });
 

@@ -2,6 +2,7 @@
  * Web app — Next.js middleware
  *
  * Runs on every request. Provides:
+ *   - Tenant resolution (DARK LAUNCH: host-parse only, observe-only)
  *   - Global rate limiting (pre-route handler)
  *   - CSRF validation for mutations (apply form, etc.)
  *   - Security headers (defense-in-depth)
@@ -11,18 +12,41 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { checkMiddlewareRateLimit, extractClientIpEdge } from "@career-builder/observability/rate-limiter-edge";
+import { parseHostTenant } from "@career-builder/shared/tenant-host";
 
 const MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 export function middleware(request: NextRequest) {
   const start = Date.now();
-  const response = NextResponse.next();
+
+  // ── Tenant resolution (DARK LAUNCH — observe only, host-parse only) ──
+  // Pure, edge-safe parsing (no DB). Forward the host-derived candidate to the
+  // Node layer via headers and LOG when it disagrees with the env pin, so we
+  // can watch real traffic before the Phase 4 cutover starts enforcing it.
+  const host = request.headers.get("host");
+  const parsed = parseHostTenant(host);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-tenant-host", parsed.host);
+  if (parsed.candidate) requestHeaders.set("x-tenant-id", parsed.candidate);
+  if (parsed.isCustomDomain) requestHeaders.set("x-tenant-custom-domain", "1");
+
+  const envTenant = process.env.TENANT_ID;
+  if (parsed.candidate && envTenant && parsed.candidate !== envTenant) {
+    console.warn(
+      `[tenant][dark-launch] host '${parsed.host}' → candidate '${parsed.candidate}' ` +
+        `but TENANT_ID='${envTenant}' (not yet enforced)`,
+    );
+  }
 
   // ── Request ID (correlation) ───────────────────────────────────
   const incomingId = request.headers.get("x-request-id");
   const requestId =
     incomingId ||
     `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  // Forward to the route handler (set before NextResponse.next snapshots them).
+  requestHeaders.set("x-request-id", requestId);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("x-request-id", requestId);
 
   // ── Global rate limiting on API routes ─────────────────────────
