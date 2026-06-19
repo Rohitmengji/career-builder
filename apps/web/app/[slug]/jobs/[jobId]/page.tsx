@@ -5,6 +5,7 @@ import type { Job } from "@/lib/jobs/types";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import { SkipLink } from "@/lib/design-system-components";
 import { Container, Section, ButtonLink, Badge, CheckIcon, ArrowLeftIcon, ArrowRightIcon, MapPinIcon } from "@/components/ui";
+import { getAdminApiUrl } from "@career-builder/shared/env";
 import {
   type TenantConfig,
   DEFAULT_THEME,
@@ -44,16 +45,6 @@ function formatPosted(iso: string): string {
   if (diffDays < 7) return `${diffDays} days ago`;
   if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-/** Resolve the admin API base URL (mirrors app/[slug]/page.tsx). */
-function getAdminApiUrl(): string {
-  const serverOnly = process.env.ADMIN_API_URL;
-  if (serverOnly?.trim()) return serverOnly.trim().replace(/\/$/, "");
-  const publicUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_ADMIN_API_URL;
-  if (publicUrl?.trim()) return publicUrl.trim().replace(/\/$/, "");
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3001";
 }
 
 async function loadTenantConfig(slug: string): Promise<TenantConfig | null> {

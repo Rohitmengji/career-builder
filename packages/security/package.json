@@ -17,6 +17,6 @@
     "./crypto": "./crypto.ts"
   },
   "dependencies": {
-    "zod": "^3.24.0"
+    "zod": "^4.3.6"
   }
 }

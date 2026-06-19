@@ -3,37 +3,13 @@ import LiveReloader from "@/components/LiveReloader";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import { SkipLink, AnnouncementProvider } from "@/lib/design-system-components";
 import { Container, EmptyState, ButtonLink } from "@/components/ui";
+import { getAdminApiUrl } from "@career-builder/shared/env";
 import {
   type TenantConfig,
   DEFAULT_THEME,
   DEFAULT_BRANDING,
   mergeTenantConfig,
 } from "@career-builder/tenant-config";
-
-/**
- * Resolve the admin API base URL.
- * Priority: ADMIN_API_URL → NEXT_PUBLIC_APP_URL → VERCEL_URL → localhost
- */
-function getAdminApiUrl(): string {
-  const serverOnly = process.env.ADMIN_API_URL;
-  if (serverOnly?.trim()) return serverOnly.trim().replace(/\/$/, "");
-
-  const publicUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_ADMIN_API_URL;
-  if (publicUrl?.trim()) return publicUrl.trim().replace(/\/$/, "");
-
-  // Vercel auto-URL fallback (for single-project or preview)
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-
-  if (process.env.NODE_ENV === "production") {
-    console.warn("[page] ADMIN_API_URL not set in production — pages may not load");
-  }
-
-  return "http://localhost:3001";
-}
 
 export default async function Page({
   params,

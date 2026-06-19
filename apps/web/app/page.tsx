@@ -9,6 +9,7 @@ import {
   ArrowRightIcon,
 } from "@/components/ui";
 import { SkipLink } from "@/lib/design-system-components";
+import { getAdminApiUrl } from "@career-builder/shared/env";
 
 const VALUE_PROPS = [
   {
@@ -33,20 +34,6 @@ const VALUE_PROPS = [
     ),
   },
 ];
-
-function getAdminApiUrl(): string {
-  const serverOnly = process.env.ADMIN_API_URL;
-  if (serverOnly?.trim()) return serverOnly.trim().replace(/\/$/, "");
-
-  const publicUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_ADMIN_API_URL;
-  if (publicUrl?.trim()) return publicUrl.trim().replace(/\/$/, "");
-
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-
-  return "http://localhost:3001";
-}
 
 interface JobSummary {
   department: string;
