@@ -107,8 +107,11 @@ export async function resolveFromSlug(slug: string): Promise<TenantResolution> {
 }
 
 /**
- * Resolve tenant from a custom domain by EXACT host match (Tenant.domain).
- * e.g. careers.acme.com → the tenant that registered that domain.
+ * Resolve tenant from a custom domain by EXACT host match.
+ *
+ * Checks the multi-domain `Domain` table (status = active) FIRST — this is the
+ * managed custom-domain feature — then falls back to the legacy single
+ * `Tenant.domain` column for backward compatibility.
  */
 export async function resolveFromDomain(host: string): Promise<TenantResolution> {
   const normalized = host.split(":")[0]!.trim().toLowerCase();
@@ -117,11 +120,22 @@ export async function resolveFromDomain(host: string): Promise<TenantResolution>
   if (cached) return { tenant: cached, source: "domain", cacheKey };
 
   try {
+    // 1. Managed custom domains (active only — pending/failed never route).
+    const domainRow = await prisma.domain.findFirst({
+      where: { hostname: normalized, status: "active" },
+      select: { tenant: { select: TENANT_SELECT } },
+    });
+    if (domainRow?.tenant && domainRow.tenant.isActive) {
+      const tenant: ResolvedTenant = domainRow.tenant;
+      setCache(cacheKey, tenant);
+      return { tenant, source: "domain", cacheKey };
+    }
+
+    // 2. Legacy single-domain column.
     const row = await prisma.tenant.findFirst({
       where: { domain: normalized },
       select: TENANT_SELECT,
     });
-
     if (row && row.isActive) {
       const tenant: ResolvedTenant = row;
       setCache(cacheKey, tenant);

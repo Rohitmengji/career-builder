@@ -23,3 +23,5 @@ export { subscriptionRepo } from "./subscriptionRepo";
 export type { SubscriptionRecord } from "./subscriptionRepo";
 export { candidateRepo } from "./candidateRepo";
 export type { CreateCandidateInput, UpdateCandidateProfileInput } from "./candidateRepo";
+export { domainRepo, normalizeHostname, DOMAIN_STATUSES } from "./domainRepo";
+export type { CreateDomainInput, DomainStatus } from "./domainRepo";

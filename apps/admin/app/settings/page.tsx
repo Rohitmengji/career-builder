@@ -386,6 +386,11 @@ export default function SettingsPage() {
             <h1 className="text-lg font-semibold text-gray-900">Settings</h1>
           </div>
           <div className="flex items-center gap-2">
+            {(user.role === "admin" || user.role === "super_admin") && (
+              <ButtonLink href="/domains" variant="ghost" size="sm">
+                Custom domains
+              </ButtonLink>
+            )}
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white" aria-hidden="true">
               {user.name.charAt(0).toUpperCase()}
             </span>

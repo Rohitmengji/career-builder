@@ -40,6 +40,25 @@ model Tenant {
   analytics    AnalyticsEvent[]
   webhooks     Webhook[]
   candidates   Candidate[]
+  domains      Domain[]
+}
+
+// --- DOMAIN (custom domains per tenant) ---
+
+model Domain {
+  id          String    @id @default(cuid())
+  hostname    String    @unique // exact host, e.g. careers.acme.com (lowercased)
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // pending | verified | active | failed  (string, not enum — sqlite/turso)
+  status      String    @default("pending")
+  verifyToken String // random token placed in the DNS TXT record
+  isPrimary   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  verifiedAt  DateTime?
+
+  @@index([tenantId])
+  @@index([status])
 }
 
 // --- USER ---
