@@ -27,3 +27,5 @@ export { domainRepo, normalizeHostname, DOMAIN_STATUSES } from "./domainRepo";
 export type { CreateDomainInput, DomainStatus } from "./domainRepo";
 export { commentRepo } from "./commentRepo";
 export type { CreateCommentInput } from "./commentRepo";
+export { salaryBenchmarkRepo } from "./salaryBenchmarkRepo";
+export type { ComparableSalaryQuery, ComparableSalaryRow } from "./salaryBenchmarkRepo";

@@ -23,8 +23,15 @@ export {
   normalizeHostname,
   DOMAIN_STATUSES,
   commentRepo,
+  salaryBenchmarkRepo,
 } from "./repositories";
-export type { CreateDomainInput, DomainStatus, CreateCommentInput } from "./repositories";
+export type {
+  CreateDomainInput,
+  DomainStatus,
+  CreateCommentInput,
+  ComparableSalaryQuery,
+  ComparableSalaryRow,
+} from "./repositories";
 
 // Re-export all domain types and constants
 export * from "./types";
