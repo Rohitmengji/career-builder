@@ -134,6 +134,10 @@ export interface ApplyResponse {
   success: boolean;
   applicationId?: string;
   error?: string;
+  /** Machine-readable reason the route maps to an HTTP status (404/409). */
+  code?: "duplicate" | "job_not_found";
+  /** True when this application already existed (idempotent / dedup). */
+  duplicate?: boolean;
 }
 
 /* ================================================================== */

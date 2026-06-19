@@ -68,6 +68,7 @@ function JobsPageInner() {
     setQuery,
     setPage,
     resetFilters,
+    refetch,
     queryInput,
   } = useJobSearch();
 
@@ -206,17 +207,8 @@ function JobsPageInner() {
                 </div>
               </div>
 
-              {/* Error state */}
-              {error && (
-                <div
-                  role="alert"
-                  className="mb-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"
-                >
-                  {error}
-                </div>
-              )}
-
-              {/* Results */}
+              {/* Results — error takes precedence over the empty state so we
+                  never show "No jobs found" when the request actually failed. */}
               <div aria-busy={isLoading || undefined}>
                 {isLoading ? (
                   <div className="space-y-4">
@@ -224,6 +216,21 @@ function JobsPageInner() {
                       <JobCardSkeleton key={i} />
                     ))}
                   </div>
+                ) : error ? (
+                  <Card className="p-0">
+                    <div role="alert">
+                      <EmptyState
+                        icon={<SearchIcon className="h-6 w-6" />}
+                        title="We couldn't load jobs"
+                        body={error}
+                        action={
+                          <Button variant="secondary" size="md" onClick={refetch}>
+                            Try again
+                          </Button>
+                        }
+                      />
+                    </div>
+                  </Card>
                 ) : data.jobs.length === 0 ? (
                   <Card className="p-0">
                     <EmptyState
@@ -249,7 +256,7 @@ function JobsPageInner() {
               </div>
 
               {/* Pagination */}
-              {!isLoading && data.pagination.totalPages > 1 && (
+              {!isLoading && !error && data.pagination.totalPages > 1 && (
                 <Pagination
                   page={data.pagination.page}
                   totalPages={data.pagination.totalPages}

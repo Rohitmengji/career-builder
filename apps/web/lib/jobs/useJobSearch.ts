@@ -40,6 +40,8 @@ export interface UseJobSearchResult {
   setPage: (page: number) => void;
   /** Reset all filters */
   resetFilters: () => void;
+  /** Re-run the current search (e.g. an error state's "Try again"). */
+  refetch: () => void;
   /** Raw query input value (for controlled input) */
   queryInput: string;
 }
@@ -113,14 +115,43 @@ export function useJobSearch(defaultTenantId?: string): UseJobSearchResult {
       if (params.sortBy) apiParams.set("sortBy", params.sortBy);
       if (params.sortOrder) apiParams.set("sortOrder", params.sortOrder);
 
-      const res = await fetch(`/api/jobs?${apiParams.toString()}`, { signal });
+      // Guard against a hung request: abort after a timeout so the UI can show
+      // an actionable error instead of spinning forever.
+      const timeoutController = new AbortController();
+      const timeoutId = setTimeout(() => timeoutController.abort(), 15_000);
+      // AbortSignal.any is unavailable on older Safari/Chrome/Firefox — fall back
+      // to bridging the caller's signal onto the timeout controller manually.
+      let combined: AbortSignal;
+      if (signal && typeof AbortSignal !== "undefined" && typeof AbortSignal.any === "function") {
+        combined = AbortSignal.any([signal, timeoutController.signal]);
+      } else {
+        if (signal) {
+          if (signal.aborted) timeoutController.abort();
+          else signal.addEventListener("abort", () => timeoutController.abort(), { once: true });
+        }
+        combined = timeoutController.signal;
+      }
+
+      let res: Response;
+      try {
+        res = await fetch(`/api/jobs?${apiParams.toString()}`, { signal: combined });
+      } finally {
+        clearTimeout(timeoutId);
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const json: JobSearchResponse = await res.json();
       setData(json);
     } catch (err: unknown) {
+      // A caller-initiated abort (param change / unmount) is not an error.
+      if (err instanceof DOMException && err.name === "AbortError" && !signal?.aborted) {
+        setError("This is taking longer than expected. Please try again.");
+        setData(EMPTY_RESPONSE);
+        return;
+      }
       if (err instanceof DOMException && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Failed to load jobs");
+      // Never surface raw HTTP/internal details to the user.
+      setError("Unable to load jobs right now. Please try again in a few minutes.");
       setData(EMPTY_RESPONSE);
     } finally {
       setIsLoading(false);
@@ -179,6 +210,13 @@ export function useJobSearch(defaultTenantId?: string): UseJobSearchResult {
     router.push("?", { scroll: false });
   }, [router]);
 
+  // Re-run the current search (used by the error state's "Try again").
+  const refetch = useCallback(() => {
+    if (abortRef.current) abortRef.current.abort();
+    abortRef.current = new AbortController();
+    fetchJobs(abortRef.current.signal);
+  }, [fetchJobs]);
+
   return {
     data,
     isLoading,
@@ -188,6 +226,7 @@ export function useJobSearch(defaultTenantId?: string): UseJobSearchResult {
     setQuery,
     setPage,
     resetFilters,
+    refetch,
     queryInput,
   };
 }

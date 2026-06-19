@@ -109,14 +109,18 @@ class DatabaseJobProvider implements JobDataProvider {
       return { job: null, relatedJobs: [] };
     }
 
-    // Get related jobs from same department or location
-    const allJobs = await jobRepo.findByTenant(job.tenantId, false);
-    const relatedJobs = allJobs
+    // Related jobs: same department or location, bounded server-side. findByTenant
+    // already filters to the tenant's published jobs; we cap the working set so a
+    // tenant with thousands of jobs doesn't load them all to surface four.
+    const RELATED_SCAN_CAP = 50;
+    const tenantJobs = await jobRepo.findByTenant(job.tenantId, false);
+    const relatedJobs = tenantJobs
       .filter(
         (j) =>
           j.id !== id &&
           (j.department === job.department || j.location === job.location),
       )
+      .slice(0, RELATED_SCAN_CAP)
       .slice(0, 4)
       .map(dbJobToJob);
 
@@ -132,7 +136,21 @@ class DatabaseJobProvider implements JobDataProvider {
     try {
       await jobRepo.assertOwned(application.jobId, tenantId);
     } catch {
-      return { success: false, error: "Job not found" };
+      return { success: false, code: "job_not_found", error: "Job not found" };
+    }
+
+    // Duplicate prevention — two layers:
+    //  1. fast app-level check (covers the common case, returns the existing id)
+    //  2. the @@unique([tenantId, jobId, email]) constraint below (P2002) which
+    //     ATOMICALLY closes the concurrent-request race the check can't.
+    const existing = await applicationRepo.findDuplicate(tenantId, application.jobId, application.email);
+    if (existing) {
+      return {
+        success: false,
+        code: "duplicate",
+        applicationId: existing.id,
+        error: "You have already applied to this position.",
+      };
     }
 
     try {
@@ -151,6 +169,17 @@ class DatabaseJobProvider implements JobDataProvider {
 
       return { success: true, applicationId: app.id };
     } catch (error) {
+      // P2002 = unique constraint hit by a concurrent duplicate that raced past
+      // the check above. Resolve it to the same idempotent "already applied".
+      if (error && typeof error === "object" && (error as { code?: string }).code === "P2002") {
+        const dup = await applicationRepo.findDuplicate(tenantId, application.jobId, application.email);
+        return {
+          success: false,
+          code: "duplicate",
+          applicationId: dup?.id,
+          error: "You have already applied to this position.",
+        };
+      }
       console.error("[DatabaseJobProvider] Apply error:", error);
       return { success: false, error: "Failed to submit application" };
     }

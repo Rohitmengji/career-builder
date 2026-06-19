@@ -258,6 +258,9 @@ CREATE INDEX "Application_tenantId_status_idx" ON "Application"("tenantId", "sta
 CREATE INDEX "Application_email_tenantId_idx" ON "Application"("email", "tenantId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Application_tenantId_jobId_email_key" ON "Application"("tenantId", "jobId", "email");
+
+-- CreateIndex
 CREATE INDEX "Page_tenantId_idx" ON "Page"("tenantId");
 
 -- CreateIndex
