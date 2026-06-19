@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
     "@career-builder/security",
     "@career-builder/observability",
     "@career-builder/shared",
+    "@career-builder/ui",
   ],
 
   // ── Performance optimizations ───────────────────────────────────

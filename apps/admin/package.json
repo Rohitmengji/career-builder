@@ -16,6 +16,7 @@
     "@career-builder/security": "*",
     "@career-builder/shared": "*",
     "@career-builder/tenant-config": "*",
+    "@career-builder/ui": "*",
     "bcrypt": "^6.0.0",
     "grapesjs": "^0.22.14",
     "iron-session": "^8.0.4",
