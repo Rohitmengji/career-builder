@@ -11,30 +11,11 @@ import {
   DEFAULT_CONFIG,
   mergeTenantConfig,
 } from "@career-builder/tenant-config";
+// Single source of truth for URL resolution (was duplicated in 4 places).
+import { getAdminApiUrl } from "@career-builder/shared/env";
 
-/**
- * Resolve the admin API base URL.
- * Priority: ADMIN_API_URL → NEXT_PUBLIC_APP_URL → VERCEL_URL → localhost
- */
-export function getAdminApiUrl(): string {
-  const serverOnly = process.env.ADMIN_API_URL;
-  if (serverOnly?.trim()) return serverOnly.trim().replace(/\/$/, "");
-
-  const publicUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_ADMIN_API_URL;
-  if (publicUrl?.trim()) return publicUrl.trim().replace(/\/$/, "");
-
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-
-  if (process.env.NODE_ENV === "production") {
-    console.warn("[tenant] ADMIN_API_URL not set in production — using defaults");
-  }
-
-  return "http://localhost:3001";
-}
+// Re-exported for any existing importers of this module.
+export { getAdminApiUrl };
 
 function fetchWithTimeout(url: string, timeoutMs = 4000): Promise<Response> {
   const controller = new AbortController();

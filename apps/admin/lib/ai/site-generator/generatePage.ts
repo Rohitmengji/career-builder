@@ -18,97 +18,7 @@ import {
 } from "./generateBlocks";
 import { parseAiJson } from "@/lib/ai/validator";
 import { orchestrate, type PageGenerationRequest } from "@/lib/ai/orchestrator";
-
-/* ================================================================== */
-/*  AI Provider caller — reuses the same config as /api/ai             */
-/* ================================================================== */
-
-const RESPONSES_API_MODELS = /^(gpt-5|o[1-9])/;
-
-async function callAi(system: string, user: string, timeoutMs: number): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  const baseUrl = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-  const model = process.env.AI_MODEL || "gpt-4o-mini";
-
-  if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${apiKey}`,
-  };
-
-  try {
-    const useResponsesApi = RESPONSES_API_MODELS.test(model);
-
-    if (useResponsesApi) {
-      const res = await fetch(`${baseUrl}/responses`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          model,
-          instructions: system,
-          input: user,
-          text: { format: { type: "json_object" } },
-          max_output_tokens: 3200,
-          // gpt-5 / o-series reasoning models reject a non-default temperature
-          // (would 400 → silent fallback). Only valid on chat/completions.
-        }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok) {
-        const err = await res.text().catch(() => "Unknown");
-        throw new Error(`AI error (${res.status}): ${err}`);
-      }
-
-      const data = await res.json();
-      if (data.output_text) return data.output_text;
-
-      if (Array.isArray(data.output)) {
-        for (const item of data.output) {
-          if (item.type === "message" && Array.isArray(item.content)) {
-            for (const c of item.content) {
-              if (c.type === "output_text" && c.text) return c.text;
-            }
-          }
-        }
-      }
-      throw new Error("Unexpected AI response format");
-    } else {
-      const res = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: user },
-          ],
-          temperature: 0.7,
-          max_tokens: 3200,
-          response_format: { type: "json_object" },
-        }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok) {
-        const err = await res.text().catch(() => "Unknown");
-        throw new Error(`AI error (${res.status}): ${err}`);
-      }
-
-      const data = await res.json();
-      return data.choices?.[0]?.message?.content || "";
-    }
-  } catch (err: any) {
-    if (err.name === "AbortError") throw new Error("AI page generation timed out");
-    throw err;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
+import { callAi } from "@career-builder/ai-client";
 
 /* ================================================================== */
 /*  Generate a single page                                             */
@@ -129,7 +39,7 @@ export async function generatePage(
   let blocks: AiPageBlock[];
 
   try {
-    const rawOutput = await callAi(system, user, SITE_LIMITS.PAGE_TIMEOUT_MS);
+    const rawOutput = await callAi(system, user, { timeoutMs: SITE_LIMITS.PAGE_TIMEOUT_MS });
 
     if (!rawOutput || rawOutput.trim().length === 0) {
       throw new Error("Empty AI response");

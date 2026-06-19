@@ -44,13 +44,26 @@ export function isDevelopment(): boolean {
 /*  URL resolution                                                     */
 /* ================================================================== */
 
+// URL resolvers are TOTAL — they always return a usable string and never
+// throw, so callers (e.g. the web tenant-config fetch) can degrade gracefully
+// instead of crashing a render. Fail-fast on missing env belongs at app boot
+// (validateEnv), not at every URL resolution. A missing prod var is warned
+// once per process to surface misconfiguration without log spam.
+const warnedEnv = new Set<string>();
+function warnOnceInProd(key: string, message: string): void {
+  if (isProduction() && !warnedEnv.has(key)) {
+    warnedEnv.add(key);
+    console.warn(message);
+  }
+}
+
 /**
  * Get the base URL for the web (public) app.
  *
  * Resolution order:
  *   1. NEXT_PUBLIC_SITE_URL env var (explicit override)
  *   2. Vercel auto-URL (preview/production)
- *   3. localhost:3000 (development only)
+ *   3. localhost:3000 (development fallback)
  */
 export function getBaseUrl(): string {
   // Explicit env var always wins
@@ -62,14 +75,10 @@ export function getBaseUrl(): string {
     return `https://${process.env.VERCEL_URL}`;
   }
 
-  // Production without URL = fatal
-  if (isProduction()) {
-    throw new Error(
-      "[env] NEXT_PUBLIC_SITE_URL is required in production. " +
-      "Set it in your Vercel project environment variables."
-    );
-  }
-
+  warnOnceInProd(
+    "NEXT_PUBLIC_SITE_URL",
+    "[env] NEXT_PUBLIC_SITE_URL not set in production — falling back to localhost; set it in your Vercel project env."
+  );
   return "http://localhost:3000";
 }
 
@@ -80,7 +89,7 @@ export function getBaseUrl(): string {
  *   1. NEXT_PUBLIC_APP_URL env var
  *   2. NEXT_PUBLIC_ADMIN_API_URL (legacy alias)
  *   3. Vercel auto-URL (for single-project deploys)
- *   4. localhost:3001 (development only)
+ *   4. localhost:3001 (development fallback)
  */
 export function getAdminUrl(): string {
   const explicit =
@@ -93,13 +102,10 @@ export function getAdminUrl(): string {
     return `https://${process.env.VERCEL_URL}`;
   }
 
-  if (isProduction()) {
-    throw new Error(
-      "[env] NEXT_PUBLIC_APP_URL is required in production. " +
-      "Set it in your Vercel project environment variables."
-    );
-  }
-
+  warnOnceInProd(
+    "NEXT_PUBLIC_APP_URL",
+    "[env] NEXT_PUBLIC_APP_URL not set in production — falling back to localhost; set it in your Vercel project env."
+  );
   return "http://localhost:3001";
 }
 
@@ -127,6 +133,22 @@ export function getApiUrl(): string {
 export function getWebhookUrl(): string {
   return `${getAdminUrl()}/api/stripe/webhook`;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Domain-named aliases (preferred at call sites for readability)     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Public-facing site URL (canonical links, robots, sitemap, og tags).
+ * Alias of {@link getBaseUrl}.
+ */
+export const getSiteUrl = getBaseUrl;
+
+/**
+ * Internal admin API base URL for server-to-server fetches from web.
+ * Alias of {@link getApiUrl}.
+ */
+export const getAdminApiUrl = getApiUrl;
 
 /* ================================================================== */
 /*  Env var access helpers                                             */

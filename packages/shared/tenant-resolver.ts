@@ -14,6 +14,7 @@
  */
 
 import { prisma } from "@career-builder/database/client";
+import { parseHostTenant } from "./tenant-host";
 
 /* ================================================================== */
 /*  Types                                                              */
@@ -67,9 +68,20 @@ function setCache(key: string, tenant: ResolvedTenant): void {
 /*  Resolution functions                                               */
 /* ================================================================== */
 
+const TENANT_SELECT = {
+  id: true,
+  name: true,
+  domain: true,
+  plan: true,
+  isActive: true,
+} as const;
+
 /**
- * Resolve tenant from a route slug parameter.
- * Used in /[slug]/... pages.
+ * Resolve tenant from a route slug — matched against the tenant **id** only.
+ *
+ * (Previously this OR-matched id *or* domain, which let a bare slug fuzzily
+ * match a domain column. Custom domains now resolve via resolveFromDomain, so
+ * the slug path is unambiguous: slug === tenant id.)
  */
 export async function resolveFromSlug(slug: string): Promise<TenantResolution> {
   const cacheKey = `tenant:slug:${slug}`;
@@ -78,19 +90,8 @@ export async function resolveFromSlug(slug: string): Promise<TenantResolution> {
 
   try {
     const row = await prisma.tenant.findFirst({
-      where: {
-        OR: [
-          { id: slug },
-          { domain: slug },
-        ],
-      },
-      select: {
-        id: true,
-        name: true,
-        domain: true,
-        plan: true,
-        isActive: true,
-      },
+      where: { id: slug },
+      select: TENANT_SELECT,
     });
 
     if (row && row.isActive) {
@@ -106,6 +107,34 @@ export async function resolveFromSlug(slug: string): Promise<TenantResolution> {
 }
 
 /**
+ * Resolve tenant from a custom domain by EXACT host match (Tenant.domain).
+ * e.g. careers.acme.com → the tenant that registered that domain.
+ */
+export async function resolveFromDomain(host: string): Promise<TenantResolution> {
+  const normalized = host.split(":")[0]!.trim().toLowerCase();
+  const cacheKey = `tenant:domain:${normalized}`;
+  const cached = getCached(cacheKey);
+  if (cached) return { tenant: cached, source: "domain", cacheKey };
+
+  try {
+    const row = await prisma.tenant.findFirst({
+      where: { domain: normalized },
+      select: TENANT_SELECT,
+    });
+
+    if (row && row.isActive) {
+      const tenant: ResolvedTenant = row;
+      setCache(cacheKey, tenant);
+      return { tenant, source: "domain", cacheKey };
+    }
+  } catch (error) {
+    console.error(`[tenant-resolver] Error resolving domain "${normalized}":`, error);
+  }
+
+  return { tenant: null, source: "domain", cacheKey };
+}
+
+/**
  * Resolve tenant from a subdomain.
  * e.g., acme.hirebase.dev → tenant "acme"
  *
@@ -116,21 +145,40 @@ export async function resolveFromSubdomain(hostname: string): Promise<TenantReso
   const cached = getCached(cacheKey);
   if (cached) return { tenant: cached, source: "subdomain", cacheKey };
 
-  // Extract subdomain from hostname
-  // acme.hirebase.dev → acme
-  const parts = hostname.split(".");
-  if (parts.length < 3) {
-    // No subdomain — fall through to default
+  // Edge-safe pure parsing (shared with web middleware): handles localhost
+  // dev subdomains, reserved labels (www/api/admin/app), and the platform
+  // root domain. Returns null for apex/custom-domain hosts.
+  const { candidate } = parseHostTenant(hostname);
+  if (!candidate) {
     return { tenant: null, source: "subdomain", cacheKey };
   }
 
-  const subdomain = parts[0]!;
-  // Skip www, api, admin subdomains
-  if (["www", "api", "admin", "app"].includes(subdomain)) {
-    return { tenant: null, source: "subdomain", cacheKey };
+  // Delegate the DB lookup to the slug resolver, but report THIS source so
+  // downstream mismatch telemetry (Phase 3) attributes resolution correctly.
+  const result = await resolveFromSlug(candidate);
+  return { ...result, source: "subdomain" };
+}
+
+/**
+ * Resolve a tenant from a request host: custom domain (exact match) first,
+ * then platform subdomain. This is the canonical host → tenant entry point for
+ * the Node request layer (wired in Phase 4).
+ */
+export async function resolveFromHost(host: string): Promise<TenantResolution> {
+  const { isCustomDomain, candidate } = parseHostTenant(host);
+
+  // A host that isn't a platform subdomain can only be a custom domain.
+  if (isCustomDomain || !candidate) {
+    const byDomain = await resolveFromDomain(host);
+    if (byDomain.tenant) return byDomain;
   }
 
-  return resolveFromSlug(subdomain);
+  if (candidate) {
+    const bySub = await resolveFromSubdomain(host);
+    if (bySub.tenant) return bySub;
+  }
+
+  return { tenant: null, source: candidate ? "subdomain" : "domain", cacheKey: `tenant:host:${host}` };
 }
 
 /**
@@ -142,7 +190,8 @@ export async function resolveFromHeader(tenantId: string): Promise<TenantResolut
   const cached = getCached(cacheKey);
   if (cached) return { tenant: cached, source: "header", cacheKey };
 
-  return resolveFromSlug(tenantId);
+  const result = await resolveFromSlug(tenantId);
+  return { ...result, source: "header" };
 }
 
 /**
@@ -154,7 +203,8 @@ export async function resolveFromEnv(): Promise<TenantResolution> {
   const cached = getCached(cacheKey);
   if (cached) return { tenant: cached, source: "env", cacheKey };
 
-  return resolveFromSlug(tenantId);
+  const result = await resolveFromSlug(tenantId);
+  return { ...result, source: "env" };
 }
 
 /**
@@ -171,9 +221,9 @@ export async function resolveTenant(options: {
     if (result.tenant) return result;
   }
 
-  // 2. Subdomain
+  // 2. Host: custom domain (exact) then platform subdomain
   if (options.hostname) {
-    const result = await resolveFromSubdomain(options.hostname);
+    const result = await resolveFromHost(options.hostname);
     if (result.tenant) return result;
   }
 

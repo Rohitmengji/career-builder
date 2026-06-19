@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Shared UI primitives live in packages/ui (outside this app's tree).
+   Tailwind v4 ignores node_modules, so scan the package source explicitly
+   to keep its utility classes in the generated CSS. */
+@source "../../../packages/ui";
+
 :root {
   --background: #ffffff;
   --foreground: #111827;

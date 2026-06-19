@@ -1,8 +1,12 @@
 /*
- * Job Data Types — strict contract for the entire job system.
+ * Job Data Types — the frontend (view-model) contract for the job system.
  *
- * These types are the single source of truth. Every layer —
- * data providers, API routes, frontend components — uses them.
+ * The canonical domain enums live in @career-builder/database/types (one
+ * source of truth shared with the DB/API layers). This file owns only the
+ * *view* shapes the web app renders — e.g. a nested `salary` object and ISO
+ * string dates — which deliberately differ from the flat DB record.
+ *
+ * Re-exports are type-only, so no Prisma client is pulled into the web bundle.
  *
  * Designed for ATS integration (Greenhouse / Lever / Employ style).
  */
@@ -11,9 +15,10 @@
 /*  Core Job Types                                                     */
 /* ================================================================== */
 
-export type EmploymentType = "full-time" | "part-time" | "contract" | "internship";
-
-export type ExperienceLevel = "entry" | "mid" | "senior" | "lead" | "executive";
+// Canonical enums — re-exported from the database layer so web, API, and DB
+// all share identical string unions (no drift between layers).
+export type { EmploymentType, ExperienceLevel } from "@career-builder/database/types";
+import type { EmploymentType, ExperienceLevel } from "@career-builder/database/types";
 
 export interface JobSalary {
   min: number;

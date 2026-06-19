@@ -3,7 +3,7 @@
 # ================================================================
 #
 # Runs on every PR and push to main.
-# Steps: install → type check → lint → build
+# Steps: install → type check → lint → test → build
 # Prevents bad deploys by failing on any error.
 #
 # Vercel handles production deployment via Git integration.
@@ -32,7 +32,7 @@ env:
 
 jobs:
   ci:
-    name: Type Check, Lint & Build
+    name: Type Check, Lint, Test & Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -75,6 +75,18 @@ jobs:
       - name: Lint (web)
         run: cd apps/web && npx eslint . --max-warnings 0
         continue-on-error: false
+
+      - name: Unit tests (Vitest)
+        run: npm run test
+
+      - name: Dependency audit (fail on critical)
+        # Required gate, but scoped to CRITICAL so unfixable transitive
+        # advisories don't wedge CI. High/moderate are surfaced informationally
+        # by the second step below.
+        run: npm audit --audit-level=critical
+
+      - name: Dependency audit (report high/moderate)
+        run: npm audit --audit-level=high || true
 
       - name: Build (all apps)
         run: npm run build

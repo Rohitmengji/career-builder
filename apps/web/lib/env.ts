@@ -2,6 +2,10 @@
  * Environment Validation for the public web app.
  */
 
+// Public site URL now resolves from the shared single source of truth.
+// Re-exported here so existing `@/lib/env` importers keep working.
+export { getSiteUrl } from "@career-builder/shared/env";
+
 interface EnvVar {
   name: string;
   required: boolean;
@@ -43,13 +47,3 @@ export function validateEnv() {
   }
 }
 
-export function getSiteUrl(): string {
-  const val = process.env.NEXT_PUBLIC_SITE_URL;
-  if (val && val.trim()) return val.trim();
-
-  if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
-    if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  }
-
-  return "http://localhost:3000";
-}
