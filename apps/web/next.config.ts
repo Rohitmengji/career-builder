@@ -7,6 +7,7 @@ const nextSecurityHeaders = toNextHeaders(secHeaders);
 const nextConfig: NextConfig = {
   reactCompiler: true,
   transpilePackages: [
+    "@career-builder/ai-client",
     "@career-builder/tenant-config",
     "@career-builder/database",
     "@career-builder/security",

@@ -103,9 +103,13 @@ class DatabaseJobProvider implements JobDataProvider {
     };
   }
 
-  async getById(id: string, tenantId?: string): Promise<JobDetailResponse> {
+  async getById(id: string, tenantId: string): Promise<JobDetailResponse> {
+    // Tenant isolation is MANDATORY here: tenantId is required and the ownership
+    // check is unconditional. A job belonging to another tenant is treated as
+    // not-found (never returned), so no caller can read across tenants — even if
+    // it forgets to pass a host-resolved id.
     const job = await jobRepo.findById(id);
-    if (!job || (tenantId && job.tenantId !== tenantId)) {
+    if (!job || job.tenantId !== tenantId) {
       return { job: null, relatedJobs: [] };
     }
 

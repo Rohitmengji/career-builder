@@ -8,7 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { getJobProvider } from "@/lib/jobs/provider";
-import { getWebTenantId, isMultiTenantWeb } from "@/lib/tenant-runtime";
+import { getWebTenantId } from "@/lib/tenant-runtime";
 
 export async function GET(
   _request: Request,
@@ -16,12 +16,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const url = new URL(_request.url);
-    // When multi-tenant is active, the host decides the tenant — never the
-    // client query param (prevents cross-tenant job reads).
-    const tenantId = isMultiTenantWeb()
-      ? await getWebTenantId()
-      : url.searchParams.get("tenantId") || undefined;
+    // The host decides the tenant (env pin when multi-tenant is off) — never a
+    // client query param. getById now requires a tenant and enforces ownership
+    // unconditionally, so a cross-tenant job id resolves to 404.
+    const tenantId = await getWebTenantId();
 
     const provider = getJobProvider();
     const result = await provider.getById(id, tenantId);
