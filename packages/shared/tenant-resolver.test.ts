@@ -88,6 +88,15 @@ describe("resolveFromDomain", () => {
     invalidateTenantCache("acme");
   });
 
+  it("does NOT route a managed domain whose tenant downgraded below the required plan", async () => {
+    // Active domain, but tenant is now on free → custom domains not allowed.
+    domainFindFirst.mockResolvedValueOnce({ tenant: { ...ACME, plan: "free" } });
+    findFirst.mockResolvedValueOnce(null); // legacy column also misses
+    const res = await resolveFromDomain("careers.acme.com");
+    expect(res.tenant).toBeNull();
+    invalidateTenantCache("acme");
+  });
+
   it("falls back to the legacy Tenant.domain column when no managed domain matches", async () => {
     domainFindFirst.mockResolvedValueOnce(null);
     findFirst.mockResolvedValueOnce(ACME);

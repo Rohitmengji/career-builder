@@ -12,12 +12,9 @@
 import { resolveTxt } from "node:dns/promises";
 import { normalizeHostname } from "@career-builder/database/host";
 
-/** Plans allowed to use custom domains. Free tenants get an upsell. */
-export const CUSTOM_DOMAIN_PLANS = ["pro", "enterprise"] as const;
-
-export function planAllowsCustomDomain(plan: string | null | undefined): boolean {
-  return CUSTOM_DOMAIN_PLANS.includes(String(plan) as (typeof CUSTOM_DOMAIN_PLANS)[number]);
-}
+// Single source of truth shared with the request resolver (which also enforces
+// the plan at routing time, so a downgrade stops custom-domain routing).
+export { CUSTOM_DOMAIN_PLANS, planAllowsCustomDomain } from "@career-builder/shared/plans";
 
 /**
  * Validate a user-entered hostname as a plausible public FQDN. Rejects

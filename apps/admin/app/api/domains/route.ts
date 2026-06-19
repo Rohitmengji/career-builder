@@ -16,6 +16,7 @@ import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/l
 import { domainRepo, tenantRepo } from "@career-builder/database";
 import { generateToken } from "@career-builder/security/crypto";
 import { getRateLimiter, getClientIp } from "@career-builder/security/rate-limit";
+import { invalidateHostname } from "@career-builder/shared/tenant-resolver";
 import {
   planAllowsCustomDomain,
   isValidPublicHostname,
@@ -23,6 +24,11 @@ import {
   dnsInstructions,
   customDomainCnameTarget,
 } from "@/lib/domains";
+
+/** True for a Prisma unique-constraint violation. */
+function isUniqueViolation(err: unknown): boolean {
+  return !!err && typeof err === "object" && (err as { code?: string }).code === "P2002";
+}
 
 const NO_STORE = { "Cache-Control": "no-store" } as const;
 function json(body: unknown, status = 200) {
@@ -84,7 +90,17 @@ export async function POST(req: Request) {
   }
 
   const verifyToken = generateToken(16); // 32 hex chars, crypto-random
-  const domain = await domainRepo.create({ tenantId: session.tenantId, hostname, verifyToken });
+
+  // The pre-check above handles the common case; this catch closes the
+  // check-then-create race (two concurrent adds of the same host) atomically
+  // via the unique constraint, returning a clean 409 instead of a 500.
+  let domain;
+  try {
+    domain = await domainRepo.create({ tenantId: session.tenantId, hostname, verifyToken });
+  } catch (err) {
+    if (isUniqueViolation(err)) return json({ error: "That domain is already registered." }, 409);
+    throw err;
+  }
   await writeAuditLog(session.userId, session.email, "domain_add", `domain: ${hostname}`);
 
   return json({ domain, instructions: dnsInstructions(hostname, verifyToken) }, 201);
@@ -135,6 +151,9 @@ export async function PATCH(req: Request) {
   const ok = await verifyDomainTxt(domain.hostname, domain.verifyToken);
   const status = ok ? "active" : "failed";
   await domainRepo.setStatus(id, session.tenantId, status, ok ? new Date() : null);
+  // The routing cache is keyed by hostname — evict so the new status takes
+  // effect (within this process; other processes expire on their own TTL).
+  invalidateHostname(domain.hostname);
   await writeAuditLog(
     session.userId,
     session.email,
@@ -159,8 +178,11 @@ export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get("id") || "";
   if (!id) return json({ error: "Missing id." }, 400);
 
+  // Fetch first (tenant-scoped) so we know the hostname to evict from cache.
+  const owned = await domainRepo.getOwned(id, session.tenantId);
   const count = await domainRepo.delete(id, session.tenantId);
   if (count === 0) return json({ error: "Domain not found." }, 404);
-  await writeAuditLog(session.userId, session.email, "domain_delete", `domain id: ${id}`);
+  if (owned) invalidateHostname(owned.hostname);
+  await writeAuditLog(session.userId, session.email, "domain_delete", `domain: ${owned?.hostname ?? id}`);
   return json({ success: true });
 }
