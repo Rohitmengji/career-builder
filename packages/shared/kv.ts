@@ -133,10 +133,42 @@ function createRedisStore(): KVStore {
 
 let _kv: KVStore | null = null;
 
+/**
+ * Decide which KV driver to use. Exported for testing.
+ *
+ * Order:
+ *   1. KV_DRIVER explicit override ("redis" | "memory")
+ *   2. auto: UPSTASH_REDIS_REST_URL present → "redis"
+ *   3. "memory" (default)
+ *
+ * Emits a one-time warning when falling back to per-instance memory on a
+ * serverless deployment, where counters/registries silently diverge between
+ * instances (the durability bug this abstraction exists to fix).
+ */
+export function resolveKvDriver(
+  env: NodeJS.ProcessEnv = process.env,
+  warn: (msg: string) => void = console.warn,
+): "memory" | "redis" {
+  const explicit = (env.KV_DRIVER || "").toLowerCase();
+  if (explicit === "redis" || explicit === "memory") return explicit;
+
+  // Auto-select redis the moment Upstash is configured — no extra opt-in.
+  if (env.UPSTASH_REDIS_REST_URL) return "redis";
+
+  if (env.VERCEL && env.NODE_ENV === "production") {
+    warn(
+      "[kv] No KV_DRIVER / UPSTASH_REDIS_REST_URL set on a serverless deployment — " +
+        "falling back to in-process memory, which is PER-INSTANCE and EPHEMERAL. " +
+        "Rate limits, the job queue, metrics, and idempotency keys will diverge " +
+        "across instances. Configure Upstash Redis to share state.",
+    );
+  }
+  return "memory";
+}
+
 /** Get the process-wide KV store (singleton). */
 export function getKV(): KVStore {
   if (_kv) return _kv;
-  const driver = (process.env.KV_DRIVER || "memory").toLowerCase();
-  _kv = driver === "redis" ? createRedisStore() : createMemoryStore();
+  _kv = resolveKvDriver() === "redis" ? createRedisStore() : createMemoryStore();
   return _kv;
 }
