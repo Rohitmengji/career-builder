@@ -577,7 +577,12 @@ const Features = memo((raw: any) => {
   const p = withDefaults("features", raw);
   const { tokens, getAccent } = useTheme();
   const accent = getAccent(p.color);
-  const items = safeList(p.items, DEFAULT_BLOCK_PROPS.features.items);
+  // Accept both "items" and "features" as the array field, normalize desc/description
+  const rawItems = p.items || p.features || DEFAULT_BLOCK_PROPS.features.items;
+  const items = safeList(rawItems, DEFAULT_BLOCK_PROPS.features.items).map((item: any) => ({
+    ...item,
+    desc: item.desc || item.description || "",
+  }));
   const sectionId = useId();
   return (
     <Section variant="light" ariaLabelledBy={`${sectionId}-heading`}>
@@ -1640,7 +1645,8 @@ NotificationBanner.displayName = "NotificationBanner";
 
 const StatsCounter = memo((raw: any) => {
   const p = withDefaults("stats-counter", raw);
-  const items = safeList(p.items, DEFAULT_BLOCK_PROPS["stats-counter"].items);
+  // Accept both "items" and "stats" as the array field
+  const items = safeList(p.items || p.stats, DEFAULT_BLOCK_PROPS["stats-counter"].items);
   const sectionId = useId();
   return (
     <Section variant="dark" ariaLabelledBy={`${sectionId}-heading`}>
@@ -2053,12 +2059,14 @@ const componentMap: Record<string, React.FC<any>> = {
   carousel: Carousel,
   accordion: Accordion,
   "cta-button": CtaButton,
+  cta: CtaButton,
   "search-bar": SearchBar,
   "search-results": SearchResults,
   "job-details": JobDetails,
   "job-category": JobCategory,
   "join-talent-network": JoinTalentNetwork,
   "video-and-text": VideoAndText,
+  "video-text": VideoAndText,
   personalization: Personalization,
   "show-hide-tab": ShowHideTab,
   "image-text-grid": ImageTextGrid,
@@ -2066,11 +2074,14 @@ const componentMap: Record<string, React.FC<any>> = {
   "job-alert": JobAlert,
   "navigate-back": NavigateBack,
   "basic-button": BasicButton,
+  button: BasicButton,
   "basic-image": BasicImage,
+  image: BasicImage,
   spacer: Spacer,
   divider: Divider,
   "notification-banner": NotificationBanner,
   "stats-counter": StatsCounter,
+  stats: StatsCounter,
   "team-grid": TeamGrid,
   "social-proof": SocialProof,
   "application-status": ApplicationStatus,
