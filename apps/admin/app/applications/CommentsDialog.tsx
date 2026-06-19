@@ -205,7 +205,7 @@ export default function CommentsDialog({ applicationId, candidateName, currentUs
                       )}
                     </span>
                   </div>
-                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-gray-700">
+                  <p className="mt-1 whitespace-pre-wrap wrap-break-word text-sm text-gray-700">
                     {renderSegments(c.body).map((seg, i) =>
                       seg.type === "mention" ? (
                         <span key={i} className="font-medium text-blue-700">@{seg.name}</span>

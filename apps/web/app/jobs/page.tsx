@@ -417,7 +417,7 @@ function FiltersPanel({
 
       {/* Remote */}
       <div>
-        <label className="flex min-h-[44px] cursor-pointer select-none items-center gap-2.5 rounded-lg px-1 transition-colors hover:bg-gray-50">
+        <label className="flex min-h-11 cursor-pointer select-none items-center gap-2.5 rounded-lg px-1 transition-colors hover:bg-gray-50">
           <input
             type="checkbox"
             checked={!!params.isRemote}
@@ -530,7 +530,7 @@ function FacetGroup({
                 type="button"
                 onClick={() => onSelect(bucket.value)}
                 aria-pressed={isActive}
-                className={`flex min-h-[44px] w-full items-center justify-between gap-2 rounded-lg px-2.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-2.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
                   isActive
                     ? "bg-blue-50 font-medium text-blue-700"
                     : "text-gray-700 hover:bg-gray-50"

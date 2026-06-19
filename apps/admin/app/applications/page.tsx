@@ -309,13 +309,18 @@ export default function AdminApplicationsPage() {
     <main className="min-h-screen bg-gray-50">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 md:py-10">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
-            Application Pipeline
-          </h1>
-          <p className="mt-1 text-sm text-gray-600" role="status">
-            {loading ? "Loading applications…" : `${totalApplications} total application${totalApplications !== 1 ? "s" : ""}`}
-          </p>
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
+              Application Pipeline
+            </h1>
+            <p className="mt-1 text-sm text-gray-600" role="status">
+              {loading ? "Loading applications…" : `${totalApplications} total application${totalApplications !== 1 ? "s" : ""}`}
+            </p>
+          </div>
+          {(authUser?.role === "admin" || authUser?.role === "super_admin") && (
+            <BlindHiringToggle csrf={csrf} onChange={loadApplications} />
+          )}
         </div>
 
         {/* Pipeline Stats */}
@@ -620,6 +625,59 @@ export default function AdminApplicationsPage() {
         />
       )}
     </main>
+  );
+}
+
+function BlindHiringToggle({ csrf, onChange }: { csrf: string; onChange: () => void }) {
+  const [enabled, setEnabled] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/blind-hiring", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.config) setEnabled(!!d.config.enabled); })
+      .catch(() => {})
+      .finally(() => setReady(true));
+  }, []);
+
+  async function toggle() {
+    if (busy) return;
+    const next = !enabled;
+    setBusy(true);
+    setEnabled(next); // optimistic
+    try {
+      const res = await fetch("/api/admin/blind-hiring", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-csrf-token": csrf },
+        body: JSON.stringify({ enabled: next }),
+      });
+      if (!res.ok) setEnabled(!next); // revert on failure
+      else onChange();
+    } catch {
+      setEnabled(!next);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!ready) return null;
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-xs">
+      <span className="text-sm font-medium text-gray-700">Blind hiring</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-label="Toggle blind hiring (redact candidate identity)"
+        onClick={toggle}
+        disabled={busy}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${enabled ? "bg-blue-600" : "bg-gray-300"} ${busy ? "opacity-60" : ""}`}
+      >
+        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${enabled ? "translate-x-5" : "translate-x-0.5"}`} />
+      </button>
+      <span className="text-xs text-gray-500">{enabled ? "on — identities hidden" : "off"}</span>
+    </div>
   );
 }
 

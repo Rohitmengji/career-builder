@@ -12,7 +12,7 @@
 
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
-import { applicationRepo, commentRepo, userRepo } from "@career-builder/database";
+import { applicationRepo, commentRepo, userRepo, auditRepo } from "@career-builder/database";
 import { createCommentSchema, safeParse } from "@career-builder/security/validate";
 import { emailService } from "@career-builder/email";
 import { extractMentionIds } from "@/lib/mentions";
@@ -39,6 +39,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!app) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
+
+  // Record the recruiter's view of this candidate for the candidate-visible
+  // "who viewed me" log (best-effort — never fail the read on an audit error).
+  auditRepo.logProfileView(session.tenantId, id, session.userId).catch(() => {});
 
   const comments = await commentRepo.listByApplication(id, session.tenantId);
   return NextResponse.json(

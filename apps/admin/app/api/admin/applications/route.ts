@@ -12,6 +12,7 @@ import { applicationRepo } from "@career-builder/database";
 import { updateApplicationSchema, paginationSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString, sanitizeEmail } from "@career-builder/security/sanitize";
 import { emailService } from "@career-builder/email";
+import { getBlindHiringConfig, redactApplicants } from "@/lib/blindHiring";
 
 /** GET /api/admin/applications — list applications (recruiter+ only) */
 export async function GET(req: Request) {
@@ -66,10 +67,16 @@ export async function GET(req: Request) {
   const result = await applicationRepo.findByTenant(filters, page, perPage);
   const stats = await applicationRepo.countByStatus(session.tenantId);
 
+  // Blind hiring: redact identifying fields server-side BEFORE the payload
+  // leaves the API (default-deny). Recruiters never receive PII when on.
+  const blind = await getBlindHiringConfig(session.tenantId);
+  const applications = redactApplicants(result.data, blind);
+
   return NextResponse.json({
-    applications: result.data,
+    applications,
     pagination: result.pagination,
     stats,
+    blindHiring: blind.enabled,
   });
 }
 

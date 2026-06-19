@@ -69,6 +69,13 @@ const FLAG_DEFINITIONS = {
       "Resolve the web tenant per-request from the host (subdomain / custom " +
       "domain) instead of the TENANT_ID env pin. Platform-global; off by default.",
   },
+  blind_hiring: {
+    default: true,
+    description:
+      "Global kill switch for blind-hiring redaction. Per-tenant enablement " +
+      "lives in Tenant.settings.blindHiring; flip this off to disable the feature " +
+      "platform-wide if redaction ever misbehaves (a redaction leak is Sev1).",
+  },
 } satisfies Record<string, FlagDef>;
 
 export type FeatureFlag = keyof typeof FLAG_DEFINITIONS;

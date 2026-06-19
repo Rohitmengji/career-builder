@@ -35,6 +35,15 @@ export const applicationRepo = {
     });
   },
 
+  /** The candidate's own application ids in a tenant (EXACT email match, lowercased). */
+  async findIdsByEmail(tenantId: string, email: string): Promise<string[]> {
+    const rows = await prisma.application.findMany({
+      where: { tenantId, email: email.toLowerCase() },
+      select: { id: true },
+    });
+    return rows.map((r) => r.id);
+  },
+
   async findByTenant(
     filters: ApplicationFilters,
     page = 1,

@@ -14,7 +14,43 @@ export interface CreateAuditInput {
   tenantId: string;
 }
 
+/** Action name for a recruiter viewing a candidate's application detail. */
+export const CANDIDATE_PROFILE_VIEW = "candidate_profile_view";
+
 export const auditRepo = {
+  /**
+   * Record that a recruiter viewed a candidate's application (feeds the
+   * candidate-visible "who viewed me" log). Tenant-scoped, append-only.
+   */
+  async logProfileView(tenantId: string, applicationId: string, viewerId: string, ipAddress?: string) {
+    return prisma.auditLog.create({
+      data: {
+        action: CANDIDATE_PROFILE_VIEW,
+        entity: "application",
+        entityId: applicationId,
+        userId: viewerId,
+        tenantId,
+        ipAddress,
+      },
+    });
+  },
+
+  /**
+   * The "who viewed me" feed for a candidate: profile-view rows for the given
+   * application ids, tenant-scoped, with the viewer's display name. Returns only
+   * non-sensitive fields (viewer name + timestamp) — never the wider audit log.
+   */
+  async findProfileViews(tenantId: string, applicationIds: string[], limit = 100) {
+    if (applicationIds.length === 0) return [];
+    const rows = await prisma.auditLog.findMany({
+      where: { tenantId, action: CANDIDATE_PROFILE_VIEW, entityId: { in: applicationIds } },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      include: { user: { select: { name: true } } },
+    });
+    return rows.map((r) => ({ viewerName: r.user?.name ?? "A team member", viewedAt: r.createdAt }));
+  },
+
   async log(entry: CreateAuditInput) {
     return prisma.auditLog.create({
       data: {
