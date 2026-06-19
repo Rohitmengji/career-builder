@@ -26,21 +26,31 @@ function getSessionSecret(): string {
   const secret = process.env.SESSION_SECRET;
   if (secret && secret.length >= 32) return secret;
   if (process.env.NODE_ENV === "production") {
+    // Thrown at REQUEST time (when a session is actually used), never at module
+    // load — otherwise `next build` (which evaluates route modules to collect
+    // page data) crashes before the secret is ever needed at runtime.
     throw new Error("[auth] SESSION_SECRET (32+ chars) is required in production");
   }
   // Deterministic dev fallback so sessions survive restarts. NEVER used in prod.
   return "career-builder-dev-candidate-session-secret-change-me";
 }
 
-export const candidateSessionOptions: SessionOptions = {
-  password: getSessionSecret(),
-  cookieName: CANDIDATE_SESSION_COOKIE,
-  ttl: CANDIDATE_SESSION_MAX_AGE,
-  cookieOptions: {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: CANDIDATE_SESSION_MAX_AGE,
-    path: "/",
-  },
-};
+/**
+ * Build the iron-session options. LAZY: the secret is resolved per call (at
+ * request time), so importing this module — as `next build` does during page
+ * data collection — never evaluates/validates the runtime secret.
+ */
+export function getCandidateSessionOptions(): SessionOptions {
+  return {
+    password: getSessionSecret(),
+    cookieName: CANDIDATE_SESSION_COOKIE,
+    ttl: CANDIDATE_SESSION_MAX_AGE,
+    cookieOptions: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: CANDIDATE_SESSION_MAX_AGE,
+      path: "/",
+    },
+  };
+}
