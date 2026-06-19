@@ -12,7 +12,7 @@ import { applicationRepo } from "@career-builder/database";
 import { updateApplicationSchema, paginationSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString, sanitizeEmail } from "@career-builder/security/sanitize";
 import { emailService } from "@career-builder/email";
-import { getBlindHiringConfig, redactApplicants } from "@/lib/blindHiring";
+import { getBlindHiringConfig, redactApplicants, redactApplicant } from "@/lib/blindHiring";
 
 /** GET /api/admin/applications — list applications (recruiter+ only) */
 export async function GET(req: Request) {
@@ -111,16 +111,21 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 
+  // Blind hiring: redact the response, and keep candidate names OUT of the
+  // (long-lived) audit log so identity can't leak via the audit feed.
+  const blind = await getBlindHiringConfig(session.tenantId);
+
   if (status) {
     const updated = await applicationRepo.updateStatus(id, status, notes ? sanitizeString(notes, 2000) : undefined);
     await writeAuditLog(
       session.userId,
       session.email,
       "application_status_change",
-      `${existing.firstName} ${existing.lastName}: ${existing.status} → ${status}`,
+      `application ${id.slice(-6)}: ${existing.status} → ${status}`,
     );
 
-    // Send status update email to candidate (fire-and-forget)
+    // Status email goes to the CANDIDATE about themselves — not redacted
+    // (redaction protects RECRUITER views, not the candidate's own email).
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:3000";
     const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME || "Our Company";
     emailService.sendStatusUpdate({
@@ -133,12 +138,12 @@ export async function PATCH(req: Request) {
       message: notes ? sanitizeString(notes, 2000) : undefined,
     }).catch((err) => console.error("[applications] Status email failed:", err));
 
-    return NextResponse.json({ application: updated });
+    return NextResponse.json({ application: redactApplicant(updated, blind) });
   }
 
   if (rating !== undefined) {
     const updated = await applicationRepo.updateRating(id, rating);
-    return NextResponse.json({ application: updated });
+    return NextResponse.json({ application: redactApplicant(updated, blind) });
   }
 
   return NextResponse.json({ error: "No update provided" }, { status: 400 });
@@ -175,7 +180,7 @@ export async function DELETE(req: Request) {
     session.userId,
     session.email,
     "application_delete",
-    `${existing.firstName} ${existing.lastName} (${id})`,
+    `application ${id}`, // no candidate name — audit logs are long-lived
   );
 
   return NextResponse.json({ success: true });
