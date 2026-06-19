@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@career-builder/ai-client": "*",
     "@career-builder/database": "*",
     "@career-builder/email": "*",
     "@career-builder/observability": "*",

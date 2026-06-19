@@ -47,6 +47,7 @@ import { buildJobGenerationPrompt, type JobGenerationInput } from "@/lib/ai/jobG
 import { validateAiOutput, validateJobOutput, parseAiJson } from "@/lib/ai/validator";
 import { scorePageQuality, scoreBlockContent, shouldRegenerate, type QualityScore } from "@/lib/ai/qualityMetrics";
 import { blockSchemas } from "@/lib/blockSchemas";
+import { callAi } from "@career-builder/ai-client";
 
 /* ================================================================== */
 /*  Orchestrator output types                                          */
@@ -147,99 +148,6 @@ export interface JobGenerationRequest {
 export type GenerationRequest = PageGenerationRequest | BlockGenerationRequest | JobGenerationRequest;
 
 /* ================================================================== */
-/*  AI Provider — centralized call function                            */
-/* ================================================================== */
-
-const RESPONSES_API_MODELS = /^(gpt-5|o[1-9])/;
-
-async function callAi(system: string, user: string, timeoutMs: number = 15000): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  const baseUrl = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-  const model = process.env.AI_MODEL || "gpt-4o-mini";
-
-  if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${apiKey}`,
-  };
-
-  try {
-    const useResponsesApi = RESPONSES_API_MODELS.test(model);
-
-    if (useResponsesApi) {
-      const res = await fetch(`${baseUrl}/responses`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          model,
-          instructions: system,
-          input: user,
-          text: { format: { type: "json_object" } },
-          max_output_tokens: 3200,
-          // NOTE: gpt-5 / o-series reasoning models (Responses API) reject a
-          // non-default temperature and would 400, causing every AI call to
-          // silently fall back. Omit it here; it's only valid on the
-          // chat/completions path below.
-        }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok) {
-        const err = await res.text().catch(() => "Unknown");
-        throw new Error(`AI error (${res.status}): ${err}`);
-      }
-
-      const data = await res.json();
-      if (data.output_text) return data.output_text;
-
-      if (Array.isArray(data.output)) {
-        for (const item of data.output) {
-          if (item.type === "message" && Array.isArray(item.content)) {
-            for (const c of item.content) {
-              if (c.type === "output_text" && c.text) return c.text;
-            }
-          }
-        }
-      }
-      throw new Error("Unexpected AI response format");
-    } else {
-      const res = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: user },
-          ],
-          temperature: 0.7,
-          max_tokens: 3200,
-          response_format: { type: "json_object" },
-        }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok) {
-        const err = await res.text().catch(() => "Unknown");
-        throw new Error(`AI error (${res.status}): ${err}`);
-      }
-
-      const data = await res.json();
-      return data.choices?.[0]?.message?.content || "";
-    }
-  } catch (err: any) {
-    if (err.name === "AbortError") throw new Error("AI generation timed out");
-    throw err;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-/* ================================================================== */
 /*  Page generation orchestration                                      */
 /* ================================================================== */
 
@@ -289,7 +197,7 @@ async function orchestratePage(req: PageGenerationRequest): Promise<Orchestratio
 
   try {
     const prompt = buildPageContentPrompt(structure.layout, ctx, req.pageType);
-    const rawOutput = await callAi(prompt.system, prompt.user, 30000);
+    const rawOutput = await callAi(prompt.system, prompt.user, { timeoutMs: 30000 });
 
     if (!rawOutput || rawOutput.trim().length === 0) {
       throw new Error("Empty AI response");
@@ -344,7 +252,7 @@ async function orchestratePage(req: PageGenerationRequest): Promise<Orchestratio
         const retryPrompt = buildPageContentPrompt(structure.layout, ctx, req.pageType);
         retryPrompt.system += `\n\nPREVIOUS ATTEMPT SCORED ${quality.overall}/100. Issues: ${quality.issues.slice(0, 5).join("; ")}. DO BETTER.`;
 
-        const retryOutput = await callAi(retryPrompt.system, retryPrompt.user, 30000);
+        const retryOutput = await callAi(retryPrompt.system, retryPrompt.user, { timeoutMs: 30000 });
         const retryParsed = parseAiJson(retryOutput) as { blocks?: unknown[] };
 
         if (retryParsed && Array.isArray(retryParsed.blocks)) {

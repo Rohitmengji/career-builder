@@ -17,6 +17,7 @@ import { blockSchemas } from "@/lib/blockSchemas";
 import { subscriptionRepo } from "@career-builder/database";
 import { JOB_AI_CREDITS_PER_WEEK } from "@/lib/stripe/config";
 import { getFallbackBlocks } from "@/lib/ai/fallback";
+import { callAi } from "@career-builder/ai-client";
 
 /* ================================================================== */
 /*  Per-action rate limiter                                            */
@@ -75,117 +76,6 @@ async function getAuthenticatedUser(_req: NextRequest): Promise<{ id: string; ro
   const session = await getSession();
   if (!session) return null;
   return { id: session.userId, role: session.role, tenantId: session.tenantId };
-}
-
-/* ================================================================== */
-/*  AI Provider — OpenAI-compatible (with timeout)                     */
-/*  Supports both Responses API (gpt-5.x) and Chat Completions (gpt-4)*/
-/* ================================================================== */
-
-/** Models that use the newer Responses API */
-const RESPONSES_API_MODELS = /^(gpt-5|o[1-9])/;
-
-async function callAiProvider(
-  system: string,
-  user: string,
-): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  const baseUrl = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-  const model = process.env.AI_MODEL || "gpt-4o-mini";
-
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY not configured");
-  }
-
-  // Timeout protection
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), AI_LIMITS.TIMEOUT_MS);
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${apiKey}`,
-  };
-
-  try {
-    // Choose API based on model
-    const useResponsesApi = RESPONSES_API_MODELS.test(model);
-
-    if (useResponsesApi) {
-      // ── Responses API (GPT-5.x, o-series) ──────────────────────
-      const res = await fetch(`${baseUrl}/responses`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          model,
-          instructions: system,
-          input: user,
-          text: {
-            format: { type: "json_object" },
-          },
-          max_output_tokens: AI_LIMITS.MAX_TOKENS,
-          temperature: 0.7,
-        }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok) {
-        const err = await res.text().catch(() => "Unknown error");
-        throw new Error(`AI provider error (${res.status}): ${err}`);
-      }
-
-      const data = await res.json();
-
-      // output_text is an SDK convenience — raw REST uses output array
-      if (data.output_text) return data.output_text;
-
-      // Parse output array: find the assistant message with text content
-      if (Array.isArray(data.output)) {
-        for (const item of data.output) {
-          if (item.type === "message" && Array.isArray(item.content)) {
-            for (const c of item.content) {
-              if (c.type === "output_text" && c.text) return c.text;
-            }
-          }
-        }
-      }
-
-      // Last resort: stringify the whole response for debugging
-      console.error("[AI] Unexpected Responses API format:", JSON.stringify(data).slice(0, 500));
-      throw new Error("Unexpected AI response format — could not extract text output");
-    } else {
-      // ── Chat Completions API (GPT-4o, GPT-4o-mini, etc.) ───────
-      const res = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: user },
-          ],
-          temperature: 0.7,
-          max_tokens: AI_LIMITS.MAX_TOKENS,
-          response_format: { type: "json_object" },
-        }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok) {
-        const err = await res.text().catch(() => "Unknown error");
-        throw new Error(`AI provider error (${res.status}): ${err}`);
-      }
-
-      const data = await res.json();
-      return data.choices?.[0]?.message?.content || "";
-    }
-  } catch (err: any) {
-    if (err.name === "AbortError") {
-      throw new Error("AI request timed out. Please try again.");
-    }
-    throw err;
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 /* ================================================================== */
@@ -397,7 +287,10 @@ export async function POST(req: NextRequest) {
       console.warn(`[AI] Prompt size ${totalChars} exceeds soft limit ${AI_LIMITS.MAX_TOTAL_PROMPT_CHARS}`);
     }
 
-    const rawOutput = await callAiProvider(system, userPrompt);
+    const rawOutput = await callAi(system, userPrompt, {
+      timeoutMs: AI_LIMITS.TIMEOUT_MS,
+      maxTokens: AI_LIMITS.MAX_TOKENS,
+    });
 
     // 9. Parse JSON from AI output
     if (!rawOutput || rawOutput.trim().length === 0) {
