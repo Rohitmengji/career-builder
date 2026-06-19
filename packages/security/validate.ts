@@ -128,6 +128,11 @@ export const updateApplicationSchema = z.object({
   notes: z.string().max(5000).optional(),
 }).strict();
 
+/** Internal comment on an application (mentions are parsed from the body server-side). */
+export const createCommentSchema = z.object({
+  body: z.string().min(1).max(5000).transform((v) => v.trim()),
+}).strict();
+
 /** Bulk action over a bounded set of applications (status change / reject / export). */
 export const bulkApplicationActionSchema = z.object({
   ids: z.array(cuid).min(1).max(100),

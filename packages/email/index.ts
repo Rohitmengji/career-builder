@@ -184,6 +184,51 @@ export const emailService = {
       tags: [{ name: "type", value: "password-reset" }],
     });
   },
+
+  /**
+   * Notify a teammate they were @mentioned on an application comment. Internal
+   * notification — all interpolated values are HTML-escaped + subject is
+   * single-lined (header-injection safe).
+   */
+  async sendMentionNotification(
+    data: {
+      to: string;
+      mentionedFirstName?: string;
+      actorName: string;
+      candidateName: string;
+      jobTitle: string;
+      excerpt: string;
+      url: string;
+    },
+    sender?: TenantEmailSettings,
+  ): Promise<SendResult> {
+    const esc = (s: string) =>
+      String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const oneLine = (s: string) => String(s ?? "").replace(/[\r\n]+/g, " ").trim();
+    const { from } = resolveSender(sender);
+    const name = esc(data.mentionedFirstName || "there");
+    const actor = esc(data.actorName);
+    const candidate = esc(data.candidateName);
+    const job = esc(data.jobTitle);
+    const excerpt = esc(data.excerpt.slice(0, 400));
+    const url = esc(data.url);
+    const subject = oneLine(`${data.actorName} mentioned you on ${data.candidateName}`);
+    const html = `<!doctype html><html><body style="font-family:system-ui,sans-serif;line-height:1.5;color:#111827;max-width:520px;margin:0 auto;padding:24px">
+      <h1 style="font-size:18px;margin:0 0 12px">You were mentioned</h1>
+      <p><strong>${actor}</strong> mentioned you on <strong>${candidate}</strong>'s application for <strong>${job}</strong>:</p>
+      <blockquote style="margin:16px 0;padding:12px 16px;border-left:3px solid #2563eb;background:#f8fafc;color:#374151">${excerpt}</blockquote>
+      <p style="margin:20px 0"><a href="${url}" style="background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">View the application</a></p>
+    </body></html>`;
+    const text = `${data.actorName} mentioned you on ${data.candidateName}'s application for ${data.jobTitle}:\n\n${data.excerpt.slice(0, 400)}\n\n${data.url}`;
+    return getProvider().send({
+      to: { email: data.to, name: data.mentionedFirstName },
+      from,
+      subject,
+      html,
+      text,
+      tags: [{ name: "type", value: "mention-notification" }],
+    });
+  },
 };
 
 /* ================================================================== */

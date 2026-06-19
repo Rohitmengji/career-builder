@@ -119,6 +119,19 @@ CREATE TABLE "Application" (
 );
 
 -- CreateTable
+CREATE TABLE "ApplicationComment" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "applicationId" TEXT NOT NULL,
+    "authorId" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "mentions" TEXT NOT NULL DEFAULT '[]',
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ApplicationComment_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "Application" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "ApplicationComment_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "Page" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "slug" TEXT NOT NULL,
@@ -281,6 +294,12 @@ CREATE INDEX "Application_email_tenantId_idx" ON "Application"("email", "tenantI
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Application_tenantId_jobId_email_key" ON "Application"("tenantId", "jobId", "email");
+
+-- CreateIndex
+CREATE INDEX "ApplicationComment_applicationId_idx" ON "ApplicationComment"("applicationId");
+
+-- CreateIndex
+CREATE INDEX "ApplicationComment_tenantId_idx" ON "ApplicationComment"("tenantId");
 
 -- CreateIndex
 CREATE INDEX "Page_tenantId_idx" ON "Page"("tenantId");
