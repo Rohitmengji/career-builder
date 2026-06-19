@@ -128,6 +128,14 @@ export const updateApplicationSchema = z.object({
   notes: z.string().max(5000).optional(),
 }).strict();
 
+/** Bulk action over a bounded set of applications (status change / reject / export). */
+export const bulkApplicationActionSchema = z.object({
+  ids: z.array(cuid).min(1).max(100),
+  action: z.enum(["status", "reject", "export"]),
+  status: z.enum(["applied", "screening", "interview", "offer", "hired", "rejected"]).optional(),
+  message: z.string().max(2000).transform((v) => v.trim()).optional(),
+}).strict();
+
 /* ================================================================== */
 /*  Page schemas                                                       */
 /* ================================================================== */
