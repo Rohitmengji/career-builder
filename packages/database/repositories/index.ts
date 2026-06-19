@@ -25,3 +25,5 @@ export { candidateRepo } from "./candidateRepo";
 export type { CreateCandidateInput, UpdateCandidateProfileInput } from "./candidateRepo";
 export { domainRepo, normalizeHostname, DOMAIN_STATUSES } from "./domainRepo";
 export type { CreateDomainInput, DomainStatus } from "./domainRepo";
+export { commentRepo } from "./commentRepo";
+export type { CreateCommentInput } from "./commentRepo";

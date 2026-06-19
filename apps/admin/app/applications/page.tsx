@@ -27,6 +27,7 @@ import {
   LinkedInIcon,
   StarIcon,
 } from "@/components/jobs/icons";
+import CommentsDialog from "./CommentsDialog";
 
 /* ================================================================== */
 /*  Types                                                              */
@@ -101,7 +102,9 @@ export default function AdminApplicationsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkNotice, setBulkNotice] = useState("");
-  useAuthGuard();
+  const [commentsFor, setCommentsFor] = useState<Application | null>(null);
+  const { user: authUser } = useAuthGuard();
+  const currentUserId = authUser?.id ?? "";
 
   /* ─── Data loading ─────────────────────────────────────────── */
 
@@ -502,9 +505,15 @@ export default function AdminApplicationsPage() {
                               LinkedIn
                             </a>
                           )}
-                          {!app.resumeUrl && !app.linkedinUrl && (
-                            <span className="text-sm text-gray-500">—</span>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setCommentsFor(app)}
+                            aria-label={`Open comments for ${app.firstName} ${app.lastName}`}
+                            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                          >
+                            <ChatIcon className="h-4 w-4" />
+                            Comments
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -558,6 +567,10 @@ export default function AdminApplicationsPage() {
                           LinkedIn
                         </ButtonLink>
                       )}
+                      <Button variant="secondary" size="sm" onClick={() => setCommentsFor(app)} aria-label={`Open comments for ${app.firstName} ${app.lastName}`}>
+                        <ChatIcon className="h-4 w-4" />
+                        Comments
+                      </Button>
                     </div>
                   </div>
                 </li>
@@ -596,6 +609,24 @@ export default function AdminApplicationsPage() {
           </Card>
         )}
       </div>
+
+      {commentsFor && currentUserId && (
+        <CommentsDialog
+          applicationId={commentsFor.id}
+          candidateName={`${commentsFor.firstName} ${commentsFor.lastName}`}
+          currentUserId={currentUserId}
+          csrf={csrf}
+          onClose={() => setCommentsFor(null)}
+        />
+      )}
     </main>
+  );
+}
+
+function ChatIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3.75h6m-7.06 5.06L4.5 19.5V6.75A2.25 2.25 0 016.75 4.5h10.5a2.25 2.25 0 012.25 2.25v6a2.25 2.25 0 01-2.25 2.25H8.56a2.25 2.25 0 00-1.59.66z" />
+    </svg>
   );
 }
