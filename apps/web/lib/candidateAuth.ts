@@ -7,7 +7,7 @@
 
 import { cookies } from "next/headers";
 import { getIronSession, type IronSession } from "iron-session";
-import { candidateSessionOptions, type CandidateSessionData } from "./session";
+import { getCandidateSessionOptions, type CandidateSessionData } from "./session";
 import { candidateRepo } from "@career-builder/database";
 import { hashPassword, verifyPassword, generateUrlSafeToken, sha256 } from "@career-builder/security/crypto";
 import { getWebTenantId, sessionTenantMatchesHost } from "./tenant-runtime";
@@ -17,7 +17,7 @@ const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 /** Read the iron-session (read/write capable). */
 export async function getSession(): Promise<IronSession<CandidateSessionData>> {
   const cookieStore = await cookies();
-  return getIronSession<CandidateSessionData>(cookieStore, candidateSessionOptions);
+  return getIronSession<CandidateSessionData>(cookieStore, getCandidateSessionOptions());
 }
 
 /** The currently-authenticated candidate session, or null. */
