@@ -1179,17 +1179,17 @@ export default function EditorPage() {
   return (
     <>
     {/* ── Small screen blocker — editor requires tablet+ ──────── */}
-    <div className="flex md:hidden h-screen flex-col items-center justify-center gap-4 bg-gray-50 px-6 text-center">
+    <div className="flex lg:hidden h-screen flex-col items-center justify-center gap-4 bg-gray-50 px-6 text-center">
       <div className="text-4xl">🖥️</div>
       <h1 className="text-lg font-semibold text-gray-900">Larger screen required</h1>
       <p className="text-sm text-gray-500 max-w-xs">
-        The visual editor requires a tablet or desktop screen (768px+) for the best experience. Please switch to a larger device.
+        The visual editor requires a desktop screen (1024px+) for the best experience. Please switch to a larger device.
       </p>
       <a href="/dashboard" className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700">
         ← Back to Dashboard
       </a>
     </div>
-    <div className="hidden md:flex h-screen bg-gray-50">
+    <div className="hidden lg:flex h-screen bg-gray-50">
       {/* ── Left panel: Tabbed — Blocks / Pages ─────────────────── */}
       <aside className="w-56 bg-white border-r border-gray-200 flex flex-col overflow-hidden" aria-label="Editor blocks and pages">
         {/* Header */}
