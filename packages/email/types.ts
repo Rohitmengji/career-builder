@@ -97,3 +97,23 @@ export interface EmailConfig {
   /** Whether email is actually enabled (allows graceful disable) */
   enabled: boolean;
 }
+
+/**
+ * Per-tenant email overrides (from Tenant.settings.email). Lets each client
+ * send from its own address and route notifications to its own inbox while
+ * sharing one provider/API key.
+ */
+export interface TenantEmailSettings {
+  /** Tenant's preferred from-address. Used only when senderVerified is true. */
+  fromEmail?: string;
+  /** Display name for the from-address. */
+  fromName?: string;
+  /** Where this tenant's new-application notifications go. */
+  adminEmail?: string;
+  /**
+   * Whether fromEmail's domain is verified with the email provider. R8: an
+   * unverified tenant address would bounce / hurt deliverability, so we fall
+   * back to the platform default sender unless this is true.
+   */
+  senderVerified?: boolean;
+}

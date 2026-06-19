@@ -18,13 +18,20 @@ import { validateUpload, UPLOAD_PRESETS, isPathSafe } from "@career-builder/secu
 import { validateUrl } from "@career-builder/security/url";
 import { getRateLimiter, getClientIp } from "@career-builder/security/rate-limit";
 import { emailService } from "@career-builder/email";
+import { getWebTenantId, isMultiTenantWeb, getWebTenantEmailSettings } from "@/lib/tenant-runtime";
 
 export async function POST(request: Request) {
   try {
-    // Rate limit — prevent abuse of public apply endpoint
+    // Resolve the tenant for THIS request from the host (env pin when the
+    // multi_tenant_web flag is off). This — not any client-supplied value — is
+    // the tenant the application is persisted under.
+    const resolvedTenantId = await getWebTenantId();
+
+    // Rate limit — prevent abuse of public apply endpoint. Scoped per tenant so
+    // one tenant's traffic can't exhaust another's budget.
     const limiter = getRateLimiter("public");
     const ip = getClientIp(request) || "unknown";
-    const rl = limiter.check(`apply:${ip}`);
+    const rl = limiter.check(`apply:${resolvedTenantId}:${ip}`);
     if (!rl.allowed) {
       return NextResponse.json(
         { success: false, error: "Too many applications. Please try again later." },
@@ -56,6 +63,19 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { success: false, error: parsed.error },
         { status: 400 },
+      );
+    }
+
+    // Isolation: never trust a client-supplied tenantId. When multi-tenant is
+    // active, an explicit tenantId that disagrees with the host is rejected
+    // (a spoof attempt) rather than silently coerced.
+    const clientTenantId = parsed.data.tenantId
+      ? sanitizeString(parsed.data.tenantId, 50)
+      : "";
+    if (isMultiTenantWeb() && clientTenantId && clientTenantId !== resolvedTenantId) {
+      return NextResponse.json(
+        { success: false, error: "Tenant mismatch" },
+        { status: 403 },
       );
     }
 
@@ -137,6 +157,7 @@ export async function POST(request: Request) {
         localDir: uploadDir,
         localPublicPrefix: "/data/resumes",
         keyPrefix: "resumes",
+        tenantId: resolvedTenantId, // cloud keys → t/<tenantId>/resumes/<file>
       });
       const stored = await storage.put(filename, buffer, resumeFile.type || "application/octet-stream");
       savedResumeUrl = stored.url;
@@ -145,7 +166,7 @@ export async function POST(request: Request) {
     const provider = getJobProvider();
     const result = await provider.apply({
       jobId: sanitizeString(parsed.data.jobId, 100),
-      tenantId: sanitizeString(parsed.data.tenantId || "default", 50),
+      tenantId: resolvedTenantId, // host-resolved; not the client value
       firstName: sanitizeString(parsed.data.firstName, 100),
       lastName: sanitizeString(parsed.data.lastName, 100),
       email,
@@ -178,6 +199,9 @@ export async function POST(request: Request) {
       }
     } catch { /* best-effort */ }
 
+    // Per-tenant sender (from + admin inbox); platform default when unset/unverified.
+    const tenantSender = await getWebTenantEmailSettings();
+
     // Fire both emails concurrently — don't await (non-blocking)
     Promise.allSettled([
       emailService.sendApplicationConfirmation({
@@ -188,7 +212,7 @@ export async function POST(request: Request) {
         companyName,
         applicationId: result.applicationId || "",
         siteUrl,
-      }),
+      }, tenantSender),
       emailService.sendApplicationNotification({
         candidateFirstName: sanitizeString(parsed.data.firstName, 100),
         candidateLastName: sanitizeString(parsed.data.lastName, 100),
@@ -203,7 +227,7 @@ export async function POST(request: Request) {
         resumeUrl: savedResumeUrl,
         coverLetter: parsed.data.coverLetter ? stripHtml(parsed.data.coverLetter) : "",
         adminUrl,
-      }),
+      }, tenantSender),
     ]).catch((err) => console.error("[apply] Email send error:", err));
 
     return NextResponse.json(result, { status: 201 });

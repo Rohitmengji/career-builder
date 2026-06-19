@@ -12,6 +12,7 @@
 import { NextResponse } from "next/server";
 import { getJobProvider } from "@/lib/jobs/provider";
 import type { JobSearchParams, EmploymentType, ExperienceLevel } from "@/lib/jobs/types";
+import { getWebTenantId, isMultiTenantWeb } from "@/lib/tenant-runtime";
 
 const VALID_EMPLOYMENT_TYPES = new Set(["full-time", "part-time", "contract", "internship"]);
 const VALID_EXPERIENCE_LEVELS = new Set(["entry", "mid", "senior", "lead", "executive"]);
@@ -48,6 +49,9 @@ export async function GET(request: Request) {
 
     const tenantId = searchParams.get("tenantId")?.trim();
     if (tenantId) params.tenantId = tenantId;
+    // When multi-tenant is active, the host decides the tenant — never the
+    // client query param (prevents cross-tenant listing).
+    if (isMultiTenantWeb()) params.tenantId = await getWebTenantId();
 
     const page = parseInt(searchParams.get("page") || "1", 10);
     if (!isNaN(page) && page > 0) params.page = page;

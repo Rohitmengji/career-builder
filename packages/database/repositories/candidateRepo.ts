@@ -36,10 +36,12 @@ export const candidateRepo = {
     });
   },
 
-  async findById(id: string, tenantId?: string) {
+  // tenantId is REQUIRED: a candidate lookup must always be tenant-scoped so a
+  // candidate id from one tenant can't be read under another (isolation).
+  async findById(id: string, tenantId: string) {
     const c = await prisma.candidate.findUnique({ where: { id } });
     if (!c) return null;
-    if (tenantId && c.tenantId !== tenantId) return null;
+    if (c.tenantId !== tenantId) return null;
     return c;
   },
 

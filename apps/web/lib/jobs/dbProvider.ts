@@ -124,16 +124,21 @@ class DatabaseJobProvider implements JobDataProvider {
   }
 
   async apply(application: Omit<JobApplication, "submittedAt">): Promise<ApplyResponse> {
-    // Verify job exists
-    const job = await jobRepo.findById(application.jobId);
-    if (!job) {
+    const tenantId = application.tenantId || DEFAULT_TENANT_ID;
+
+    // Isolation guard: the job MUST belong to this tenant. assertOwned throws
+    // when it doesn't, so a cross-tenant jobId can't create a foreign
+    // application (replaces the previous unscoped findById).
+    try {
+      await jobRepo.assertOwned(application.jobId, tenantId);
+    } catch {
       return { success: false, error: "Job not found" };
     }
 
     try {
       const app = await applicationRepo.create({
         jobId: application.jobId,
-        tenantId: application.tenantId || DEFAULT_TENANT_ID,
+        tenantId,
         firstName: application.firstName,
         lastName: application.lastName,
         email: application.email,

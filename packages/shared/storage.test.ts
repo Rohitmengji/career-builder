@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
-import { createStorage } from "./storage";
+import { createStorage, objectKeyFor } from "./storage";
 
 const dir = path.join(os.tmpdir(), `cb-storage-test-${process.pid}`);
 
@@ -31,5 +31,21 @@ describe("storage (local driver)", () => {
     await s.delete("tmp.txt");
     await expect(fs.readFile(path.join(dir, "tmp.txt"))).rejects.toBeTruthy();
     await expect(s.delete("tmp.txt")).resolves.toBeUndefined(); // no throw on missing
+  });
+});
+
+describe("objectKeyFor (cloud key namespacing)", () => {
+  it("namespaces by tenant so keys can't collide/leak across tenants", () => {
+    expect(objectKeyFor({ tenantId: "acme", keyPrefix: "resumes" }, "cv.pdf")).toBe("t/acme/resumes/cv.pdf");
+    expect(objectKeyFor({ tenantId: "globex", keyPrefix: "resumes" }, "cv.pdf")).toBe("t/globex/resumes/cv.pdf");
+  });
+
+  it("omits the tenant segment when no tenantId is given (back-compat)", () => {
+    expect(objectKeyFor({ keyPrefix: "media" }, "logo.png")).toBe("media/logo.png");
+    expect(objectKeyFor({}, "logo.png")).toBe("logo.png");
+  });
+
+  it("normalizes stray slashes in the prefix", () => {
+    expect(objectKeyFor({ tenantId: "acme", keyPrefix: "/media/" }, "a.png")).toBe("t/acme/media/a.png");
   });
 });
