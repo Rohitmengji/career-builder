@@ -11,11 +11,13 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { Job, JobDetailResponse } from "@/lib/jobs/types";
 import ApplyModal from "@/app/jobs/[id]/ApplyModal";
+import MatchPreview from "@/app/jobs/[id]/MatchPreview";
 import PersonalizedSidebar from "@/components/PersonalizedSidebar";
 import JobViewTracker from "@/app/jobs/[id]/JobViewTracker";
 import SiteHeader from "@/components/SiteHeader";
 import { fetchTenantConfig } from "@/lib/tenant";
 import { getSiteUrl } from "@/lib/env";
+import { isEnabled } from "@career-builder/shared/feature-flags";
 import { Container, Card, Badge, CheckIcon, ArrowLeftIcon, MapPinIcon } from "@/components/ui";
 
 /* ================================================================== */
@@ -87,6 +89,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
   const job = data.job;
   const relatedJobs = data.relatedJobs;
+  const showMatchPreview =
+    isEnabled("ai_match_explanation") &&
+    ((job.requirements?.length ?? 0) > 0 || (job.niceToHave?.length ?? 0) > 0);
   const siteUrl = getSiteUrl();
   const companyName = config.branding?.companyName || "Our Company";
   const logoUrl = config.branding?.logoUrl;
@@ -218,6 +223,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                 </ul>
               </ContentSection>
             )}
+
+            {/* Right-to-Explanation: candidate-facing private match preview */}
+            {showMatchPreview && <MatchPreview jobId={job.id} />}
 
             {/* Benefits */}
             {job.benefits && job.benefits.length > 0 && (

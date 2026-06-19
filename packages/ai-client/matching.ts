@@ -50,8 +50,26 @@ export interface ScoreMatchInput {
   niceToHave?: string[];
 }
 
+// 6000: a deliberate safety margin below the route's 8000-char input cap. The
+// route accepts up to 8000 (room to paste/edit); we score the first 6000 to
+// bound token cost. Truncation is harmless — it only ever drops trailing text.
 const MAX_RESUME_CHARS = 6000;
 const MAX_REQUIREMENTS = 40;
+
+/**
+ * Strip direct contact identifiers from free text before it is sent to the AI
+ * provider. These (email, phone, URLs, SSN-like ids) are never skill signals, so
+ * removing them can't change a fair score — but it keeps a candidate's contact
+ * details out of an external provider's logs (privacy + the brief's fairness
+ * principle that identity must not enter the model input). Best-effort, conservative.
+ */
+export function stripContactPii(text: string): string {
+  return text
+    .replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, "[contact removed]") // emails
+    .replace(/\b(?:https?:\/\/|www\.)\S+/gi, "[link removed]") // urls
+    .replace(/\b\d{3}-\d{2}-\d{4}\b/g, "[id removed]") // ssn-like
+    .replace(/\+?\d[\d\s().\-]{7,}\d/g, "[contact removed]"); // long phone-like digit runs
+}
 
 // Strict model-output contract. Anything outside this fails closed.
 const ModelOutput = z.object({
@@ -137,9 +155,12 @@ export async function scoreMatch(input: ScoreMatchInput, opts?: { timeoutMs?: nu
 
   if (!resumeText || requirements.length === 0) return unavailable();
 
+  // Remove direct contact identifiers before the text leaves our server.
+  const cleaned = stripContactPii(resumeText).slice(0, MAX_RESUME_CHARS);
+
   let raw: string;
   try {
-    raw = await callAi(SCORING_PROMPT.system(requirements), `CANDIDATE BACKGROUND:\n${resumeText.slice(0, MAX_RESUME_CHARS)}`, {
+    raw = await callAi(SCORING_PROMPT.system(requirements), `CANDIDATE BACKGROUND:\n${cleaned}`, {
       temperature: 0,
       maxTokens: 800,
       timeoutMs: opts?.timeoutMs ?? 20_000,

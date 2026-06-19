@@ -38,6 +38,16 @@ const FLAG_DEFINITIONS = {
     default: true,
     description: "Full site generation with AI",
   },
+  ai_match_explanation: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Candidate-facing 'Right to Explanation' match preview on the job detail " +
+      "page: paste your background, get an explainable, requirement-grounded fit " +
+      "score (private to the candidate, never shared with the employer, not used " +
+      "in selection). Off in prod by default — enable per-deploy/tenant once the " +
+      "AI provider key is configured (AI brief: ship new AI features flag-gated).",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",
