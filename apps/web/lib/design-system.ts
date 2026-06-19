@@ -523,13 +523,31 @@ export const containerClasses = "mx-auto w-full px-4 sm:px-6 lg:px-8" as const;
  */
 export function safeUrl(value: unknown, fallback = ""): string {
   if (typeof value !== "string" || value.trim().length === 0) return fallback;
-  // Allow relative URLs, anchors, mailto, tel
-  if (value.startsWith("/") || value.startsWith("#") || value.startsWith("mailto:") || value.startsWith("tel:")) {
-    return value;
+  const v = value.trim();
+
+  // Reject dangerous schemes outright. `new URL()` happily parses
+  // "javascript:alert(1)" / "data:..." / "vbscript:...", so the URL() check
+  // below is NOT sufficient on its own — an unsanitized value (AI-generated,
+  // seeded, or imported) would otherwise render as an executable href. Strip
+  // whitespace/control chars first so "java\tscript:" can't slip past.
+  const scheme = v.slice(0, 24).toLowerCase().replace(/[\u0000-\u0020\u00a0\u061c\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, "");
+  if (
+    scheme.startsWith("javascript:") ||
+    scheme.startsWith("data:") ||
+    scheme.startsWith("vbscript:")
+  ) {
+    return fallback;
+  }
+
+  // Allow relative URLs, anchors, mailto, tel.
+  if (v.startsWith("/") || v.startsWith("#") || v.startsWith("mailto:") || v.startsWith("tel:")) {
+    return v;
   }
   try {
-    new URL(value);
-    return value;
+    const u = new URL(v);
+    // For absolute URLs, only http(s) is a safe href/src scheme.
+    if (u.protocol === "http:" || u.protocol === "https:") return v;
+    return fallback;
   } catch {
     return fallback;
   }
