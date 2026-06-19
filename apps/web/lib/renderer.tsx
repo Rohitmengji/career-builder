@@ -296,6 +296,38 @@ const DEFAULT_BLOCK_PROPS: Record<string, Record<string, any>> = {
     ],
     variant: "dark",
   },
+  "content-cards": {
+    title: "Explore Our Teams",
+    subtitle: "Find the place where you belong.",
+    items: [
+      { image: "", title: "Engineering", desc: "Build products used by millions.", linkText: "View roles", linkUrl: "#" },
+      { image: "", title: "Design", desc: "Craft experiences people love.", linkText: "View roles", linkUrl: "#" },
+      { image: "", title: "Sales", desc: "Help customers find their fit.", linkText: "View roles", linkUrl: "#" },
+    ],
+    columns: "3",
+    color: "blue",
+  },
+  locations: {
+    title: "Where We Work",
+    subtitle: "Find us around the world.",
+    items: [
+      { city: "San Francisco", address: "123 Market St, San Francisco, CA", image: "", mapUrl: "" },
+      { city: "London", address: "10 Downing St, London, UK", image: "", mapUrl: "" },
+      { city: "Remote", address: "Work from anywhere", image: "", mapUrl: "" },
+    ],
+    columns: "3",
+  },
+  "process-steps": {
+    title: "How to Apply",
+    subtitle: "Our hiring process, step by step.",
+    items: [
+      { title: "Apply online", desc: "Submit your application in a few minutes." },
+      { title: "Phone screen", desc: "A quick chat with our talent team." },
+      { title: "Interviews", desc: "Meet the team and show your skills." },
+      { title: "Offer", desc: "We make it official — welcome aboard!" },
+    ],
+    color: "blue",
+  },
 };
 
 /* ================================================================== */
@@ -322,10 +354,18 @@ function safeList<T = any>(val: unknown, fallback: T[] = []): T[] {
   return fallback;
 }
 
-/** Safe image src — never empty string. */
+/** Safe image src — never empty/whitespace; rejects dangerous schemes. Relative
+ *  and http(s) paths pass through (an <img src> can't execute JS, but we stay
+ *  consistent with safeUrl and avoid data:/javascript: as defense-in-depth). */
 function safeImg(src: unknown, fallbackIndex: number = 0): string {
-  if (typeof src === "string" && src.length > 0) return src;
-  return dummyImg(fallbackIndex);
+  if (typeof src !== "string") return dummyImg(fallbackIndex);
+  const v = src.trim();
+  if (!v) return dummyImg(fallbackIndex);
+  const scheme = v.slice(0, 24).toLowerCase().replace(/[\u0000-\u0020]/g, "");
+  if (scheme.startsWith("javascript:") || scheme.startsWith("vbscript:") || scheme.startsWith("data:")) {
+    return dummyImg(fallbackIndex);
+  }
+  return v;
 }
 
 /* ================================================================== */
@@ -1878,6 +1918,157 @@ const ApplicationStatus = memo((raw: any) => {
 ApplicationStatus.displayName = "ApplicationStatus";
 
 /* ================================================================== */
+/*  NEW BLOCKS — Content Cards / Locations / Process Steps            */
+/* ================================================================== */
+
+/** Map a columns prop ("2"|"3"|"4") to literal Tailwind grid classes. */
+function gridColsClass(columns: unknown): string {
+  switch (String(columns)) {
+    case "2": return "grid-cols-1 sm:grid-cols-2";
+    case "4": return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
+    case "3":
+    default: return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+  }
+}
+
+const ContentCards = memo((raw: any) => {
+  const p = withDefaults("content-cards", raw);
+  const { tokens, getAccent } = useTheme();
+  const accent = getAccent(p.color);
+  const cards = safeList(p.items, DEFAULT_BLOCK_PROPS["content-cards"].items);
+  const sectionId = useId();
+  return (
+    <Section variant="white" ariaLabelledBy={`${sectionId}-heading`}>
+      <Container>
+        <SectionHeader title={p.title} subtitle={p.subtitle} id={`${sectionId}-heading`} />
+        {cards.length > 0 ? (
+          <ul className={`grid ${gridColsClass(p.columns)} gap-6 list-none p-0 m-0`} role="list">
+            {cards.map((card: any, i: number) => {
+              const link = safeUrl(card.linkUrl, "");
+              const hasLink = link && link !== "#";
+              return (
+                <li key={i}>
+                  <Card className="h-full flex flex-col overflow-hidden p-0!">
+                    <div className="w-full aspect-[16/10] overflow-hidden" style={{ backgroundColor: tokens.colors.surface }}>
+                      {card.image ? (
+                        <LazyImage src={safeImg(card.image, i)} alt={safeString(card.title, "Card image")} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${accent.hex}22, ${accent.hex}0a)` }} aria-hidden="true" />
+                      )}
+                    </div>
+                    <div className="flex flex-1 flex-col p-5">
+                      <h3 className="font-semibold text-base" style={{ color: tokens.colors.text }}>{card.title || "Card"}</h3>
+                      <p className="mt-1.5 text-sm leading-relaxed flex-1" style={{ color: tokens.colors.textMuted }}>{card.desc}</p>
+                      {hasLink && card.linkText && (
+                        <a
+                          href={link}
+                          className="mt-3 inline-flex items-center gap-1 text-sm font-semibold transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-blue-600 rounded"
+                          style={{ color: accent.hex }}
+                        >
+                          {card.linkText} <span aria-hidden="true">→</span>
+                        </a>
+                      )}
+                    </div>
+                  </Card>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <EmptyState message="Add cards from the editor sidebar." />
+        )}
+      </Container>
+    </Section>
+  );
+});
+ContentCards.displayName = "ContentCards";
+
+const Locations = memo((raw: any) => {
+  const p = withDefaults("locations", raw);
+  const { tokens } = useTheme();
+  const locations = safeList(p.items, DEFAULT_BLOCK_PROPS["locations"].items);
+  const sectionId = useId();
+  return (
+    <Section variant="light" ariaLabelledBy={`${sectionId}-heading`}>
+      <Container>
+        <SectionHeader title={p.title} subtitle={p.subtitle} id={`${sectionId}-heading`} />
+        {locations.length > 0 ? (
+          <ul className={`grid ${gridColsClass(p.columns)} gap-6 list-none p-0 m-0`} role="list">
+            {locations.map((loc: any, i: number) => {
+              const map = safeUrl(loc.mapUrl, "");
+              return (
+                <li key={i}>
+                  <Card className="h-full overflow-hidden p-0!">
+                    {loc.image && (
+                      <div className="w-full aspect-[16/9] overflow-hidden" style={{ backgroundColor: tokens.colors.surface }}>
+                        <LazyImage src={safeImg(loc.image, i)} alt={safeString(loc.city, "Office")} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="p-5">
+                      <h3 className="font-semibold text-base" style={{ color: tokens.colors.text }}>{loc.city || "Location"}</h3>
+                      <p className="mt-1.5 text-sm leading-relaxed whitespace-pre-line" style={{ color: tokens.colors.textMuted }}>{loc.address}</p>
+                      {map && (
+                        <a
+                          href={map}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-3 inline-flex items-center gap-1 text-sm font-semibold transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-blue-600 rounded"
+                          style={{ color: tokens.colors.primary }}
+                        >
+                          View on map <span aria-hidden="true">→</span>
+                        </a>
+                      )}
+                    </div>
+                  </Card>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <EmptyState message="Add office locations from the editor sidebar." />
+        )}
+      </Container>
+    </Section>
+  );
+});
+Locations.displayName = "Locations";
+
+const ProcessSteps = memo((raw: any) => {
+  const p = withDefaults("process-steps", raw);
+  const { tokens, getAccent } = useTheme();
+  const accent = getAccent(p.color);
+  const steps = safeList(p.items, DEFAULT_BLOCK_PROPS["process-steps"].items);
+  const sectionId = useId();
+  return (
+    <Section variant="white" ariaLabelledBy={`${sectionId}-heading`}>
+      <Container>
+        <SectionHeader title={p.title} subtitle={p.subtitle} id={`${sectionId}-heading`} />
+        {steps.length > 0 ? (
+          <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 list-none p-0 m-0">
+            {steps.map((step: any, i: number) => (
+              <li key={i} className="text-center">
+                <div
+                  className="w-11 h-11 mx-auto mb-3 rounded-full flex items-center justify-center text-base font-bold"
+                  style={{ backgroundColor: accent.hex, color: isLightColor(accent.hex) ? "#111827" : "#ffffff" }}
+                  aria-hidden="true"
+                >
+                  {i + 1}
+                </div>
+                <h3 className="font-semibold text-base" style={{ color: tokens.colors.text }}>{step.title || `Step ${i + 1}`}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed" style={{ color: tokens.colors.textMuted }}>{step.desc}</p>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <EmptyState message="Add steps from the editor sidebar." />
+        )}
+      </Container>
+    </Section>
+  );
+});
+ProcessSteps.displayName = "ProcessSteps";
+
+/* ================================================================== */
 /*  UPGRADED BLOCKS — Job Alert with Modal Flow                        */
 /* ================================================================== */
 
@@ -2085,6 +2276,9 @@ const componentMap: Record<string, React.FC<any>> = {
   "team-grid": TeamGrid,
   "social-proof": SocialProof,
   "application-status": ApplicationStatus,
+  "content-cards": ContentCards,
+  locations: Locations,
+  "process-steps": ProcessSteps,
   footer: Footer,
 };
 

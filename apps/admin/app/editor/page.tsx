@@ -35,6 +35,9 @@ import { registerStatsCounterBlock } from "./blocks/registerStatsCounterBlock";
 import { registerTeamGridBlock } from "./blocks/registerTeamGridBlock";
 import { registerSocialProofBlock } from "./blocks/registerSocialProofBlock";
 import { registerApplicationStatusBlock } from "./blocks/registerApplicationStatusBlock";
+import { registerContentCardsBlock } from "./blocks/registerContentCardsBlock";
+import { registerLocationsBlock } from "./blocks/registerLocationsBlock";
+import { registerProcessStepsBlock } from "./blocks/registerProcessStepsBlock";
 import { blockSchemas, getDefaultProps } from "@/lib/blockSchemas";
 import Sidebar from "@/components/editor/Sidebar";
 import type { AiPageBlock, AiRequest, AiResponse, AiTone, AiIndustry, AiAudience } from "@/lib/ai/types";
@@ -912,6 +915,9 @@ export default function EditorPage() {
     registerTeamGridBlock(editor);
     registerSocialProofBlock(editor);
     registerApplicationStatusBlock(editor);
+    registerContentCardsBlock(editor);
+    registerLocationsBlock(editor);
+    registerProcessStepsBlock(editor);
 
     // Inject tenant theme + base typography into canvas iframe
     editor.on("load", async () => {

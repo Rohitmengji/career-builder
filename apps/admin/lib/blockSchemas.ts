@@ -656,6 +656,96 @@ export const blockSchemas: Record<string, BlockSchema> = {
       { name: "color", label: "Color Scheme", type: "select", default: "blue", options: colorOptions },
     ],
   },
+
+  /* ─── 31. Content Cards (linkable) ────────────────────────────── */
+  "content-cards": {
+    label: "Content Cards",
+    category: "Layout",
+    fields: [
+      { name: "title", label: "Section Title", type: "text", default: "Explore Our Teams" },
+      { name: "subtitle", label: "Section Subtitle", type: "textarea", default: "Find the place where you belong." },
+      {
+        name: "items",
+        label: "Cards",
+        type: "list",
+        listFields: [
+          { name: "image", label: "Image URL", type: "text", default: "" },
+          { name: "title", label: "Card Title", type: "text", default: "Card Title" },
+          { name: "desc", label: "Description", type: "textarea", default: "A short description of this card." },
+          { name: "linkText", label: "Link Text", type: "text", default: "Learn more" },
+          { name: "linkUrl", label: "Link URL", type: "text", default: "#" },
+        ],
+        defaultItems: [
+          { image: "", title: "Engineering", desc: "Build products used by millions.", linkText: "View roles", linkUrl: "#" },
+          { image: "", title: "Design", desc: "Craft experiences people love.", linkText: "View roles", linkUrl: "#" },
+          { image: "", title: "Sales", desc: "Help customers find their fit.", linkText: "View roles", linkUrl: "#" },
+        ],
+      },
+      { name: "columns", label: "Columns", type: "select", default: "3", options: [
+        { label: "2 Columns", value: "2" },
+        { label: "3 Columns", value: "3" },
+        { label: "4 Columns", value: "4" },
+      ]},
+      { name: "color", label: "Accent Color", type: "select", default: "blue", options: colorOptions },
+    ],
+  },
+
+  /* ─── 32. Office Locations ────────────────────────────────────── */
+  "locations": {
+    label: "Office Locations",
+    category: "Layout",
+    fields: [
+      { name: "title", label: "Section Title", type: "text", default: "Where We Work" },
+      { name: "subtitle", label: "Section Subtitle", type: "textarea", default: "Find us around the world." },
+      {
+        name: "items",
+        label: "Locations",
+        type: "list",
+        listFields: [
+          { name: "city", label: "City", type: "text", default: "City" },
+          { name: "address", label: "Address", type: "textarea", default: "123 Main St, Suite 100" },
+          { name: "image", label: "Image URL", type: "text", default: "" },
+          { name: "mapUrl", label: "Map Link URL", type: "text", default: "" },
+        ],
+        defaultItems: [
+          { city: "San Francisco", address: "123 Market St, San Francisco, CA", image: "", mapUrl: "" },
+          { city: "London", address: "10 Downing St, London, UK", image: "", mapUrl: "" },
+          { city: "Remote", address: "Work from anywhere", image: "", mapUrl: "" },
+        ],
+      },
+      { name: "columns", label: "Columns", type: "select", default: "3", options: [
+        { label: "2 Columns", value: "2" },
+        { label: "3 Columns", value: "3" },
+        { label: "4 Columns", value: "4" },
+      ]},
+    ],
+  },
+
+  /* ─── 33. Process Steps ───────────────────────────────────────── */
+  "process-steps": {
+    label: "Process Steps",
+    category: "Layout",
+    fields: [
+      { name: "title", label: "Section Title", type: "text", default: "How to Apply" },
+      { name: "subtitle", label: "Section Subtitle", type: "textarea", default: "Our hiring process, step by step." },
+      {
+        name: "items",
+        label: "Steps",
+        type: "list",
+        listFields: [
+          { name: "title", label: "Step Title", type: "text", default: "Step" },
+          { name: "desc", label: "Description", type: "textarea", default: "What happens in this step." },
+        ],
+        defaultItems: [
+          { title: "Apply online", desc: "Submit your application in a few minutes." },
+          { title: "Phone screen", desc: "A quick chat with our talent team." },
+          { title: "Interviews", desc: "Meet the team and show your skills." },
+          { title: "Offer", desc: "We make it official — welcome aboard!" },
+        ],
+      },
+      { name: "color", label: "Accent Color", type: "select", default: "blue", options: colorOptions },
+    ],
+  },
 };
 
 /**
