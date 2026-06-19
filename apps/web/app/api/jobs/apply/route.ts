@@ -18,7 +18,7 @@ import { validateUpload, UPLOAD_PRESETS, isPathSafe } from "@career-builder/secu
 import { validateUrl } from "@career-builder/security/url";
 import { getRateLimiter, getClientIp } from "@career-builder/security/rate-limit";
 import { emailService } from "@career-builder/email";
-import { getWebTenantId, isMultiTenantWeb } from "@/lib/tenant-runtime";
+import { getWebTenantId, isMultiTenantWeb, getWebTenantEmailSettings } from "@/lib/tenant-runtime";
 
 export async function POST(request: Request) {
   try {
@@ -199,6 +199,9 @@ export async function POST(request: Request) {
       }
     } catch { /* best-effort */ }
 
+    // Per-tenant sender (from + admin inbox); platform default when unset/unverified.
+    const tenantSender = await getWebTenantEmailSettings();
+
     // Fire both emails concurrently — don't await (non-blocking)
     Promise.allSettled([
       emailService.sendApplicationConfirmation({
@@ -209,7 +212,7 @@ export async function POST(request: Request) {
         companyName,
         applicationId: result.applicationId || "",
         siteUrl,
-      }),
+      }, tenantSender),
       emailService.sendApplicationNotification({
         candidateFirstName: sanitizeString(parsed.data.firstName, 100),
         candidateLastName: sanitizeString(parsed.data.lastName, 100),
@@ -224,7 +227,7 @@ export async function POST(request: Request) {
         resumeUrl: savedResumeUrl,
         coverLetter: parsed.data.coverLetter ? stripHtml(parsed.data.coverLetter) : "",
         adminUrl,
-      }),
+      }, tenantSender),
     ]).catch((err) => console.error("[apply] Email send error:", err));
 
     return NextResponse.json(result, { status: 201 });

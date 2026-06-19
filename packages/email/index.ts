@@ -15,11 +15,34 @@ import {
 import type {
   EmailConfig,
   EmailProvider,
+  EmailRecipient,
   ApplicationConfirmationData,
   ApplicationNotificationData,
   StatusUpdateData,
   SendResult,
+  TenantEmailSettings,
 } from "./types";
+
+/**
+ * Resolve the per-send sender + admin address. A tenant's own from-address is
+ * used only when verified (R8); otherwise the platform default. Env is read
+ * fresh per send so config changes / per-tenant overrides both apply.
+ */
+export function resolveSender(sender?: TenantEmailSettings): {
+  from?: EmailRecipient;
+  adminEmail: string;
+} {
+  const envFromName = process.env.EMAIL_FROM_NAME || "Career Builder";
+  const envAdmin = process.env.EMAIL_ADMIN || process.env.EMAIL_FROM || "";
+
+  // undefined `from` → provider falls back to its verified platform default.
+  const from: EmailRecipient | undefined =
+    sender?.senderVerified && sender.fromEmail
+      ? { email: sender.fromEmail, name: sender.fromName || envFromName }
+      : undefined;
+
+  return { from, adminEmail: sender?.adminEmail || envAdmin };
+}
 
 /* ================================================================== */
 /*  Email Service — singleton with lazy init                           */
@@ -63,10 +86,13 @@ export const emailService = {
    */
   async sendApplicationConfirmation(
     data: ApplicationConfirmationData,
+    sender?: TenantEmailSettings,
   ): Promise<SendResult> {
+    const { from } = resolveSender(sender);
     const { subject, html, text } = applicationConfirmation(data);
     return getProvider().send({
       to: { email: data.candidateEmail, name: `${data.candidateFirstName} ${data.candidateLastName}` },
+      from,
       subject,
       html,
       text,
@@ -82,16 +108,18 @@ export const emailService = {
    */
   async sendApplicationNotification(
     data: ApplicationNotificationData,
+    sender?: TenantEmailSettings,
   ): Promise<SendResult> {
-    const config = getConfig();
-    if (!config.adminEmail) {
+    const { from, adminEmail } = resolveSender(sender);
+    if (!adminEmail) {
       console.log("[email] No admin email configured — skipping notification");
       return { success: true, messageId: "no-admin-email" };
     }
 
     const { subject, html, text } = applicationNotification(data);
     return getProvider().send({
-      to: { email: config.adminEmail },
+      to: { email: adminEmail },
+      from,
       replyTo: { email: data.candidateEmail, name: `${data.candidateFirstName} ${data.candidateLastName}` },
       subject,
       html,
@@ -169,4 +197,5 @@ export type {
   ApplicationNotificationData,
   StatusUpdateData,
   SendResult,
+  TenantEmailSettings,
 } from "./types";
