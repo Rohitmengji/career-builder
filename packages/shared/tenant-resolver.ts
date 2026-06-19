@@ -15,6 +15,7 @@
 
 import { prisma } from "@career-builder/database/client";
 import { parseHostTenant } from "./tenant-host";
+import { planAllowsCustomDomain } from "./plans";
 
 /* ================================================================== */
 /*  Types                                                              */
@@ -107,8 +108,11 @@ export async function resolveFromSlug(slug: string): Promise<TenantResolution> {
 }
 
 /**
- * Resolve tenant from a custom domain by EXACT host match (Tenant.domain).
- * e.g. careers.acme.com → the tenant that registered that domain.
+ * Resolve tenant from a custom domain by EXACT host match.
+ *
+ * Checks the multi-domain `Domain` table (status = active) FIRST — this is the
+ * managed custom-domain feature — then falls back to the legacy single
+ * `Tenant.domain` column for backward compatibility.
  */
 export async function resolveFromDomain(host: string): Promise<TenantResolution> {
   const normalized = host.split(":")[0]!.trim().toLowerCase();
@@ -117,11 +121,28 @@ export async function resolveFromDomain(host: string): Promise<TenantResolution>
   if (cached) return { tenant: cached, source: "domain", cacheKey };
 
   try {
+    // 1. Managed custom domains (active only — pending/failed never route).
+    //    Plan is enforced HERE so a downgrade stops routing the paid feature
+    //    immediately, with no separate cleanup job needed.
+    const domainRow = await prisma.domain.findFirst({
+      where: { hostname: normalized, status: "active" },
+      select: { tenant: { select: TENANT_SELECT } },
+    });
+    if (
+      domainRow?.tenant &&
+      domainRow.tenant.isActive &&
+      planAllowsCustomDomain(domainRow.tenant.plan)
+    ) {
+      const tenant: ResolvedTenant = domainRow.tenant;
+      setCache(cacheKey, tenant);
+      return { tenant, source: "domain", cacheKey };
+    }
+
+    // 2. Legacy single-domain column.
     const row = await prisma.tenant.findFirst({
       where: { domain: normalized },
       select: TENANT_SELECT,
     });
-
     if (row && row.isActive) {
       const tenant: ResolvedTenant = row;
       setCache(cacheKey, tenant);
@@ -254,4 +275,20 @@ export function invalidateTenantCache(tenantId: string): void {
       tenantCache.delete(key);
     }
   }
+}
+
+/**
+ * Evict the domain/host cache entries for a hostname after a domain mutation
+ * (add/verify/delete/deactivate). Domain entries are keyed by hostname, so
+ * invalidateTenantCache(tenantId) does NOT clear them.
+ *
+ * NOTE: the cache is per-process. When the admin app mutates a domain, the web
+ * app's process still serves the prior mapping until its own TTL (60s) expires
+ * — acceptable staleness for domain config. Cross-process invalidation needs a
+ * shared KV/pub-sub (durability follow-up).
+ */
+export function invalidateHostname(hostname: string): void {
+  const normalized = hostname.split(":")[0]!.trim().toLowerCase();
+  tenantCache.delete(`tenant:domain:${normalized}`);
+  tenantCache.delete(`tenant:host:${normalized}`);
 }

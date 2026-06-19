@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the Prisma client BEFORE importing the resolver (hoisted by vitest).
-const findFirst = vi.fn();
+const findFirst = vi.fn(); // prisma.tenant.findFirst
+const domainFindFirst = vi.fn(); // prisma.domain.findFirst (managed custom domains)
 vi.mock("@career-builder/database/client", () => ({
-  prisma: { tenant: { findFirst: (...args: unknown[]) => findFirst(...args) } },
+  prisma: {
+    tenant: { findFirst: (...args: unknown[]) => findFirst(...args) },
+    domain: { findFirst: (...args: unknown[]) => domainFindFirst(...args) },
+  },
 }));
 
 import {
@@ -20,6 +24,10 @@ const ACME = { id: "acme", name: "Acme", domain: "careers.acme.com", plan: "pro"
 
 beforeEach(() => {
   findFirst.mockReset();
+  domainFindFirst.mockReset();
+  // Default: no managed custom domain → resolveFromDomain falls back to the
+  // legacy Tenant.domain column (what most tests exercise).
+  domainFindFirst.mockResolvedValue(null);
   // Deterministic subdomain-vs-custom-domain split for host parsing.
   process.env.PLATFORM_ROOT_DOMAIN = "hirebase.dev";
 });
@@ -68,9 +76,31 @@ describe("resolveFromSlug", () => {
 });
 
 describe("resolveFromDomain", () => {
-  it("matches a custom domain exactly (normalized) and reports source 'domain'", async () => {
-    findFirst.mockResolvedValueOnce(ACME);
+  it("matches an ACTIVE managed domain first (Domain table) without hitting the legacy column", async () => {
+    domainFindFirst.mockResolvedValueOnce({ tenant: ACME });
     const res = await resolveFromDomain("Careers.Acme.com:443");
+    expect(res.tenant?.id).toBe("acme");
+    expect(res.source).toBe("domain");
+    expect(domainFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { hostname: "careers.acme.com", status: "active" } }),
+    );
+    expect(findFirst).not.toHaveBeenCalled(); // legacy path not needed
+    invalidateTenantCache("acme");
+  });
+
+  it("does NOT route a managed domain whose tenant downgraded below the required plan", async () => {
+    // Active domain, but tenant is now on free → custom domains not allowed.
+    domainFindFirst.mockResolvedValueOnce({ tenant: { ...ACME, plan: "free" } });
+    findFirst.mockResolvedValueOnce(null); // legacy column also misses
+    const res = await resolveFromDomain("careers.acme.com");
+    expect(res.tenant).toBeNull();
+    invalidateTenantCache("acme");
+  });
+
+  it("falls back to the legacy Tenant.domain column when no managed domain matches", async () => {
+    domainFindFirst.mockResolvedValueOnce(null);
+    findFirst.mockResolvedValueOnce(ACME);
+    const res = await resolveFromDomain("careers.acme.com");
     expect(res.tenant?.id).toBe("acme");
     expect(res.source).toBe("domain");
     expect(findFirst).toHaveBeenCalledWith(
@@ -80,6 +110,7 @@ describe("resolveFromDomain", () => {
   });
 
   it("returns null when no tenant owns the domain", async () => {
+    domainFindFirst.mockResolvedValueOnce(null);
     findFirst.mockResolvedValueOnce(null);
     expect((await resolveFromDomain("unknown.example.com")).tenant).toBeNull();
   });

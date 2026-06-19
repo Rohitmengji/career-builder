@@ -19,7 +19,11 @@ export {
   webhookRepo,
   subscriptionRepo,
   candidateRepo,
+  domainRepo,
+  normalizeHostname,
+  DOMAIN_STATUSES,
 } from "./repositories";
+export type { CreateDomainInput, DomainStatus } from "./repositories";
 
 // Re-export all domain types and constants
 export * from "./types";

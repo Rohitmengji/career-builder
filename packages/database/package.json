@@ -8,6 +8,7 @@
     ".": "./index.ts",
     "./client": "./client.ts",
     "./types": "./types.ts",
+    "./host": "./host.ts",
     "./tenant-guard": "./tenant-guard.ts",
     "./repositories": "./repositories/index.ts",
     "./resilience": "./resilience.ts"

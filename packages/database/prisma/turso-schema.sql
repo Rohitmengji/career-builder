@@ -21,6 +21,19 @@ CREATE TABLE "Tenant" (
 );
 
 -- CreateTable
+CREATE TABLE "Domain" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "hostname" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "verifyToken" TEXT NOT NULL,
+    "isPrimary" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "verifiedAt" DATETIME,
+    CONSTRAINT "Domain_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "email" TEXT NOT NULL,
@@ -214,6 +227,15 @@ CREATE TABLE "AppConfig" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Tenant_domain_key" ON "Tenant"("domain");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Domain_hostname_key" ON "Domain"("hostname");
+
+-- CreateIndex
+CREATE INDEX "Domain_tenantId_idx" ON "Domain"("tenantId");
+
+-- CreateIndex
+CREATE INDEX "Domain_status_idx" ON "Domain"("status");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_stripeCustomerId_key" ON "User"("stripeCustomerId");
