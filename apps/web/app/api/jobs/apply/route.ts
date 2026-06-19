@@ -18,7 +18,26 @@ import { validateUpload, UPLOAD_PRESETS, isPathSafe } from "@career-builder/secu
 import { validateUrl } from "@career-builder/security/url";
 import { getRateLimiter, getClientIp } from "@career-builder/security/rate-limit";
 import { emailService } from "@career-builder/email";
+import { getKV } from "@career-builder/shared/kv";
 import { getWebTenantId, isMultiTenantWeb, getWebTenantEmailSettings } from "@/lib/tenant-runtime";
+import type { ApplyResponse } from "@/lib/jobs/types";
+
+// Application submissions are never cacheable.
+const NO_STORE = { "Cache-Control": "no-store" } as const;
+
+function json(body: ApplyResponse, status: number) {
+  return NextResponse.json(body, { status, headers: NO_STORE });
+}
+
+/** Structured security log (rate-limit, tenant-spoof) — greppable, no PII. */
+function logSecurity(event: string, detail: Record<string, string | number>) {
+  console.warn(`[security][apply] ${event}`, JSON.stringify(detail));
+}
+
+// Idempotency: a client sends a stable Idempotency-Key per attempt; we cache the
+// outcome so a retry/refresh of the SAME attempt can't create a second record.
+const IDEMPOTENCY_TTL_SECONDS = 24 * 60 * 60;
+const idempotencyKeyFor = (tenantId: string, key: string) => `apply:idem:${tenantId}:${key}`;
 
 export async function POST(request: Request) {
   try {
@@ -33,10 +52,27 @@ export async function POST(request: Request) {
     const ip = getClientIp(request) || "unknown";
     const rl = limiter.check(`apply:${resolvedTenantId}:${ip}`);
     if (!rl.allowed) {
-      return NextResponse.json(
+      logSecurity("rate_limited", { tenantId: resolvedTenantId, ip });
+      return json(
         { success: false, error: "Too many applications. Please try again later." },
-        { status: 429 },
+        429,
       );
+    }
+
+    // Idempotency: short-circuit a repeat of the same attempt (retry/refresh)
+    // before re-uploading the file or re-creating the record. KV failures degrade
+    // gracefully (the natural dedup in the provider is the backstop).
+    const idempotencyKey = request.headers.get("idempotency-key")?.trim().slice(0, 200) || "";
+    const kv = getKV();
+    if (idempotencyKey) {
+      try {
+        const cached = await kv.get(idempotencyKeyFor(resolvedTenantId, idempotencyKey));
+        if (cached) {
+          return json({ success: true, applicationId: cached, duplicate: true }, 200);
+        }
+      } catch {
+        /* KV unavailable — continue without idempotency short-circuit */
+      }
     }
 
     const contentType = request.headers.get("content-type") || "";
@@ -44,26 +80,30 @@ export async function POST(request: Request) {
     let fields: Record<string, string> = {};
     let resumeFile: File | null = null;
 
-    if (contentType.includes("multipart/form-data")) {
-      const formData = await request.formData();
-      for (const [key, value] of formData.entries()) {
-        if (key === "resume" && value instanceof File) {
-          resumeFile = value;
-        } else if (typeof value === "string") {
-          fields[key] = value;
+    try {
+      if (contentType.includes("multipart/form-data")) {
+        const formData = await request.formData();
+        for (const [key, value] of formData.entries()) {
+          if (key === "resume" && value instanceof File) {
+            resumeFile = value;
+          } else if (typeof value === "string") {
+            fields[key] = value;
+          }
         }
+      } else if (contentType.includes("application/json")) {
+        fields = await request.json();
+      } else {
+        return json({ success: false, error: "Unsupported content type." }, 415);
       }
-    } else {
-      fields = await request.json();
+    } catch {
+      // Malformed multipart/JSON body.
+      return json({ success: false, error: "We couldn't read the submitted form. Please try again." }, 400);
     }
 
     // Validate required fields with Zod
     const parsed = safeParse(createApplicationSchema, fields);
     if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: parsed.error },
-        { status: 400 },
-      );
+      return json({ success: false, error: parsed.error }, 400);
     }
 
     // Isolation: never trust a client-supplied tenantId. When multi-tenant is
@@ -73,28 +113,26 @@ export async function POST(request: Request) {
       ? sanitizeString(parsed.data.tenantId, 50)
       : "";
     if (isMultiTenantWeb() && clientTenantId && clientTenantId !== resolvedTenantId) {
-      return NextResponse.json(
-        { success: false, error: "Tenant mismatch" },
-        { status: 403 },
+      logSecurity("tenant_mismatch", { host: resolvedTenantId, claimed: clientTenantId, ip });
+      return json(
+        { success: false, error: "This application can't be submitted from here. Please reload the page and try again." },
+        403,
       );
     }
 
     // Sanitize inputs
     const email = sanitizeEmail(parsed.data.email);
     if (!email) {
-      return NextResponse.json(
-        { success: false, error: "Invalid email format" },
-        { status: 400 },
-      );
+      return json({ success: false, error: "Please enter a valid email address." }, 400);
     }
 
     // Validate resume: at least one of file or URL required
     const hasFile = resumeFile && resumeFile.size > 0;
     const hasUrl = parsed.data.resumeUrl && parsed.data.resumeUrl.trim().length > 0;
     if (!hasFile && !hasUrl) {
-      return NextResponse.json(
-        { success: false, error: "Resume is required (upload a file or provide a URL)" },
-        { status: 400 },
+      return json(
+        { success: false, error: "Please upload a resume file or provide a resume URL." },
+        400,
       );
     }
 
@@ -102,10 +140,7 @@ export async function POST(request: Request) {
     if (hasUrl) {
       const urlResult = validateUrl(parsed.data.resumeUrl!, { allowedProtocols: ["https:", "http:"] });
       if (!urlResult.valid) {
-        return NextResponse.json(
-          { success: false, error: `Invalid resume URL: ${urlResult.error}` },
-          { status: 400 },
-        );
+        return json({ success: false, error: `Invalid resume URL: ${urlResult.error}` }, 400);
       }
     }
 
@@ -116,10 +151,7 @@ export async function POST(request: Request) {
         allowedHosts: ["linkedin.com", "www.linkedin.com"],
       });
       if (!linkedinResult.valid) {
-        return NextResponse.json(
-          { success: false, error: `Invalid LinkedIn URL: ${linkedinResult.error}` },
-          { status: 400 },
-        );
+        return json({ success: false, error: `Invalid LinkedIn URL: ${linkedinResult.error}` }, 400);
       }
     }
 
@@ -134,10 +166,7 @@ export async function POST(request: Request) {
       );
 
       if (!validation.valid) {
-        return NextResponse.json(
-          { success: false, error: validation.error },
-          { status: 400 },
-        );
+        return json({ success: false, error: validation.error }, 400);
       }
 
       const uploadDir = path.join(process.cwd(), "data", "resumes");
@@ -145,10 +174,8 @@ export async function POST(request: Request) {
 
       // Verify path safety
       if (!isPathSafe(filename, uploadDir)) {
-        return NextResponse.json(
-          { success: false, error: "Invalid file path" },
-          { status: 400 },
-        );
+        logSecurity("unsafe_file_path", { tenantId: resolvedTenantId, ip });
+        return json({ success: false, error: "Invalid file." }, 400);
       }
 
       // Route through the storage abstraction: durable object storage in
@@ -177,7 +204,22 @@ export async function POST(request: Request) {
     });
 
     if (!result.success) {
-      return NextResponse.json(result, { status: 400 });
+      // Map the provider's machine-readable reason to an accurate status.
+      const status = result.code === "job_not_found" ? 404 : result.code === "duplicate" ? 409 : 400;
+      return json(result, status);
+    }
+
+    // Record the idempotency outcome so a retry of THIS attempt is a no-op.
+    if (idempotencyKey && result.applicationId) {
+      try {
+        await kv.set(
+          idempotencyKeyFor(resolvedTenantId, idempotencyKey),
+          result.applicationId,
+          IDEMPOTENCY_TTL_SECONDS,
+        );
+      } catch {
+        /* best-effort */
+      }
     }
 
     // ── Send email notifications (fire-and-forget — don't block response) ──
@@ -185,13 +227,13 @@ export async function POST(request: Request) {
     const adminUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.ADMIN_API_URL || "http://localhost:3001";
     const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME || "Our Company";
 
-    // Fetch job details for the email (best-effort)
+    // Fetch job details for the email (best-effort, tenant-scoped)
     const jobProvider = getJobProvider();
     let jobTitle = "the position";
     let jobDepartment = "";
     let jobLocation = "";
     try {
-      const jobDetail = await jobProvider.getById(sanitizeString(parsed.data.jobId, 100));
+      const jobDetail = await jobProvider.getById(sanitizeString(parsed.data.jobId, 100), resolvedTenantId);
       if (jobDetail?.job) {
         jobTitle = jobDetail.job.title;
         jobDepartment = jobDetail.job.department;
@@ -230,12 +272,13 @@ export async function POST(request: Request) {
       }, tenantSender),
     ]).catch((err) => console.error("[apply] Email send error:", err));
 
-    return NextResponse.json(result, { status: 201 });
+    return json(result, 201);
   } catch (error) {
+    // Log full detail server-side only; never expose internals to the client.
     console.error("[API /api/jobs/apply] Error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 },
+    return json(
+      { success: false, error: "Unable to submit your application right now. Please try again in a few minutes." },
+      500,
     );
   }
 }

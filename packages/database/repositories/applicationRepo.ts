@@ -75,6 +75,18 @@ export const applicationRepo = {
     };
   },
 
+  /**
+   * Find an existing application for the same candidate + job within a tenant.
+   * Used to prevent duplicate applications (a candidate applying twice to the
+   * same role). Tenant-scoped so it can't surface another tenant's data.
+   */
+  async findDuplicate(tenantId: string, jobId: string, email: string) {
+    return prisma.application.findFirst({
+      where: { tenantId, jobId, email: email.toLowerCase() },
+      select: { id: true },
+    });
+  },
+
   async create(data: CreateApplicationInput) {
     return prisma.application.create({
       data: {

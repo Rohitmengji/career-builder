@@ -47,6 +47,20 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+/**
+ * Collapse user-supplied text to a single line for use in the email SUBJECT.
+ * Strips CR/LF and control characters so a crafted name / job title can't inject
+ * additional email headers (header-injection defense-in-depth).
+ */
+function oneLine(s: string): string {
+  let out = "";
+  for (const ch of String(s ?? "")) {
+    const code = ch.codePointAt(0) ?? 0;
+    out += code <= 0x1f || code === 0x7f ? " " : ch;
+  }
+  return out.replace(/\s{2,}/g, " ").trim();
+}
+
 /** Allow only http(s) links; escape for the href attribute. Prevents
  *  attribute breakout and javascript:/data: URIs in email buttons. */
 function safeHref(href: string): string {
@@ -64,7 +78,7 @@ function btn(text: string, href: string): string {
 /* ================================================================== */
 
 export function applicationConfirmation(data: ApplicationConfirmationData) {
-  const subject = `Application received — ${data.jobTitle} at ${data.companyName}`;
+  const subject = oneLine(`Application received — ${data.jobTitle} at ${data.companyName}`);
 
   const html = layout(
     `<h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Thanks for applying, ${escapeHtml(data.candidateFirstName)}!</h2>
@@ -105,7 +119,7 @@ If you didn't submit this application, you can safely ignore this email.`;
 /* ================================================================== */
 
 export function applicationNotification(data: ApplicationNotificationData) {
-  const subject = `📩 New application: ${data.candidateFirstName} ${data.candidateLastName} → ${data.jobTitle}`;
+  const subject = oneLine(`📩 New application: ${data.candidateFirstName} ${data.candidateLastName} → ${data.jobTitle}`);
 
   const detailRow = (label: string, value: string) =>
     value
@@ -163,7 +177,7 @@ export function statusUpdate(data: StatusUpdateData) {
   };
 
   const statusLabel = statusLabels[data.newStatus] || data.newStatus;
-  const subject = `Application update: ${statusLabel} — ${data.jobTitle}`;
+  const subject = oneLine(`Application update: ${statusLabel} — ${data.jobTitle}`);
 
   const statusMessages: Record<string, string> = {
     reviewing:

@@ -1,14 +1,18 @@
 /*
- * ApplyModal — Client component for job application form.
+ * ApplyModal — client component for the job application form (modal variant).
  *
- * Renders a button that opens a modal with a multi-field form.
- * Submits to POST /api/jobs/apply and shows success/error feedback.
+ * Submission logic (validation, timeout/abort, idempotency, re-entry guard,
+ * error mapping) lives in the shared pipeline (lib/jobs/useApplySubmit +
+ * applyForm) so this modal and the full-page apply form behave identically.
+ * This file owns only the modal presentation + accessibility.
  */
 
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect, useId } from "react";
 import { trackApplyStart, trackApplyComplete } from "@/lib/analytics";
+import { useApplySubmit } from "@/lib/jobs/useApplySubmit";
+import { APPLY_LIMITS, type ApplyFormValues, type ApplyField } from "@/lib/jobs/applyForm";
 import {
   Button,
   Field,
@@ -22,17 +26,7 @@ interface ApplyModalProps {
   jobTitle: string;
 }
 
-interface FormFields {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  linkedinUrl: string;
-  resumeUrl: string;
-  coverLetter: string;
-}
-
-const INITIAL_FORM: FormFields = {
+const INITIAL_FORM: ApplyFormValues = {
   firstName: "",
   lastName: "",
   email: "",
@@ -42,50 +36,53 @@ const INITIAL_FORM: FormFields = {
   coverLetter: "",
 };
 
-const ACCEPTED_RESUME_TYPES = ".pdf,.doc,.docx,.rtf,.txt";
-const MAX_FILE_SIZE_MB = 10;
-
-type Status = "idle" | "submitting" | "success" | "error";
-
 export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [form, setForm] = useState<FormFields>(INITIAL_FORM);
+  const [form, setForm] = useState<ApplyFormValues>(INITIAL_FORM);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [resumeError, setResumeError] = useState("");
-  const [status, setStatus] = useState<Status>("idle");
-  const [errorMsg, setErrorMsg] = useState("");
+
+  const {
+    status,
+    formError,
+    fieldErrors,
+    submit,
+    reset,
+    clearFieldError,
+    isSubmitting,
+  } = useApplySubmit({ allowResumeUrl: true });
+
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const triggerWrapRef = useRef<HTMLDivElement>(null);
+  const successHeadingRef = useRef<HTMLHeadingElement>(null);
   const headingId = useId();
   const resumeErrId = useId();
+  const fileStatusId = useId();
+  const coverCountId = useId();
 
-  // Open / close
+  // Open / close --------------------------------------------------------------
   const open = useCallback(() => {
     setIsOpen(true);
-    setStatus("idle");
     setForm(INITIAL_FORM);
     setResumeFile(null);
-    setResumeError("");
-    setErrorMsg("");
+    reset();
     trackApplyStart(jobId);
-  }, [jobId]);
+  }, [jobId, reset]);
 
   const close = useCallback(() => {
     setIsOpen(false);
-    // Restore focus to the trigger that opened the dialog
     requestAnimationFrame(() =>
       triggerWrapRef.current?.querySelector<HTMLButtonElement>("button")?.focus(),
     );
   }, []);
 
-  // Sync <dialog> with state + move initial focus to first field
+  // Sync <dialog> with state + move initial focus to the first field.
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
     if (isOpen && !dialog.open) {
       dialog.showModal();
-      // Focus the first focusable field once the dialog is rendered
       requestAnimationFrame(() =>
         dialog.querySelector<HTMLInputElement>("input, textarea")?.focus(),
       );
@@ -94,8 +91,15 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
     }
   }, [isOpen]);
 
-  // Native <dialog> dispatches a "cancel" event on Escape — keep state in sync
-  // (this also avoids a duplicate keydown listener).
+  // Move focus to the success heading when the submission succeeds (so screen
+  // readers and keyboard users land on the confirmation, not a removed button).
+  useEffect(() => {
+    if (status === "success") {
+      requestAnimationFrame(() => successHeadingRef.current?.focus());
+      trackApplyComplete(jobId);
+    }
+  }, [status, jobId]);
+
   const handleCancel = useCallback(
     (e: React.SyntheticEvent<HTMLDialogElement>) => {
       e.preventDefault();
@@ -104,7 +108,6 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
     [close],
   );
 
-  // Close on backdrop click
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent<HTMLDialogElement>) => {
       if (e.target === dialogRef.current) close();
@@ -112,111 +115,85 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
     [close],
   );
 
-  // Field change handler
-  const onChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  }, []);
+  // Field changes — clear that field's error as the user corrects it.
+  const onChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { name, value } = e.target;
+      setForm((prev) => ({ ...prev, [name]: value }));
+      clearFieldError(name as ApplyField);
+    },
+    [clearFieldError],
+  );
 
-  // Resume file handler
-  const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setResumeError("");
-    const file = e.target.files?.[0] ?? null;
-    if (!file) {
-      setResumeFile(null);
-      return;
-    }
-    // Validate size
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      setResumeError(`File must be under ${MAX_FILE_SIZE_MB}MB`);
-      setResumeFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-    setResumeFile(file);
-  }, []);
+  // Resume file selection — validation is centralized in the pipeline; here we
+  // give immediate inline feedback and keep the input in sync.
+  const onFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0] ?? null;
+      setResumeFile(file);
+      clearFieldError("resume");
+    },
+    [clearFieldError],
+  );
 
   const clearResume = useCallback(() => {
     setResumeFile(null);
-    setResumeError("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
 
-  // Submit
+  // Move focus to the first invalid control.
+  const focusField = useCallback((field: ApplyField) => {
+    const root = formRef.current;
+    if (!root) return;
+    const selector =
+      field === "resume"
+        ? 'input[type="file"], input[name="resumeUrl"]'
+        : `[name="${field}"]`;
+    root.querySelector<HTMLElement>(selector)?.focus();
+  }, []);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      // Require at least one of file or URL
-      if (!resumeFile && !form.resumeUrl.trim()) {
-        setResumeError("Please upload a resume file or provide a resume URL");
-        return;
-      }
-      setStatus("submitting");
-      setErrorMsg("");
-
-      try {
-        // Build multipart form data for file upload
-        const payload = new globalThis.FormData();
-        payload.append("jobId", jobId);
-        payload.append("firstName", form.firstName);
-        payload.append("lastName", form.lastName);
-        payload.append("email", form.email);
-        if (form.phone) payload.append("phone", form.phone);
-        if (form.linkedinUrl) payload.append("linkedinUrl", form.linkedinUrl);
-        if (form.coverLetter) payload.append("coverLetter", form.coverLetter);
-        if (form.resumeUrl.trim()) payload.append("resumeUrl", form.resumeUrl.trim());
-        if (resumeFile) payload.append("resume", resumeFile);
-
-        const res = await fetch("/api/jobs/apply", {
-          method: "POST",
-          body: payload,
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-          setStatus("success");
-          trackApplyComplete(jobId);
-        } else {
-          setStatus("error");
-          setErrorMsg(data.error || "Application failed. Please try again.");
-        }
-      } catch {
-        setStatus("error");
-        setErrorMsg("Network error. Please check your connection and try again.");
-      }
+      const outcome = await submit(jobId, form, resumeFile);
+      if (!outcome.ok && outcome.firstErrorField) focusField(outcome.firstErrorField);
     },
-    [jobId, form, resumeFile],
+    [submit, jobId, form, resumeFile, focusField],
   );
+
+  const coverLen = form.coverLetter?.length ?? 0;
 
   return (
     <>
-      {/* Trigger button */}
       <div ref={triggerWrapRef}>
         <Button onClick={open} fullWidth size="lg">
           Apply for this position
         </Button>
       </div>
 
-      {/* Modal */}
       <dialog
         ref={dialogRef}
         onClick={handleBackdropClick}
         onCancel={handleCancel}
+        aria-modal="true"
         aria-labelledby={headingId}
         className="fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/50 backdrop:backdrop-blur-sm open:flex open:items-center open:justify-center"
       >
-        <div className="mx-auto max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:p-8">
+        <div className="mx-auto flex max-h-[90vh] min-h-112 w-full max-w-lg flex-col overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:p-8">
           {status === "success" ? (
-            /* ──── Success state ──── */
-            <div className="py-8 text-center" role="status" aria-live="polite">
+            <div className="flex flex-1 flex-col items-center justify-center py-8 text-center" role="status" aria-live="polite">
               <div
                 className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600"
                 aria-hidden="true"
               >
                 <CheckIcon className="h-7 w-7" />
               </div>
-              <h2 id={headingId} className="text-xl font-semibold text-gray-900">
+              <h2
+                id={headingId}
+                ref={successHeadingRef}
+                tabIndex={-1}
+                className="text-xl font-semibold text-gray-900 outline-none"
+              >
                 Application submitted
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-gray-600">
@@ -230,7 +207,6 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
               </div>
             </div>
           ) : (
-            /* ──── Form ──── */
             <>
               <div className="mb-6 flex items-start justify-between gap-4">
                 <div>
@@ -249,158 +225,178 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
                 </button>
               </div>
 
-              {errorMsg && (
+              {/* Form-level error — assertive so screen readers announce it on submit failure */}
+              {formError && (
                 <div
                   role="alert"
+                  aria-live="assertive"
                   className="mb-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"
                 >
-                  {errorMsg}
+                  {formError}
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Name row */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field
-                    label="First name"
-                    name="firstName"
-                    value={form.firstName}
-                    onChange={onChange}
-                    required
-                    placeholder="Jane"
-                  />
-                  <Field
-                    label="Last name"
-                    name="lastName"
-                    value={form.lastName}
-                    onChange={onChange}
-                    required
-                    placeholder="Doe"
-                  />
-                </div>
-
-                <Field
-                  label="Email"
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={onChange}
-                  required
-                  placeholder="jane@example.com"
-                />
-
-                <Field
-                  label="Phone"
-                  name="phone"
-                  type="tel"
-                  value={form.phone}
-                  onChange={onChange}
-                  placeholder="+1 (555) 000-0000"
-                />
-
-                <Field
-                  label="LinkedIn URL"
-                  name="linkedinUrl"
-                  type="url"
-                  value={form.linkedinUrl}
-                  onChange={onChange}
-                  placeholder="https://linkedin.com/in/janedoe"
-                />
-
-                {/* Resume — file upload OR URL */}
-                <fieldset className="m-0 border-0 p-0">
-                  <legend className="mb-1.5 block text-sm font-medium text-gray-700">
-                    Resume
-                    <span className="text-red-600" aria-hidden="true"> *</span>
-                    <span className="sr-only"> (required)</span>
-                  </legend>
-                  <p className="mb-2 text-xs text-gray-500">
-                    Upload a file or paste a link — at least one is required
-                  </p>
-
-                  {/* File upload */}
-                  <div className="mb-2">
-                    {resumeFile ? (
-                      <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm">
-                        <FileIcon />
-                        <span className="flex-1 truncate font-medium text-blue-800">{resumeFile.name}</span>
-                        <span className="shrink-0 text-xs text-blue-700">{formatFileSize(resumeFile.size)}</span>
-                        <button
-                          type="button"
-                          onClick={clearResume}
-                          aria-label={`Remove ${resumeFile.name}`}
-                          className="ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-blue-600 transition-colors hover:bg-blue-100 hover:text-blue-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-                        >
-                          <XIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 transition-colors hover:border-blue-400 hover:bg-blue-50/50 focus-within:ring-2 focus-within:ring-blue-600">
-                        <UploadIcon />
-                        <span className="text-sm text-gray-600">
-                          <span className="font-medium text-blue-600">Upload file</span> — PDF, DOC, DOCX (max {MAX_FILE_SIZE_MB}MB)
-                        </span>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept={ACCEPTED_RESUME_TYPES}
-                          onChange={onFileChange}
-                          aria-label="Upload resume file"
-                          aria-invalid={resumeError ? true : undefined}
-                          aria-describedby={resumeError ? resumeErrId : undefined}
-                          className="sr-only"
-                        />
-                      </label>
-                    )}
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4" noValidate>
+                {/* Disable the entire form while submitting — blocks duplicate input/submit */}
+                <fieldset disabled={isSubmitting} className="m-0 space-y-4 border-0 p-0">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field
+                      label="First name"
+                      name="firstName"
+                      autoComplete="given-name"
+                      value={form.firstName}
+                      onChange={onChange}
+                      required
+                      error={fieldErrors.firstName}
+                      placeholder="Jane"
+                    />
+                    <Field
+                      label="Last name"
+                      name="lastName"
+                      autoComplete="family-name"
+                      value={form.lastName}
+                      onChange={onChange}
+                      required
+                      error={fieldErrors.lastName}
+                      placeholder="Doe"
+                    />
                   </div>
 
-                  {/* OR divider */}
-                  <div className="my-2 flex items-center gap-3" aria-hidden="true">
-                    <div className="h-px flex-1 bg-gray-200" />
-                    <span className="text-xs uppercase text-gray-500">or</span>
-                    <div className="h-px flex-1 bg-gray-200" />
-                  </div>
+                  <Field
+                    label="Email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    value={form.email}
+                    onChange={onChange}
+                    required
+                    error={fieldErrors.email}
+                    placeholder="jane@example.com"
+                  />
 
-                  {/* Resume URL */}
-                  <input
+                  <Field
+                    label="Phone"
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    value={form.phone ?? ""}
+                    onChange={onChange}
+                    error={fieldErrors.phone}
+                    placeholder="+1 (555) 000-0000"
+                  />
+
+                  <Field
+                    label="LinkedIn URL"
+                    name="linkedinUrl"
                     type="url"
-                    name="resumeUrl"
-                    value={form.resumeUrl}
+                    inputMode="url"
+                    value={form.linkedinUrl ?? ""}
                     onChange={onChange}
-                    placeholder="https://drive.google.com/... or link to your resume"
-                    aria-label="Resume URL"
-                    aria-invalid={resumeError ? true : undefined}
-                    aria-describedby={resumeError ? resumeErrId : undefined}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-500 focus:outline-none focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600"
+                    error={fieldErrors.linkedinUrl}
+                    placeholder="https://linkedin.com/in/janedoe"
                   />
 
-                  {resumeError && (
-                    <p id={resumeErrId} role="alert" className="mt-1.5 text-xs text-red-700">
-                      {resumeError}
+                  {/* Resume — file upload OR URL */}
+                  <fieldset className="m-0 border-0 p-0">
+                    <legend className="mb-1.5 block text-sm font-medium text-gray-700">
+                      Resume
+                      <span className="text-red-600" aria-hidden="true"> *</span>
+                      <span className="sr-only"> (required)</span>
+                    </legend>
+                    <p className="mb-2 text-xs text-gray-500">
+                      Upload a file or paste a link — at least one is required (max {APPLY_LIMITS.maxFileMb}MB)
                     </p>
-                  )}
+
+                    <div className="mb-2">
+                      {resumeFile ? (
+                        <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm">
+                          <FileIcon />
+                          <span className="flex-1 truncate font-medium text-blue-800">{resumeFile.name}</span>
+                          <span className="shrink-0 text-xs text-blue-700">{formatFileSize(resumeFile.size)}</span>
+                          <button
+                            type="button"
+                            onClick={clearResume}
+                            aria-label={`Remove ${resumeFile.name}`}
+                            className="ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-blue-600 transition-colors hover:bg-blue-100 hover:text-blue-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                          >
+                            <XIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 transition-colors hover:border-blue-400 hover:bg-blue-50/50 focus-within:ring-2 focus-within:ring-blue-600">
+                          <UploadIcon />
+                          <span className="text-sm text-gray-600">
+                            <span className="font-medium text-blue-600">Upload file</span> — PDF, DOC, DOCX (max {APPLY_LIMITS.maxFileMb}MB)
+                          </span>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept={APPLY_LIMITS.acceptAttr}
+                            onChange={onFileChange}
+                            aria-label="Upload resume file"
+                            aria-invalid={fieldErrors.resume ? true : undefined}
+                            aria-describedby={fieldErrors.resume ? resumeErrId : undefined}
+                            className="sr-only"
+                          />
+                        </label>
+                      )}
+                    </div>
+
+                    {/* Announce the selected file to screen readers */}
+                    <p id={fileStatusId} role="status" aria-live="polite" className="sr-only">
+                      {resumeFile ? `Selected file ${resumeFile.name}, ${formatFileSize(resumeFile.size)}` : "No file selected"}
+                    </p>
+
+                    <div className="my-2 flex items-center gap-3" aria-hidden="true">
+                      <div className="h-px flex-1 bg-gray-200" />
+                      <span className="text-xs uppercase text-gray-500">or</span>
+                      <div className="h-px flex-1 bg-gray-200" />
+                    </div>
+
+                    <input
+                      type="url"
+                      name="resumeUrl"
+                      inputMode="url"
+                      value={form.resumeUrl ?? ""}
+                      onChange={onChange}
+                      placeholder="https://drive.google.com/... or link to your resume"
+                      aria-label="Resume URL"
+                      aria-invalid={fieldErrors.resume ? true : undefined}
+                      aria-describedby={fieldErrors.resume ? resumeErrId : undefined}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-500 focus:outline-none focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600"
+                    />
+
+                    {fieldErrors.resume && (
+                      <p id={resumeErrId} role="alert" className="mt-1.5 text-xs text-red-700">
+                        {fieldErrors.resume}
+                      </p>
+                    )}
+                  </fieldset>
+
+                  <div>
+                    <TextareaField
+                      label="Cover letter"
+                      name="coverLetter"
+                      value={form.coverLetter ?? ""}
+                      onChange={onChange}
+                      rows={4}
+                      maxLength={APPLY_LIMITS.maxCoverLetterChars}
+                      placeholder="Tell us why you'd be a great fit…"
+                      hint="Optional"
+                      error={fieldErrors.coverLetter}
+                      aria-describedby={coverCountId}
+                    />
+                    <p id={coverCountId} className="mt-1 text-right text-xs text-gray-400" aria-live="polite">
+                      {coverLen.toLocaleString()} / {APPLY_LIMITS.maxCoverLetterChars.toLocaleString()}
+                    </p>
+                  </div>
                 </fieldset>
 
-                <TextareaField
-                  label="Cover letter"
-                  name="coverLetter"
-                  value={form.coverLetter}
-                  onChange={onChange}
-                  rows={4}
-                  placeholder="Tell us why you'd be a great fit…"
-                  hint="Optional"
-                />
-
                 <div className="flex items-center gap-3 pt-2">
-                  <Button
-                    type="submit"
-                    size="lg"
-                    fullWidth
-                    loading={status === "submitting"}
-                  >
-                    {status === "submitting" ? "Submitting…" : "Submit application"}
+                  <Button type="submit" size="lg" fullWidth loading={isSubmitting} aria-busy={isSubmitting}>
+                    {isSubmitting ? "Submitting…" : "Submit application"}
                   </Button>
-                  <Button type="button" variant="ghost" size="lg" onClick={close}>
+                  <Button type="button" variant="ghost" size="lg" onClick={close} disabled={isSubmitting}>
                     Cancel
                   </Button>
                 </div>

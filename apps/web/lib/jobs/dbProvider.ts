@@ -109,14 +109,18 @@ class DatabaseJobProvider implements JobDataProvider {
       return { job: null, relatedJobs: [] };
     }
 
-    // Get related jobs from same department or location
-    const allJobs = await jobRepo.findByTenant(job.tenantId, false);
-    const relatedJobs = allJobs
+    // Related jobs: same department or location, bounded server-side. findByTenant
+    // already filters to the tenant's published jobs; we cap the working set so a
+    // tenant with thousands of jobs doesn't load them all to surface four.
+    const RELATED_SCAN_CAP = 50;
+    const tenantJobs = await jobRepo.findByTenant(job.tenantId, false);
+    const relatedJobs = tenantJobs
       .filter(
         (j) =>
           j.id !== id &&
           (j.department === job.department || j.location === job.location),
       )
+      .slice(0, RELATED_SCAN_CAP)
       .slice(0, 4)
       .map(dbJobToJob);
 
@@ -132,7 +136,20 @@ class DatabaseJobProvider implements JobDataProvider {
     try {
       await jobRepo.assertOwned(application.jobId, tenantId);
     } catch {
-      return { success: false, error: "Job not found" };
+      return { success: false, code: "job_not_found", error: "Job not found" };
+    }
+
+    // Duplicate prevention: the same candidate can't apply to the same role
+    // twice. (Combined with the client re-entry guard + the route's idempotency
+    // key; a DB unique constraint is the future-proof backstop — see PR notes.)
+    const existing = await applicationRepo.findDuplicate(tenantId, application.jobId, application.email);
+    if (existing) {
+      return {
+        success: false,
+        code: "duplicate",
+        applicationId: existing.id,
+        error: "You have already applied to this position.",
+      };
     }
 
     try {

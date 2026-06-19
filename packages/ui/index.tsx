@@ -144,9 +144,12 @@ interface TextareaFieldProps extends Omit<React.TextareaHTMLAttributes<HTMLTextA
   hint?: string;
 }
 
-export function TextareaField({ label, error, hint, required, className = "", ...rest }: TextareaFieldProps) {
+export function TextareaField({ label, error, hint, required, className = "", "aria-describedby": describedBy, ...rest }: TextareaFieldProps & { "aria-describedby"?: string }) {
   const id = React.useId();
   const errId = `${id}-err`;
+  const hintId = `${id}-hint`;
+  // Compose: error/hint id + any caller-supplied describedby (e.g. a char counter).
+  const described = [error ? errId : hint ? hintId : null, describedBy].filter(Boolean).join(" ") || undefined;
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-gray-700">
@@ -158,11 +161,11 @@ export function TextareaField({ label, error, hint, required, className = "", ..
         id={id}
         required={required}
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errId : undefined}
+        aria-describedby={described}
         className={`${INPUT_BASE} resize-none ${error ? INPUT_ERROR : ""} ${className}`}
         {...rest}
       />
-      {hint && !error && <p className="mt-1.5 text-xs text-gray-500">{hint}</p>}
+      {hint && !error && <p id={hintId} className="mt-1.5 text-xs text-gray-500">{hint}</p>}
       {error && <p id={errId} className="mt-1.5 text-xs text-red-700">{error}</p>}
     </div>
   );
