@@ -54,6 +54,7 @@ export default function SiteHeader({ brand = "Careers" }: { brand?: string }) {
           <div className="flex items-center gap-2" style={{ minHeight: 40 }}>
             {ready && candidate && (
               <>
+                <ButtonLink href="/applications" variant="ghost" size="sm">My applications</ButtonLink>
                 <ButtonLink href="/profile" variant="ghost" size="sm">My profile</ButtonLink>
                 <Button variant="secondary" size="sm" onClick={onLogout}>Sign out</Button>
               </>
