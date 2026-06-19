@@ -12,10 +12,12 @@
 
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
-import { applicationRepo, commentRepo, userRepo } from "@career-builder/database";
+import { applicationRepo, commentRepo, userRepo, auditRepo } from "@career-builder/database";
 import { createCommentSchema, safeParse } from "@career-builder/security/validate";
 import { emailService } from "@career-builder/email";
 import { extractMentionIds } from "@/lib/mentions";
+import { getBlindHiringConfig } from "@/lib/blindHiring";
+import { redactedLabel } from "@career-builder/shared/blind-hiring";
 
 const WRITE_ROLES = ["super_admin", "admin", "hiring_manager", "recruiter"];
 
@@ -39,6 +41,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!app) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
+
+  // Record the recruiter's view of this candidate for the candidate-visible
+  // "who viewed me" log (best-effort — never fail the read on an audit error).
+  auditRepo.logProfileView(session.tenantId, id, session.userId).catch(() => {});
 
   const comments = await commentRepo.listByApplication(id, session.tenantId);
   return NextResponse.json(
@@ -91,7 +97,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (recipients.length > 0) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.ADMIN_API_URL || "http://localhost:3001";
     const url = `${appUrl.replace(/\/$/, "")}/applications`;
-    const candidateName = `${app.firstName} ${app.lastName}`;
+    // Blind hiring: don't leak the candidate's name into mention emails (they
+    // leave the app — provider, logs, archives). Use the redacted label.
+    const blind = await getBlindHiringConfig(session.tenantId);
+    const candidateName = blind.enabled ? redactedLabel(app.id) : `${app.firstName} ${app.lastName}`;
     const jobTitle = app.job?.title || "the position";
     Promise.allSettled(
       recipients.map((mid) => {

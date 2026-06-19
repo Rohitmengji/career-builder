@@ -9,6 +9,7 @@ import { getSessionReadOnly } from "@/lib/auth";
 import { analyticsRepo, applicationRepo, tenantRepo } from "@career-builder/database";
 import { withRequestLogging } from "@career-builder/observability/request-logger";
 import { logger } from "@career-builder/observability/logger";
+import { getBlindHiringConfig, redactApplicants } from "@/lib/blindHiring";
 
 const log = logger.api;
 
@@ -48,10 +49,13 @@ export const GET = withRequestLogging(async () => {
       analyticsRepo.getDailyTrend(tenantId, 30),
     ]);
 
+    // Blind hiring: the "recent applications" widget must not expose identity.
+    const blind = await getBlindHiringConfig(tenantId);
+
     return NextResponse.json({
       overview: tenantStats,
       pipeline: pipelineStats,
-      recentApplications,
+      recentApplications: redactApplicants(recentApplications, blind),
       jobViews,
       searchTerms,
       dailyApplications,

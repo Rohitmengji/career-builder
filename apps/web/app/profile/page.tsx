@@ -158,9 +158,71 @@ export default function ProfilePage() {
                 <ButtonLink href="/jobs" variant="ghost" size="lg">Cancel</ButtonLink>
               </div>
             </form>
+
+            <WhoViewedMe />
           </>
         )}
       </main>
     </div>
+  );
+}
+
+/* ================================================================== */
+/*  Who viewed your application — the blind-hiring trust proof point    */
+/* ================================================================== */
+
+interface ProfileView {
+  viewerName: string;
+  viewedAt: string;
+}
+
+function WhoViewedMe() {
+  const [views, setViews] = useState<ProfileView[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/profile/views", { cache: "no-store" });
+        if (res.ok && !cancelled) setViews((await res.json()).views ?? []);
+        else if (!cancelled) setViews([]);
+      } catch {
+        if (!cancelled) setViews([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <section aria-labelledby="views-heading" className="mt-12 border-t border-gray-200 pt-8">
+      <h2 id="views-heading" className="text-xl font-semibold tracking-tight text-gray-900">
+        Who viewed your application
+      </h2>
+      <p className="mt-1 text-sm text-gray-600">
+        Transparency by default — see when a hiring-team member opened your application.
+      </p>
+
+      <div className="mt-4">
+        {loading ? (
+          <SkeletonText lines={3} />
+        ) : !views || views.length === 0 ? (
+          <p className="text-sm text-gray-500">No views yet. We&apos;ll show them here as your applications are reviewed.</p>
+        ) : (
+          <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200" aria-live="polite">
+            {views.map((v, i) => (
+              <li key={i} className="flex items-center justify-between gap-3 px-4 py-3">
+                <span className="text-sm font-medium text-gray-900">{v.viewerName}</span>
+                <time className="text-sm text-gray-500" dateTime={v.viewedAt}>
+                  {new Date(v.viewedAt).toLocaleString()}
+                </time>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }

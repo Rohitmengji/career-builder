@@ -19,6 +19,7 @@ import { bulkApplicationActionSchema, safeParse } from "@career-builder/security
 import { sanitizeString } from "@career-builder/security/sanitize";
 import { emailService } from "@career-builder/email";
 import { applicationsToCsv } from "@/lib/csvExport";
+import { getBlindHiringConfig, redactApplicants } from "@/lib/blindHiring";
 
 const WRITE_ROLES = ["super_admin", "admin", "hiring_manager", "recruiter"];
 
@@ -52,7 +53,9 @@ export async function POST(req: Request) {
 
   /* ---- Export → CSV ---- */
   if (action === "export") {
-    const csv = applicationsToCsv(owned);
+    // Blind hiring redacts the export too — a CSV must never leak identity.
+    const blind = await getBlindHiringConfig(session.tenantId);
+    const csv = applicationsToCsv(redactApplicants(owned, blind));
     const filename = `applications-${new Date().toISOString().slice(0, 10)}.csv`;
     await writeAuditLog(session.userId, session.email, "application_bulk_export", `${owned.length} applications`);
     return new NextResponse(csv, {
