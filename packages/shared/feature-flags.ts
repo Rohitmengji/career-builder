@@ -48,6 +48,16 @@ const FLAG_DEFINITIONS = {
       "in selection). Off in prod by default — enable per-deploy/tenant once the " +
       "AI provider key is configured (AI brief: ship new AI features flag-gated).",
   },
+  salary_benchmarks: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Candidate-facing 'Salary Truth' market pay context on the job detail page: " +
+      "shows where a role's posted pay sits vs the market (and the market range " +
+      "even when pay is hidden), computed from public posted ranges across tenants " +
+      "with k-anonymity (>=5 jobs, >=2 tenants) + rounding (ADR-0002). Off by " +
+      "default — only shows once enough comparable market data exists.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",
