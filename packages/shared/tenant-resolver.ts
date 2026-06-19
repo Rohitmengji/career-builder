@@ -130,7 +130,10 @@ export async function resolveFromSubdomain(hostname: string): Promise<TenantReso
     return { tenant: null, source: "subdomain", cacheKey };
   }
 
-  return resolveFromSlug(subdomain);
+  // Delegate the DB lookup to the slug resolver, but report THIS source so
+  // downstream mismatch telemetry (Phase 3) attributes resolution correctly.
+  const result = await resolveFromSlug(subdomain);
+  return { ...result, source: "subdomain" };
 }
 
 /**
@@ -142,7 +145,8 @@ export async function resolveFromHeader(tenantId: string): Promise<TenantResolut
   const cached = getCached(cacheKey);
   if (cached) return { tenant: cached, source: "header", cacheKey };
 
-  return resolveFromSlug(tenantId);
+  const result = await resolveFromSlug(tenantId);
+  return { ...result, source: "header" };
 }
 
 /**
@@ -154,7 +158,8 @@ export async function resolveFromEnv(): Promise<TenantResolution> {
   const cached = getCached(cacheKey);
   if (cached) return { tenant: cached, source: "env", cacheKey };
 
-  return resolveFromSlug(tenantId);
+  const result = await resolveFromSlug(tenantId);
+  return { ...result, source: "env" };
 }
 
 /**
