@@ -119,9 +119,18 @@ export function useJobSearch(defaultTenantId?: string): UseJobSearchResult {
       // an actionable error instead of spinning forever.
       const timeoutController = new AbortController();
       const timeoutId = setTimeout(() => timeoutController.abort(), 15_000);
-      const combined = signal
-        ? AbortSignal.any([signal, timeoutController.signal])
-        : timeoutController.signal;
+      // AbortSignal.any is unavailable on older Safari/Chrome/Firefox — fall back
+      // to bridging the caller's signal onto the timeout controller manually.
+      let combined: AbortSignal;
+      if (signal && typeof AbortSignal !== "undefined" && typeof AbortSignal.any === "function") {
+        combined = AbortSignal.any([signal, timeoutController.signal]);
+      } else {
+        if (signal) {
+          if (signal.aborted) timeoutController.abort();
+          else signal.addEventListener("abort", () => timeoutController.abort(), { once: true });
+        }
+        combined = timeoutController.signal;
+      }
 
       let res: Response;
       try {

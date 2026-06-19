@@ -165,6 +165,10 @@ model Application {
   @@index([tenantId])
   @@index([tenantId, status])
   @@index([email, tenantId])
+  // One application per candidate per job (email is stored lowercased). The
+  // ATOMIC backstop for duplicate prevention: a concurrent double-submit that
+  // races past the app-level check hits this constraint (Prisma P2002).
+  @@unique([tenantId, jobId, email])
 }
 
 // --- PAGE ---

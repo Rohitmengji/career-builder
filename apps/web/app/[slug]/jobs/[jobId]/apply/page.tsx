@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { SkipLink } from "@/lib/design-system-components";
 import { useApplySubmit } from "@/lib/jobs/useApplySubmit";
-import { APPLY_LIMITS, type ApplyField, type ApplyFormValues } from "@/lib/jobs/applyForm";
+import { APPLY_LIMITS, validateResumeFile, type ApplyField, type ApplyFormValues } from "@/lib/jobs/applyForm";
 import {
   Container,
   Field,
@@ -54,10 +54,20 @@ export default function ApplyPage() {
   const [form, setForm] = useState<PageFormState>(INITIAL);
   const [portfolioError, setPortfolioError] = useState("");
 
-  const { status, formError, fieldErrors, applicationId, submit, isSubmitting } = useApplySubmit({
-    allowResumeUrl: false,
-  });
+  const { status, formError, fieldErrors, applicationId, submit, isSubmitting, setFieldErrors, clearFieldError } =
+    useApplySubmit({ allowResumeUrl: false });
   const submitted = status === "success";
+
+  const onResumeChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0] || null;
+      setForm((prev) => ({ ...prev, resume: file }));
+      const err = file ? validateResumeFile(file) : null;
+      if (err) setFieldErrors((prev) => ({ ...prev, resume: err }));
+      else clearFieldError("resume");
+    },
+    [setFieldErrors, clearFieldError],
+  );
 
   const formRef = useRef<HTMLFormElement>(null);
   const resumeInputId = useId();
@@ -75,15 +85,37 @@ export default function ApplyPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [isSubmitting]);
 
-  const set = useCallback(<K extends keyof PageFormState>(key: K, value: PageFormState[K]) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }, []);
+  // Map page field names → the shared ApplyField so editing a field clears its
+  // inline error (parity with the modal).
+  const FIELD_MAP: Partial<Record<keyof PageFormState, ApplyField>> = {
+    firstName: "firstName",
+    lastName: "lastName",
+    email: "email",
+    phone: "phone",
+    linkedin: "linkedinUrl",
+    coverLetter: "coverLetter",
+  };
+  const set = useCallback(
+    <K extends keyof PageFormState>(key: K, value: PageFormState[K]) => {
+      setForm((prev) => ({ ...prev, [key]: value }));
+      const field = FIELD_MAP[key];
+      if (field) clearFieldError(field);
+    },
+    // FIELD_MAP is a stable literal; clearFieldError is stable from the hook.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [clearFieldError],
+  );
 
   const focusField = useCallback((field: ApplyField) => {
     const root = formRef.current;
     if (!root) return;
+    // The file input is sr-only, but its drop-zone label has focus-within ring
+    // styling, so focusing it surfaces a visible indicator. Scroll into view too.
     const selector = field === "resume" ? 'input[type="file"]' : `[name="${field}"]`;
-    root.querySelector<HTMLElement>(selector)?.focus();
+    const el = root.querySelector<HTMLElement>(selector);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.focus({ preventScroll: true });
   }, []);
 
   const handleSubmit = useCallback(
@@ -258,7 +290,7 @@ export default function ApplyPage() {
                     aria-required="true"
                     aria-invalid={fieldErrors.resume ? true : undefined}
                     aria-describedby={fieldErrors.resume ? `${resumeInputId}-err` : undefined}
-                    onChange={(e) => set("resume", e.target.files?.[0] || null)}
+                    onChange={onResumeChange}
                     className="sr-only"
                   />
                   <svg className="mb-2 h-8 w-8 text-gray-500" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
@@ -310,8 +342,16 @@ export default function ApplyPage() {
               </Button>
               <Link
                 href={`/${slug}/jobs/${jobId}`}
-                className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                // Block client-side navigation while a submission is in flight
+                // (beforeunload only covers full unloads, not Next routing).
+                onClick={(e) => {
+                  if (isSubmitting) e.preventDefault();
+                }}
                 aria-disabled={isSubmitting || undefined}
+                tabIndex={isSubmitting ? -1 : undefined}
+                className={`inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                  isSubmitting ? "pointer-events-none opacity-50" : ""
+                }`}
               >
                 Cancel
               </Link>

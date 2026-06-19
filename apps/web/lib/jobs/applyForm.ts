@@ -269,6 +269,11 @@ export async function submitApplication(
     if (res.ok && data?.success) {
       return { ok: true, applicationId: data.applicationId ?? "", duplicate: data.duplicate };
     }
+    // A 2xx with success!=true is a malformed/unexpected response — never echo
+    // its body to the user (it could carry an internal message).
+    if (res.ok) {
+      return { ok: false, status: res.status, message: APPLY_MESSAGES.unexpected };
+    }
     return { ok: false, status: res.status, message: messageForResponse(res.status, data?.error) };
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {

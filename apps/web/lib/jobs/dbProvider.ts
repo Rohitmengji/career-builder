@@ -139,9 +139,10 @@ class DatabaseJobProvider implements JobDataProvider {
       return { success: false, code: "job_not_found", error: "Job not found" };
     }
 
-    // Duplicate prevention: the same candidate can't apply to the same role
-    // twice. (Combined with the client re-entry guard + the route's idempotency
-    // key; a DB unique constraint is the future-proof backstop — see PR notes.)
+    // Duplicate prevention — two layers:
+    //  1. fast app-level check (covers the common case, returns the existing id)
+    //  2. the @@unique([tenantId, jobId, email]) constraint below (P2002) which
+    //     ATOMICALLY closes the concurrent-request race the check can't.
     const existing = await applicationRepo.findDuplicate(tenantId, application.jobId, application.email);
     if (existing) {
       return {
@@ -168,6 +169,17 @@ class DatabaseJobProvider implements JobDataProvider {
 
       return { success: true, applicationId: app.id };
     } catch (error) {
+      // P2002 = unique constraint hit by a concurrent duplicate that raced past
+      // the check above. Resolve it to the same idempotent "already applied".
+      if (error && typeof error === "object" && (error as { code?: string }).code === "P2002") {
+        const dup = await applicationRepo.findDuplicate(tenantId, application.jobId, application.email);
+        return {
+          success: false,
+          code: "duplicate",
+          applicationId: dup?.id,
+          error: "You have already applied to this position.",
+        };
+      }
       console.error("[DatabaseJobProvider] Apply error:", error);
       return { success: false, error: "Failed to submit application" };
     }

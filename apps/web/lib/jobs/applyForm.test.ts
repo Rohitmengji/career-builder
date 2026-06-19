@@ -1,10 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   validateApplyForm,
   validateResumeFile,
   messageForResponse,
+  submitApplication,
   fileExtension,
   APPLY_LIMITS,
+  APPLY_MESSAGES,
   type ApplyFormValues,
 } from "./applyForm";
 
@@ -110,5 +112,58 @@ describe("messageForResponse — actionable, never leaks internals", () => {
     const msg = messageForResponse(500, "TypeError: cannot read property x of undefined at db.ts:42");
     expect(msg).not.toMatch(/TypeError|db\.ts/);
     expect(msg).toMatch(/try again/i);
+  });
+});
+
+describe("submitApplication — resilient outcomes", () => {
+  const values: ApplyFormValues = { firstName: "Jane", lastName: "Doe", email: "jane@example.com" };
+  const file = { name: "cv.pdf", size: 1000 } as unknown as File;
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  function stubFetch(impl: () => Promise<Response>) {
+    vi.stubGlobal("fetch", vi.fn(impl));
+  }
+
+  it("returns ok on a 201 success", async () => {
+    stubFetch(async () => new Response(JSON.stringify({ success: true, applicationId: "app_1" }), { status: 201 }));
+    const r = await submitApplication(values, file, "job_1");
+    expect(r).toEqual({ ok: true, applicationId: "app_1", duplicate: undefined });
+  });
+
+  it("maps a 409 to the 'already applied' message", async () => {
+    stubFetch(async () => new Response(JSON.stringify({ success: false, error: "dup" }), { status: 409 }));
+    const r = await submitApplication(values, file, "job_1");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/already applied/i);
+  });
+
+  it("does NOT leak a server message on a 2xx with success:false", async () => {
+    stubFetch(async () => new Response(JSON.stringify({ success: false, error: "DB pool exhausted at db.ts:99" }), { status: 200 }));
+    const r = await submitApplication(values, file, "job_1");
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.message).toBe(APPLY_MESSAGES.unexpected);
+      expect(r.message).not.toMatch(/db\.ts|pool/i);
+    }
+  });
+
+  it("handles a non-JSON response without throwing", async () => {
+    stubFetch(async () => new Response("<html>502 Bad Gateway</html>", { status: 502 }));
+    const r = await submitApplication(values, file, "job_1");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/try again/i);
+  });
+
+  it("sends the Idempotency-Key header when provided", async () => {
+    const fetchMock = vi.fn(
+      (_url: string, _init?: RequestInit) =>
+        Promise.resolve(new Response(JSON.stringify({ success: true, applicationId: "a" }), { status: 201 })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await submitApplication(values, file, "job_1", { idempotencyKey: "key-123" });
+    const init = fetchMock.mock.calls[0]?.[1];
+    const headers = (init?.headers ?? {}) as Record<string, string>;
+    expect(headers["Idempotency-Key"]).toBe("key-123");
   });
 });

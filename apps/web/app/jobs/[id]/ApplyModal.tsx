@@ -12,7 +12,7 @@
 import React, { useState, useCallback, useRef, useEffect, useId } from "react";
 import { trackApplyStart, trackApplyComplete } from "@/lib/analytics";
 import { useApplySubmit } from "@/lib/jobs/useApplySubmit";
-import { APPLY_LIMITS, type ApplyFormValues, type ApplyField } from "@/lib/jobs/applyForm";
+import { APPLY_LIMITS, validateResumeFile, type ApplyFormValues, type ApplyField } from "@/lib/jobs/applyForm";
 import {
   Button,
   Field,
@@ -48,6 +48,7 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
     submit,
     reset,
     clearFieldError,
+    setFieldErrors,
     isSubmitting,
   } = useApplySubmit({ allowResumeUrl: true });
 
@@ -57,6 +58,7 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
   const triggerWrapRef = useRef<HTMLDivElement>(null);
   const successHeadingRef = useRef<HTMLHeadingElement>(null);
   const headingId = useId();
+  const successHeadingId = useId();
   const resumeErrId = useId();
   const fileStatusId = useId();
   const coverCountId = useId();
@@ -125,15 +127,17 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
     [clearFieldError],
   );
 
-  // Resume file selection — validation is centralized in the pipeline; here we
-  // give immediate inline feedback and keep the input in sync.
+  // Resume file selection — validate immediately (size/type) so the user gets
+  // feedback now rather than at submit. Same rules the pipeline enforces.
   const onFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0] ?? null;
       setResumeFile(file);
-      clearFieldError("resume");
+      const err = file ? validateResumeFile(file) : null;
+      if (err) setFieldErrors((prev) => ({ ...prev, resume: err }));
+      else clearFieldError("resume");
     },
-    [clearFieldError],
+    [clearFieldError, setFieldErrors],
   );
 
   const clearResume = useCallback(() => {
@@ -141,15 +145,17 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
 
-  // Move focus to the first invalid control.
+  // Move focus to the first invalid control. For the resume row, prefer the
+  // always-visible URL input (the file input is sr-only — focusing it shows no
+  // visible ring for sighted users). Scroll it into view within the dialog.
   const focusField = useCallback((field: ApplyField) => {
     const root = formRef.current;
     if (!root) return;
-    const selector =
-      field === "resume"
-        ? 'input[type="file"], input[name="resumeUrl"]'
-        : `[name="${field}"]`;
-    root.querySelector<HTMLElement>(selector)?.focus();
+    const selector = field === "resume" ? 'input[name="resumeUrl"]' : `[name="${field}"]`;
+    const el = root.querySelector<HTMLElement>(selector);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.focus({ preventScroll: true });
   }, []);
 
   const handleSubmit = useCallback(
@@ -176,7 +182,7 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
         onClick={handleBackdropClick}
         onCancel={handleCancel}
         aria-modal="true"
-        aria-labelledby={headingId}
+        aria-labelledby={status === "success" ? successHeadingId : headingId}
         className="fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/50 backdrop:backdrop-blur-sm open:flex open:items-center open:justify-center"
       >
         <div className="mx-auto flex max-h-[90vh] min-h-112 w-full max-w-lg flex-col overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:p-8">
@@ -189,7 +195,7 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
                 <CheckIcon className="h-7 w-7" />
               </div>
               <h2
-                id={headingId}
+                id={successHeadingId}
                 ref={successHeadingRef}
                 tabIndex={-1}
                 className="text-xl font-semibold text-gray-900 outline-none"
