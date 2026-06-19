@@ -11,6 +11,7 @@
     "./tenant-resolver": "./tenant-resolver.ts",
     "./tenant-host": "./tenant-host.ts",
     "./tenant-context": "./tenant-context.ts",
+    "./feature-flags": "./feature-flags.ts",
     "./storage": "./storage.ts",
     "./kv": "./kv.ts",
     "./preview-token": "./preview-token.ts"

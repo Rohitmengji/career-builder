@@ -10,8 +10,8 @@ import { getIronSession, type IronSession } from "iron-session";
 import { candidateSessionOptions, type CandidateSessionData } from "./session";
 import { candidateRepo } from "@career-builder/database";
 import { hashPassword, verifyPassword, generateUrlSafeToken, sha256 } from "@career-builder/security/crypto";
+import { getWebTenantId, sessionTenantMatchesHost } from "./tenant-runtime";
 
-const TENANT_ID = process.env.TENANT_ID || "default";
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 /** Read the iron-session (read/write capable). */
@@ -30,6 +30,9 @@ export async function getCandidateSession(): Promise<CandidateSessionData | null
 export async function getCurrentCandidate() {
   const session = await getCandidateSession();
   if (!session) return null;
+  // Reject a session minted on another tenant's host (cookie replay across
+  // tenants). No-op when multi_tenant_web is off.
+  if (!(await sessionTenantMatchesHost(session.tenantId))) return null;
   const candidate = await candidateRepo.findById(session.candidateId, session.tenantId);
   if (!candidate || !candidate.isActive) return null;
   return candidate;
@@ -76,7 +79,8 @@ export async function registerCandidate(input: {
   phone?: string;
 }): Promise<AuthResult> {
   const email = input.email.trim().toLowerCase();
-  const existing = await candidateRepo.findByEmail(email, TENANT_ID);
+  const tenantId = await getWebTenantId();
+  const existing = await candidateRepo.findByEmail(email, tenantId);
   if (existing) {
     return { ok: false, error: "An account with this email already exists." };
   }
@@ -87,7 +91,7 @@ export async function registerCandidate(input: {
     firstName: input.firstName.trim(),
     lastName: input.lastName.trim(),
     phone: input.phone?.trim() || null,
-    tenantId: TENANT_ID,
+    tenantId,
   });
   await writeSession(candidate);
   return { ok: true, candidate: toPublic(candidate) };
@@ -95,7 +99,8 @@ export async function registerCandidate(input: {
 
 /** Verify credentials and establish a session. Constant message to avoid enumeration. */
 export async function loginCandidate(email: string, password: string): Promise<AuthResult> {
-  const candidate = await candidateRepo.findByEmail(email.trim().toLowerCase(), TENANT_ID);
+  const tenantId = await getWebTenantId();
+  const candidate = await candidateRepo.findByEmail(email.trim().toLowerCase(), tenantId);
   const INVALID = "Invalid email or password.";
   if (!candidate || !candidate.isActive) {
     // Still run a hash to keep timing roughly constant.
@@ -115,7 +120,8 @@ export async function loginCandidate(email: string, password: string): Promise<A
  * either way to avoid account enumeration.
  */
 export async function createPasswordResetToken(email: string): Promise<string | null> {
-  const candidate = await candidateRepo.findByEmail(email.trim().toLowerCase(), TENANT_ID);
+  const tenantId = await getWebTenantId();
+  const candidate = await candidateRepo.findByEmail(email.trim().toLowerCase(), tenantId);
   if (!candidate) return null;
   const rawToken = generateUrlSafeToken(32);
   const tokenHash = sha256(rawToken);

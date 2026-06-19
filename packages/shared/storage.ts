@@ -31,6 +31,13 @@ export interface StorageOptions {
   localPublicPrefix: string;
   /** Object-key namespace for cloud drivers (e.g. "media", "resumes"). */
   keyPrefix?: string;
+  /**
+   * Tenant id. When set, cloud object keys are namespaced under
+   * `t/<tenantId>/…` so one tenant's files can't be guessed or listed from
+   * another. Reads use the full URL persisted at upload time, so existing
+   * files under the old (un-prefixed) keys remain reachable — forward-only.
+   */
+  tenantId?: string;
 }
 
 export interface StoredObject {
@@ -61,8 +68,16 @@ function resolveDriver(): StorageDriver {
   return "local";
 }
 
-function joinKey(prefix: string | undefined, filename: string): string {
-  return prefix ? `${prefix.replace(/\/+$/, "")}/${filename}` : filename;
+/**
+ * Build the cloud object key: `t/<tenantId>/<keyPrefix>/<filename>`.
+ * Tenant and prefix segments are each optional. Exported for unit testing.
+ */
+export function objectKeyFor(opts: Pick<StorageOptions, "keyPrefix" | "tenantId">, filename: string): string {
+  const segments: string[] = [];
+  if (opts.tenantId) segments.push("t", opts.tenantId);
+  if (opts.keyPrefix) segments.push(opts.keyPrefix.replace(/^\/+|\/+$/g, ""));
+  segments.push(filename);
+  return segments.join("/");
 }
 
 export function createStorage(opts: StorageOptions): ObjectStorage {
@@ -74,7 +89,7 @@ export function createStorage(opts: StorageOptions): ObjectStorage {
       async put(filename, body, contentType) {
         // @ts-ignore optional peer dependency, may not be installed
         const { put } = await import(/* webpackIgnore: true */ /* turbopackIgnore: true */ "@vercel/blob");
-        const key = joinKey(opts.keyPrefix, filename);
+        const key = objectKeyFor(opts, filename);
         const res = await put(key, body, {
           access: "public",
           contentType,
@@ -108,7 +123,7 @@ export function createStorage(opts: StorageOptions): ObjectStorage {
           region: process.env.S3_REGION || "auto",
           ...(process.env.S3_ENDPOINT ? { endpoint: process.env.S3_ENDPOINT } : {}),
         });
-        const key = joinKey(opts.keyPrefix, filename);
+        const key = objectKeyFor(opts, filename);
         await client.send(
           new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType })
         );

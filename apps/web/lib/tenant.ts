@@ -13,6 +13,7 @@ import {
 } from "@career-builder/tenant-config";
 // Single source of truth for URL resolution (was duplicated in 4 places).
 import { getAdminApiUrl } from "@career-builder/shared/env";
+import { getWebTenantId } from "./tenant-runtime";
 
 // Re-exported for any existing importers of this module.
 export { getAdminApiUrl };
@@ -27,12 +28,13 @@ function fetchWithTimeout(url: string, timeoutMs = 4000): Promise<Response> {
 
 /**
  * Fetch the tenant config from the admin API.
- * Tries TENANT_ID env first, falls back to "default", then returns DEFAULT_* on failure.
- * Results are cached per-request via Next.js `fetch` deduplication.
+ * Uses the per-request resolved tenant (host-based when multi_tenant_web is on,
+ * else the TENANT_ID env pin), falls back to "default", then DEFAULT_* on
+ * failure. Results are cached per-request via Next.js `fetch` deduplication.
  */
 export async function fetchTenantConfig(): Promise<TenantConfig> {
   const apiUrl = getAdminApiUrl();
-  const tenantId = process.env.TENANT_ID || "default";
+  const tenantId = await getWebTenantId();
 
   try {
     const res = await fetchWithTimeout(`${apiUrl}/api/tenants?id=${tenantId}`);

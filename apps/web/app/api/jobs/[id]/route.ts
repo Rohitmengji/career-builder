@@ -8,6 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { getJobProvider } from "@/lib/jobs/provider";
+import { getWebTenantId, isMultiTenantWeb } from "@/lib/tenant-runtime";
 
 export async function GET(
   _request: Request,
@@ -16,7 +17,11 @@ export async function GET(
   try {
     const { id } = await params;
     const url = new URL(_request.url);
-    const tenantId = url.searchParams.get("tenantId") || undefined;
+    // When multi-tenant is active, the host decides the tenant — never the
+    // client query param (prevents cross-tenant job reads).
+    const tenantId = isMultiTenantWeb()
+      ? await getWebTenantId()
+      : url.searchParams.get("tenantId") || undefined;
 
     const provider = getJobProvider();
     const result = await provider.getById(id, tenantId);
