@@ -105,6 +105,14 @@ export const applicationRepo = {
     });
   },
 
+  /** Fetch one application SCOPED to a tenant (defense-in-depth vs find-then-check). */
+  async findByIdScoped(id: string, tenantId: string) {
+    return prisma.application.findFirst({
+      where: { id, tenantId },
+      include: { job: true },
+    });
+  },
+
   /**
    * Fetch multiple applications by id, SCOPED to a tenant. Foreign ids are
    * silently dropped (not returned) — the tenant filter is the isolation

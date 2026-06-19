@@ -41,6 +41,14 @@ export const commentRepo = {
     });
   },
 
+  /** Fetch a comment scoped to a tenant (for ownership/route checks). */
+  async findOwned(id: string, tenantId: string) {
+    return prisma.applicationComment.findFirst({
+      where: { id, tenantId },
+      select: { id: true, applicationId: true, authorId: true },
+    });
+  },
+
   /** Delete a comment only if it belongs to this tenant AND this author. */
   async deleteOwn(id: string, tenantId: string, authorId: string) {
     const res = await prisma.applicationComment.deleteMany({ where: { id, tenantId, authorId } });

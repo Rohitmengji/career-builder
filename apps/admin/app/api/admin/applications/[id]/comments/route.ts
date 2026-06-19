@@ -35,8 +35,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (session.role === "viewer") return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
 
   const { id } = await params;
-  const app = await applicationRepo.findById(id);
-  if (!app || app.tenantId !== session.tenantId) {
+  const app = await applicationRepo.findByIdScoped(id, session.tenantId);
+  if (!app) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 
@@ -57,8 +57,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!(await validateCsrf(req))) return NextResponse.json({ error: "Invalid CSRF token" }, { status: 403 });
 
   const { id } = await params;
-  const app = await applicationRepo.findById(id);
-  if (!app || app.tenantId !== session.tenantId) {
+  const app = await applicationRepo.findByIdScoped(id, session.tenantId);
+  if (!app) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 
@@ -122,11 +122,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (session.role === "viewer") return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   if (!(await validateCsrf(req))) return NextResponse.json({ error: "Invalid CSRF token" }, { status: 403 });
 
-  await params; // route param not needed beyond scoping; commentId is the target
+  const { id } = await params;
   const commentId = new URL(req.url).searchParams.get("commentId") || "";
   if (!commentId) return NextResponse.json({ error: "Missing commentId." }, { status: 400 });
 
-  // Author-only + tenant-scoped: only the author can delete their own comment.
+  // Verify the comment exists in this tenant AND belongs to the URL's application
+  // (honor the route), then enforce author-only deletion — clean 404 vs 403.
+  const comment = await commentRepo.findOwned(commentId, session.tenantId);
+  if (!comment || comment.applicationId !== id) {
+    return NextResponse.json({ error: "Comment not found." }, { status: 404 });
+  }
+  if (comment.authorId !== session.userId) {
+    return NextResponse.json({ error: "You can only delete your own comments." }, { status: 403 });
+  }
+
   const count = await commentRepo.deleteOwn(commentId, session.tenantId, session.userId);
   if (count === 0) return NextResponse.json({ error: "Comment not found." }, { status: 404 });
   await writeAuditLog(session.userId, session.email, "application_comment_delete", `comment: ${commentId}`);
