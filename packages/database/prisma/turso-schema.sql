@@ -103,6 +103,7 @@ CREATE TABLE "Application" (
     "phone" TEXT,
     "resumeUrl" TEXT,
     "resumePath" TEXT,
+    "resumeText" TEXT,
     "coverLetter" TEXT,
     "linkedinUrl" TEXT,
     "status" TEXT NOT NULL DEFAULT 'applied',

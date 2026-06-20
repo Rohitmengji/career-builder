@@ -16,6 +16,7 @@ const applicant = {
   linkedinUrl: "https://linkedin.com/in/jane",
   resumeUrl: "https://files/resume.pdf",
   resumePath: "t/acme/resumes/r.pdf",
+  resumeText: "Jane Doe — jane@example.com — Senior Engineer in San Francisco",
   location: "San Francisco",
   status: "screening",
   rating: 4,
@@ -69,6 +70,7 @@ describe("redactApplicant — server-enforced redaction (THE mandatory test)", (
     expect(out.firstName).toBe("Candidate");
     expect(out.email).toBeNull();
     expect(out.resumeUrl).toBeNull();
+    expect(out.resumeText).toBeNull(); // identity-rich extracted text must be masked
     expect(out.redacted).toBe(true);
   });
 
