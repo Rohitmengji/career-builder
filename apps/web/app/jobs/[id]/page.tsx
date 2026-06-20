@@ -13,12 +13,14 @@ import type { Job, JobDetailResponse } from "@/lib/jobs/types";
 import ApplyModal from "@/app/jobs/[id]/ApplyModal";
 import MatchPreview from "@/app/jobs/[id]/MatchPreview";
 import SalaryContext from "@/app/jobs/[id]/SalaryContext";
+import ResponsivenessBadge from "@/app/jobs/[id]/ResponsivenessBadge";
 import PersonalizedSidebar from "@/components/PersonalizedSidebar";
 import JobViewTracker from "@/app/jobs/[id]/JobViewTracker";
 import SiteHeader from "@/components/SiteHeader";
 import { fetchTenantConfig } from "@/lib/tenant";
 import { getSiteUrl } from "@/lib/env";
 import { getSalaryBenchmark } from "@/lib/jobs/salaryBenchmark";
+import { getResponsivenessScore } from "@/lib/responsiveness";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import type { SalaryBenchmark } from "@career-builder/shared/salary-benchmark";
 import { Container, Card, Badge, CheckIcon, ArrowLeftIcon, MapPinIcon } from "@/components/ui";
@@ -98,6 +100,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   const salaryBenchmark: SalaryBenchmark | null = isEnabled("salary_benchmarks")
     ? await getSalaryBenchmark(job)
     : null;
+  const responsiveness = isEnabled("responsiveness_badge") ? await getResponsivenessScore() : null;
   const siteUrl = getSiteUrl();
   const companyName = config.branding?.companyName || "Our Company";
   const logoUrl = config.branding?.logoUrl;
@@ -206,6 +209,13 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               <p className="max-w-[70ch] whitespace-pre-line text-base leading-relaxed text-gray-700">
                 {job.description}
               </p>
+
+              {/* Candidate Promise: employer responsiveness trust signal (renders nothing if suppressed) */}
+              {responsiveness?.available && (
+                <div className="mt-6">
+                  <ResponsivenessBadge score={responsiveness} />
+                </div>
+              )}
             </Card>
 
             {/* Requirements */}

@@ -193,6 +193,24 @@ export const applicationRepo = {
     });
   },
 
+  /**
+   * Lean per-application status + submission time for a tenant, for computing
+   * the Employer Responsiveness Score. Tenant-scoped; bounded by `cap`; selects
+   * only the two fields the metric needs (no PII). Most-recent first so the cap
+   * keeps the freshest window when a tenant exceeds it.
+   */
+  async findStatusSummary(
+    tenantId: string,
+    cap = 5000,
+  ): Promise<{ status: string; submittedAt: Date }[]> {
+    return prisma.application.findMany({
+      where: { tenantId },
+      select: { status: true, submittedAt: true },
+      orderBy: { submittedAt: "desc" },
+      take: cap,
+    });
+  },
+
   /** Find all applications by a candidate email, scoped to tenant. */
   async findByCandidateEmail(email: string, tenantId: string) {
     return prisma.application.findMany({

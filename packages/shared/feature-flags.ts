@@ -58,6 +58,16 @@ const FLAG_DEFINITIONS = {
       "with k-anonymity (>=5 jobs, >=2 tenants) + rounding (ADR-0002). Off by " +
       "default — only shows once enough comparable market data exists.",
   },
+  responsiveness_badge: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Candidate-facing 'Employer Responsiveness' trust badge on the careers site: " +
+      "the % of applicants (who applied >14 days ago) that received a response, " +
+      "computed read-only from this tenant's own application statuses with a " +
+      "minimum-sample guard (ADR-0003). Opt-in per tenant — a 'we don't ghost' " +
+      "recruiting signal no other ATS exposes.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",
