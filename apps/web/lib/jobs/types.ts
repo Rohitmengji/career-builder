@@ -125,6 +125,7 @@ export interface JobApplication {
   email: string;
   phone: string;
   resumeUrl: string;
+  resumeText?: string;
   coverLetter: string;
   linkedinUrl: string;
   submittedAt: string;

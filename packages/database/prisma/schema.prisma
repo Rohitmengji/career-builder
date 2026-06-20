@@ -163,6 +163,7 @@ model Application {
   phone       String?
   resumeUrl   String?
   resumePath  String?
+  resumeText  String?  // Extracted plain text from the uploaded resume (server-side, best-effort)
   coverLetter String?
   linkedinUrl String?
   status      String   @default("applied")

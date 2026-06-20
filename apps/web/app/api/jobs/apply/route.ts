@@ -15,6 +15,7 @@ import { createStorage } from "@career-builder/shared/storage";
 import { createApplicationSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString, sanitizeEmail, stripHtml } from "@career-builder/security/sanitize";
 import { validateUpload, UPLOAD_PRESETS, isPathSafe } from "@career-builder/security/file-upload";
+import { extractResumeText } from "@/lib/resume/extract";
 import { validateUrl } from "@career-builder/security/url";
 import { getRateLimiter, getClientIp } from "@career-builder/security/rate-limit";
 import { emailService } from "@career-builder/email";
@@ -157,6 +158,7 @@ export async function POST(request: Request) {
 
     // Validate resume file using security package — magic bytes + extension + size
     let savedResumeUrl = parsed.data.resumeUrl?.trim() || "";
+    let resumeText: string | null = null;
     if (hasFile && resumeFile) {
       const buffer = Buffer.from(await resumeFile.arrayBuffer());
       const validation = validateUpload(
@@ -188,6 +190,13 @@ export async function POST(request: Request) {
       });
       const stored = await storage.put(filename, buffer, resumeFile.type || "application/octet-stream");
       savedResumeUrl = stored.url;
+
+      // Best-effort resume text extraction (PDF / plain text). Fail-safe: returns
+      // null and NEVER blocks the application. Runs on the validated buffer.
+      resumeText = await extractResumeText({
+        bytes: buffer,
+        mimeType: resumeFile.type || "",
+      });
     }
 
     const provider = getJobProvider();
@@ -199,6 +208,7 @@ export async function POST(request: Request) {
       email,
       phone: sanitizeString(parsed.data.phone || "", 30),
       resumeUrl: savedResumeUrl,
+      ...(resumeText ? { resumeText } : {}),
       coverLetter: parsed.data.coverLetter ? stripHtml(parsed.data.coverLetter) : "",
       linkedinUrl: parsed.data.linkedinUrl?.trim() || "",
     });

@@ -14,6 +14,7 @@ export interface CreateApplicationInput {
   phone?: string;
   resumeUrl?: string;
   resumePath?: string;
+  resumeText?: string;
   coverLetter?: string;
   linkedinUrl?: string;
   source?: string;
@@ -63,6 +64,9 @@ export const applicationRepo = {
     const [data, total] = await Promise.all([
       prisma.application.findMany({
         where,
+        // List views never need the (large, PII-rich) extracted resume text —
+        // keep it out of list payloads/memory; detail fetches (findById*) keep it.
+        omit: { resumeText: true },
         include: {
           job: { select: { id: true, title: true, department: true, location: true } },
         },
@@ -105,6 +109,7 @@ export const applicationRepo = {
         phone: data.phone,
         resumeUrl: data.resumeUrl,
         resumePath: data.resumePath,
+        resumeText: data.resumeText,
         coverLetter: data.coverLetter,
         linkedinUrl: data.linkedinUrl,
         source: data.source,
@@ -131,6 +136,7 @@ export const applicationRepo = {
     if (ids.length === 0) return [];
     return prisma.application.findMany({
       where: { id: { in: ids }, tenantId },
+      omit: { resumeText: true }, // bulk/list path — exclude large resume text
       include: { job: { select: { title: true, department: true, location: true } } },
     });
   },
@@ -185,6 +191,7 @@ export const applicationRepo = {
   async getRecentByTenant(tenantId: string, limit = 10) {
     return prisma.application.findMany({
       where: { tenantId },
+      omit: { resumeText: true }, // recent/list path — exclude large resume text
       include: {
         job: { select: { id: true, title: true, department: true } },
       },

@@ -20,6 +20,7 @@ export const REDACTABLE_FIELDS = [
   "linkedinUrl",
   "resumeUrl",
   "resumePath",
+  "resumeText",
   "location",
 ] as const;
 
@@ -90,6 +91,8 @@ export function redactApplicant<T extends { id: string }>(
   if (f.has("linkedinUrl")) out.linkedinUrl = null;
   if (f.has("resumeUrl")) out.resumeUrl = null;
   if (f.has("resumePath")) out.resumePath = null;
+  // Extracted resume text is identity-rich (name/email/etc.) — mask it wholesale.
+  if (f.has("resumeText")) out.resumeText = null;
   if (f.has("location")) out.location = null;
 
   out.redacted = true;

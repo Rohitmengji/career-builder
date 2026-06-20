@@ -18,10 +18,11 @@
     "@career-builder/shared": "*",
     "@career-builder/tenant-config": "*",
     "@career-builder/ui": "*",
+    "iron-session": "^8.0.4",
     "next": "16.1.7",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "iron-session": "^8.0.4"
+    "unpdf": "^1.6.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
