@@ -29,3 +29,5 @@ export { commentRepo } from "./commentRepo";
 export type { CreateCommentInput } from "./commentRepo";
 export { salaryBenchmarkRepo } from "./salaryBenchmarkRepo";
 export type { ComparableSalaryQuery, ComparableSalaryRow } from "./salaryBenchmarkRepo";
+export { eventRepo } from "./eventRepo";
+export type { ApplicationEventType, RecordEventInput, CandidateVisibleEvent } from "./eventRepo";

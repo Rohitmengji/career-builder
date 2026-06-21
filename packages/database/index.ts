@@ -24,6 +24,7 @@ export {
   DOMAIN_STATUSES,
   commentRepo,
   salaryBenchmarkRepo,
+  eventRepo,
 } from "./repositories";
 export type {
   CreateDomainInput,
@@ -32,6 +33,9 @@ export type {
   ComparableSalaryQuery,
   ComparableSalaryRow,
   ApplicationFilters,
+  ApplicationEventType,
+  RecordEventInput,
+  CandidateVisibleEvent,
 } from "./repositories";
 
 // Re-export all domain types and constants

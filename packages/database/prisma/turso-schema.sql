@@ -135,6 +135,22 @@ CREATE TABLE "ApplicationComment" (
 );
 
 -- CreateTable
+CREATE TABLE "ApplicationEvent" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "applicationId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "fromStatus" TEXT,
+    "toStatus" TEXT,
+    "actorId" TEXT,
+    "actorType" TEXT NOT NULL DEFAULT 'system',
+    "visibility" TEXT NOT NULL DEFAULT 'internal',
+    "metadata" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ApplicationEvent_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "Application" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "Page" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "slug" TEXT NOT NULL,
@@ -303,6 +319,12 @@ CREATE INDEX "ApplicationComment_applicationId_idx" ON "ApplicationComment"("app
 
 -- CreateIndex
 CREATE INDEX "ApplicationComment_tenantId_idx" ON "ApplicationComment"("tenantId");
+
+-- CreateIndex
+CREATE INDEX "ApplicationEvent_tenantId_applicationId_idx" ON "ApplicationEvent"("tenantId", "applicationId");
+
+-- CreateIndex
+CREATE INDEX "ApplicationEvent_tenantId_type_idx" ON "ApplicationEvent"("tenantId", "type");
 
 -- CreateIndex
 CREATE INDEX "Page_tenantId_idx" ON "Page"("tenantId");

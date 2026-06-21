@@ -7,7 +7,8 @@
 
 import { NextResponse } from "next/server";
 import { getCandidateSession } from "@/lib/candidateAuth";
-import { applicationRepo } from "@career-builder/database";
+import { applicationRepo, eventRepo } from "@career-builder/database";
+import { isEnabled } from "@career-builder/shared/feature-flags";
 
 export async function GET() {
   const session = await getCandidateSession();
@@ -19,6 +20,24 @@ export async function GET() {
     session.email,
     session.tenantId,
   );
+
+  // Real status timeline (ADR-0005): candidate-visible events for the candidate's
+  // OWN application ids only. Flag-gated; the projection already strips actor
+  // identity + internal metadata.
+  const timelineByApp: Record<string, { type: string; status: string | null; at: string }[]> = {};
+  if (isEnabled("application_timeline") && applications.length > 0) {
+    const events = await eventRepo.listCandidateVisible(
+      session.tenantId,
+      applications.map((a) => a.id),
+    );
+    for (const e of events) {
+      (timelineByApp[e.applicationId] ??= []).push({
+        type: e.type,
+        status: e.toStatus,
+        at: e.at.toISOString(),
+      });
+    }
+  }
 
   // Return only safe fields (no internal notes, ratings, etc.)
   const safe = applications.map((app) => ({
@@ -32,6 +51,7 @@ export async function GET() {
       department: app.job.department,
       location: app.job.location,
     },
+    timeline: timelineByApp[app.id] ?? [],
   }));
 
   return NextResponse.json({ applications: safe });

@@ -184,6 +184,7 @@ model Application {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   comments ApplicationComment[]
+  events   ApplicationEvent[]
 
   @@index([jobId])
   @@index([tenantId])
@@ -210,6 +211,26 @@ model ApplicationComment {
 
   @@index([applicationId])
   @@index([tenantId])
+}
+
+// --- APPLICATION EVENT (workflow timeline — see ADR-0005) ---
+
+model ApplicationEvent {
+  id            String      @id @default(cuid())
+  tenantId      String
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  type          String      // status_change | interview_scheduled | offer_extended | ...
+  fromStatus    String?
+  toStatus      String?
+  actorId       String?     // User or Candidate id; null for system
+  actorType     String      @default("system") // recruiter | candidate | system
+  visibility    String      @default("internal") // candidate | internal
+  metadata      String?     // JSON — NEVER candidate PII
+  createdAt     DateTime    @default(now())
+
+  @@index([tenantId, applicationId])
+  @@index([tenantId, type])
 }
 
 // --- PAGE ---
