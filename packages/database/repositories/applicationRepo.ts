@@ -26,6 +26,10 @@ export interface ApplicationFilters {
   status?: string;
   email?: string;
   department?: string; // filter by job's department
+  /** Free-text candidate search across name / email / extracted résumé text.
+   *  (SQLite LIKE is case-insensitive for ASCII.) Callers MUST NOT pass this
+   *  while blind hiring is on — it would let a recruiter de-anonymize. */
+  q?: string;
 }
 
 export const applicationRepo = {
@@ -59,6 +63,17 @@ export const applicationRepo = {
     if (filters.email) where.email = { contains: filters.email };
     if (filters.department) {
       where.job = { department: filters.department };
+    }
+    if (filters.q) {
+      const q = filters.q.trim();
+      if (q) {
+        where.OR = [
+          { firstName: { contains: q } },
+          { lastName: { contains: q } },
+          { email: { contains: q } },
+          { resumeText: { contains: q } },
+        ];
+      }
     }
 
     const [data, total] = await Promise.all([

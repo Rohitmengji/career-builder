@@ -31,6 +31,7 @@ export type {
   CreateCommentInput,
   ComparableSalaryQuery,
   ComparableSalaryRow,
+  ApplicationFilters,
 } from "./repositories";
 
 // Re-export all domain types and constants

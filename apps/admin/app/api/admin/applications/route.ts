@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
 import { applicationRepo } from "@career-builder/database";
+import type { ApplicationFilters } from "@career-builder/database";
 import { updateApplicationSchema, paginationSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString, sanitizeEmail } from "@career-builder/security/sanitize";
 import { emailService } from "@career-builder/email";
@@ -39,15 +40,11 @@ export async function GET(req: Request) {
     perPage = pgParsed.data.perPage ?? 20;
   }
 
-  const filters: {
-    tenantId: string;
-    jobId?: string;
-    status?: string;
-    email?: string;
-    department?: string;
-  } = {
-    tenantId: session.tenantId,
-  };
+  // Blind hiring config first — it gates whether free-text candidate search is
+  // even allowed (searching identity/résumé fields would defeat blind hiring).
+  const blind = await getBlindHiringConfig(session.tenantId);
+
+  const filters: ApplicationFilters = { tenantId: session.tenantId };
 
   const jobId = searchParams.get("jobId");
   if (jobId) filters.jobId = sanitizeString(jobId, 100);
@@ -64,12 +61,16 @@ export async function GET(req: Request) {
   const department = searchParams.get("department");
   if (department) filters.department = sanitizeString(department, 100);
 
+  // Free-text candidate search (name / email / résumé text) — ONLY when blind
+  // hiring is off; otherwise it's a de-anonymization bypass and is ignored.
+  const q = searchParams.get("q");
+  if (q && !blind.enabled) filters.q = sanitizeString(q, 100);
+
   const result = await applicationRepo.findByTenant(filters, page, perPage);
   const stats = await applicationRepo.countByStatus(session.tenantId);
 
-  // Blind hiring: redact identifying fields server-side BEFORE the payload
-  // leaves the API (default-deny). Recruiters never receive PII when on.
-  const blind = await getBlindHiringConfig(session.tenantId);
+  // Redact identifying fields server-side BEFORE the payload leaves the API
+  // (default-deny). Recruiters never receive PII when blind hiring is on.
   const applications = redactApplicants(result.data, blind);
 
   return NextResponse.json({
