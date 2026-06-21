@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const config = await fetchTenantConfig();
   const company = config.branding?.companyName || "Our Company";
   return {
-    title: `Open Positions — ${company} Careers`,
+    title: `Open Positions`,
     description: `Browse open jobs at ${company}. Find your next role and apply today.`,
   };
 }
