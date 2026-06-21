@@ -12,6 +12,12 @@ import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import { Alert, EmptyState, ButtonLink, Button } from "@/components/ui";
 
+interface TimelineEvent {
+  type: string;
+  status: string | null;
+  at: string;
+}
+
 interface ApplicationEntry {
   id: string;
   status: string;
@@ -23,6 +29,7 @@ interface ApplicationEntry {
     department: string;
     location: string | null;
   };
+  timeline?: TimelineEvent[];
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
@@ -36,6 +43,22 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 
 function getStatusConfig(status: string) {
   return STATUS_CONFIG[status] || STATUS_CONFIG.applied;
+}
+
+const EVENT_LABELS: Record<string, string> = {
+  interview_scheduled: "Interview scheduled",
+  interview_confirmed: "Interview confirmed",
+  interview_rescheduled: "Interview rescheduled",
+  interview_cancelled: "Interview cancelled",
+  interview_completed: "Interview completed",
+  offer_extended: "Offer extended",
+  offer_accepted: "Offer accepted",
+  offer_declined: "Offer declined",
+};
+
+function timelineLabel(ev: TimelineEvent): string {
+  if (ev.type === "status_change" && ev.status) return getStatusConfig(ev.status).label;
+  return EVENT_LABELS[ev.type] ?? ev.type.replace(/_/g, " ");
 }
 
 function formatDate(iso: string) {
@@ -159,6 +182,18 @@ export default function MyApplicationsPage() {
                       <span>Updated {formatDate(app.updatedAt)}</span>
                     )}
                   </div>
+                  {app.timeline && app.timeline.length > 0 && (
+                    <ol className="mt-3 space-y-2 border-t border-gray-100 pt-3" aria-label="Status history">
+                      {app.timeline.map((ev, i) => (
+                        <li key={i} className="flex items-center gap-2 text-xs text-gray-500">
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" aria-hidden="true" />
+                          <span className="font-medium text-gray-700">{timelineLabel(ev)}</span>
+                          <span className="text-gray-300">·</span>
+                          <span>{formatDate(ev.at)}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
                 </article>
               );
             })}

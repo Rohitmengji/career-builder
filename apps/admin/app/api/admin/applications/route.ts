@@ -8,7 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
-import { applicationRepo } from "@career-builder/database";
+import { applicationRepo, eventRepo } from "@career-builder/database";
 import type { ApplicationFilters } from "@career-builder/database";
 import { updateApplicationSchema, paginationSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString, sanitizeEmail } from "@career-builder/security/sanitize";
@@ -124,6 +124,23 @@ export async function PATCH(req: Request) {
       "application_status_change",
       `application ${id.slice(-6)}: ${existing.status} → ${status}`,
     );
+
+    // Structured, candidate-visible workflow event (ADR-0005) — powers the real
+    // candidate timeline + accurate responsiveness timing. Best-effort.
+    if (status !== existing.status) {
+      eventRepo
+        .record({
+          tenantId: session.tenantId,
+          applicationId: id,
+          type: "status_change",
+          fromStatus: existing.status,
+          toStatus: status,
+          actorId: session.userId,
+          actorType: "recruiter",
+          visibility: "candidate",
+        })
+        .catch((err) => console.error("[applications] event record failed:", err));
+    }
 
     // Status email goes to the CANDIDATE about themselves — not redacted
     // (redaction protects RECRUITER views, not the candidate's own email).

@@ -77,6 +77,15 @@ const FLAG_DEFINITIONS = {
       "fail-closed). Under Blind Hiring it returns skills/experience but never the " +
       "raw text or name — skills-first review. Off by default; needs the AI key.",
   },
+  application_timeline: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Candidate-facing real status timeline on /applications: shows each " +
+      "candidate-visible workflow event (status changes, later interviews/offers) " +
+      "with timestamps, from the ApplicationEvent spine (ADR-0005). Replaces the " +
+      "old simulated status block.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",

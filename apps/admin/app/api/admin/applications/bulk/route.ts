@@ -14,7 +14,7 @@
 
 import { NextResponse } from "next/server";
 import { getSession, validateCsrf, writeAuditLog } from "@/lib/auth";
-import { applicationRepo } from "@career-builder/database";
+import { applicationRepo, eventRepo } from "@career-builder/database";
 import { bulkApplicationActionSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString } from "@career-builder/security/sanitize";
 import { emailService } from "@career-builder/email";
@@ -81,6 +81,24 @@ export async function POST(req: Request) {
     action === "reject" ? "application_bulk_reject" : "application_bulk_status",
     `${updated} application(s) → ${targetStatus}`,
   );
+
+  // Structured candidate-visible events (ADR-0005) for the rows that changed.
+  Promise.allSettled(
+    owned
+      .filter((a) => a.status !== targetStatus)
+      .map((a) =>
+        eventRepo.record({
+          tenantId: session.tenantId,
+          applicationId: a.id,
+          type: "status_change",
+          fromStatus: a.status,
+          toStatus: targetStatus,
+          actorId: session.userId,
+          actorType: "recruiter",
+          visibility: "candidate",
+        }),
+      ),
+  ).catch((err) => console.error("[applications/bulk] event record failed:", err));
 
   // Reject: notify candidates (fire-and-forget; never block the response).
   if (action === "reject") {
