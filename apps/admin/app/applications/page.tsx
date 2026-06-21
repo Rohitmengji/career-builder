@@ -105,6 +105,9 @@ export default function AdminApplicationsPage() {
   const [bulkNotice, setBulkNotice] = useState("");
   const [commentsFor, setCommentsFor] = useState<Application | null>(null);
   const [resumeFor, setResumeFor] = useState<Application | null>(null);
+  const [search, setSearch] = useState("");
+  const [appliedQuery, setAppliedQuery] = useState("");
+  const [blindHiring, setBlindHiring] = useState(false);
   const { user: authUser } = useAuthGuard();
   const currentUserId = authUser?.id ?? "";
 
@@ -114,6 +117,7 @@ export default function AdminApplicationsPage() {
     try {
       const params = new URLSearchParams({ page: String(page), perPage: "20" });
       if (filterStatus) params.set("status", filterStatus);
+      if (appliedQuery) params.set("q", appliedQuery);
 
       const res = await fetch(`/api/admin/applications?${params}`);
       if (!res.ok) throw new Error("Failed to load applications");
@@ -121,12 +125,13 @@ export default function AdminApplicationsPage() {
       setApplications(data.applications || []);
       setStats(data.stats || {});
       setTotalPages(data.pagination?.totalPages || 1);
+      setBlindHiring(Boolean(data.blindHiring));
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [page, filterStatus]);
+  }, [page, filterStatus, appliedQuery]);
 
   useEffect(() => {
     const csrfCookie = document.cookie
@@ -354,6 +359,33 @@ export default function AdminApplicationsPage() {
             );
           })}
         </div>
+
+        {/* Candidate search (name / email / résumé text) — disabled under blind hiring */}
+        <form
+          onSubmit={(e) => { e.preventDefault(); setPage(1); setAppliedQuery(search.trim()); }}
+          className="mb-6 flex flex-wrap items-center gap-2"
+        >
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            disabled={blindHiring}
+            placeholder={blindHiring ? "Search is off while blind hiring is on" : "Search name, email, or résumé text…"}
+            aria-label="Search candidates"
+            className="h-10 w-full max-w-md rounded-lg border border-gray-300 px-3.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600 disabled:bg-gray-50 disabled:text-gray-400"
+          />
+          <Button type="submit" size="sm" variant="secondary" disabled={blindHiring}>Search</Button>
+          {appliedQuery && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => { setSearch(""); setAppliedQuery(""); setPage(1); }}
+            >
+              Clear
+            </Button>
+          )}
+        </form>
 
         {/* Loading skeleton */}
         {loading && (
