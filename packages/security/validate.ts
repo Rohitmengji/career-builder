@@ -71,6 +71,15 @@ export const createJobSchema = z.object({
   niceToHave: z.array(z.string().max(500)).max(50).default([]),
   benefits: z.array(z.string().max(500)).max(50).default([]),
   tags: z.array(z.string().max(50)).max(20).default([]),
+  screeningQuestions: z
+    .array(
+      z.object({
+        q: z.string().min(1).max(300).transform((v) => v.trim()),
+        requiredAnswer: z.enum(["yes", "no"]).default("yes"),
+      }).strict(),
+    )
+    .max(15)
+    .default([]),
   isRemote: z.boolean().default(false),
   isPublished: z.boolean().default(false),
 }).strict().refine(
@@ -95,6 +104,15 @@ export const updateJobSchema = z.object({
   niceToHave: z.array(z.string().max(500)).max(50).optional(),
   benefits: z.array(z.string().max(500)).max(50).optional(),
   tags: z.array(z.string().max(50)).max(20).optional(),
+  screeningQuestions: z
+    .array(
+      z.object({
+        q: z.string().min(1).max(300).transform((v) => v.trim()),
+        requiredAnswer: z.enum(["yes", "no"]).default("yes"),
+      }).strict(),
+    )
+    .max(15)
+    .optional(),
   isRemote: z.boolean().optional(),
   isPublished: z.boolean().optional(),
 }).strict();
@@ -119,6 +137,9 @@ export const createApplicationSchema = z.object({
   resumeUrl: z.string().url().max(2048).optional().or(z.literal("")),
   coverLetter: z.string().max(10000).transform((v) => v.trim()).optional().default(""),
   linkedinUrl: z.string().url().max(500).optional().or(z.literal("")),
+  // Screening answers arrive as a JSON string in the (multipart) form; parsed +
+  // validated against the job's questions by the apply route.
+  screeningAnswers: z.string().max(4000).optional(),
 }).strict();
 
 export const updateApplicationSchema = z.object({

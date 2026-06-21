@@ -18,6 +18,7 @@ import type {
   JobFacets,
 } from "./types";
 import { jobRepo, applicationRepo } from "@career-builder/database";
+import { parseScreeningQuestions } from "@career-builder/shared/screening";
 
 const DEFAULT_TENANT_ID = process.env.TENANT_ID || "default";
 
@@ -59,6 +60,7 @@ function dbJobToJob(row: any): Job {
     closesAt: row.closesAt instanceof Date ? row.closesAt.toISOString() : row.closesAt || null,
     isRemote: row.isRemote ?? false,
     tags: safeJsonParse<string[]>(row.tags, []),
+    screeningQuestions: parseScreeningQuestions(row.screeningQuestions),
     tenantId: row.tenantId,
   };
 }
