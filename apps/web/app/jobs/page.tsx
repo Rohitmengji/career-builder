@@ -124,29 +124,22 @@ function JobsPageInner() {
       <main id="main-content" className="py-8 md:py-10">
         <Container>
           {/* Page heading */}
-          <div className="mb-6 flex flex-col gap-1 sm:mb-8">
-            <Link
-              href="/"
-              className="inline-flex w-fit items-center gap-1.5 rounded-lg py-1 text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-            >
-              <ArrowLeftIcon className="h-4 w-4" />
-              All careers
-            </Link>
-            <h1 className="text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
               Open positions
             </h1>
-            <p className="text-sm text-gray-600">
-              {data.pagination.total} open position{data.pagination.total !== 1 ? "s" : ""} — find your next role.
+            <p className="mt-1 text-sm text-gray-500">
+              {data.pagination.total} role{data.pagination.total !== 1 ? "s" : ""} available
             </p>
           </div>
 
           {/* Search bar */}
-          <div className="mb-6">
+          <div className="mb-5">
             <SearchBar value={queryInput} onChange={setQuery} />
           </div>
 
-          {/* Personalized suggestions based on browsing history */}
-          {!hasActiveFilters && (
+          {/* Personalized suggestions — only on first load with no filters */}
+          {!hasActiveFilters && data.pagination.total <= 50 && (
             <PersonalizedSuggestions
               history={history}
               onFilterByDepartment={(dept) => setParam("department", dept)}
@@ -247,7 +240,7 @@ function JobsPageInner() {
                     />
                   </Card>
                 ) : (
-                  <ul className="space-y-4">
+                  <ul className="space-y-3">
                     {data.jobs.map((job) => (
                       <JobCard key={job.id} job={job} />
                     ))}
@@ -450,36 +443,35 @@ function JobCard({ job }: { job: Job }) {
     <Card as="li" interactive className="group p-0 transition-all">
       <Link
         href={`/jobs/${job.id}`}
-        className="block rounded-2xl p-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 sm:p-6"
+        className="block rounded-2xl px-5 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 sm:px-6"
       >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-lg font-semibold text-gray-900 transition-colors group-hover:text-blue-600">
+            <h3 className="truncate text-base font-semibold text-gray-900 transition-colors group-hover:text-blue-600">
               {job.title}
             </h3>
-            <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-gray-600">
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-gray-500">
               <span>{job.department}</span>
-              <span aria-hidden="true" className="text-gray-400">·</span>
+              <span aria-hidden="true" className="text-gray-300">·</span>
               <span className="inline-flex items-center gap-1">
-                <MapPinIcon className="h-4 w-4 text-gray-500" />
+                <MapPinIcon className="h-3.5 w-3.5" />
                 {job.location}
               </span>
               {job.isRemote && (
-                <Badge tone="info" className="ml-1">Remote</Badge>
+                <Badge tone="info" className="ml-1 text-xs">Remote</Badge>
               )}
             </p>
-            <p className="mt-2 line-clamp-2 text-sm text-gray-600">{job.description}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Badge tone="neutral">{formatEmploymentType(job.employmentType)}</Badge>
-              <Badge tone="neutral">{formatExperienceLevel(job.experienceLevel)}</Badge>
-              {job.salary && <Badge tone="neutral">{formatSalary(job.salary)}</Badge>}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <Badge tone="neutral" className="text-xs">{formatEmploymentType(job.employmentType)}</Badge>
+              <Badge tone="neutral" className="text-xs">{formatExperienceLevel(job.experienceLevel)}</Badge>
+              {job.salary && <Badge tone="neutral" className="text-xs">{formatSalary(job.salary)}</Badge>}
             </div>
           </div>
-          <div className="flex shrink-0 flex-row items-center justify-between gap-2 sm:flex-col sm:items-end">
-            <span className="text-xs text-gray-500">{postedLabel}</span>
+          <div className="flex shrink-0 flex-row items-center justify-between gap-2 sm:flex-col sm:items-end sm:gap-1">
+            <span className="text-xs text-gray-400">{postedLabel}</span>
             <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 transition-colors group-hover:text-blue-700">
               View
-              <ArrowRightIcon className="h-4 w-4" />
+              <ArrowRightIcon className="h-3.5 w-3.5" />
             </span>
           </div>
         </div>
