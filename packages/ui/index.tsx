@@ -30,7 +30,8 @@ type ButtonSize = "sm" | "md" | "lg";
 
 const BTN_BASE =
   "cb-btn inline-flex items-center justify-center gap-2 font-semibold rounded-lg whitespace-nowrap " +
-  "focus:outline-none disabled:opacity-60 disabled:pointer-events-none select-none";
+  "focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 " +
+  "focus-visible:ring-offset-2 disabled:opacity-60 disabled:pointer-events-none select-none";
 
 const BTN_VARIANT: Record<ButtonVariant, string> = {
   primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-sm",

@@ -241,7 +241,7 @@ export default function CommentsDialog({ applicationId, candidateName, currentUs
               <ul role="listbox" aria-label="Mention a teammate" className="absolute bottom-full left-0 z-10 mb-1 max-h-48 w-64 overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                 {suggestions.map((u) => (
                   <li key={u.id} role="option" aria-selected={false}>
-                    <button type="button" onClick={() => insertMention(u)} className="flex w-full flex-col items-start px-3 py-1.5 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none">
+                    <button type="button" onClick={() => insertMention(u)} className="flex w-full flex-col items-start px-3 py-1.5 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
                       <span className="text-sm font-medium text-gray-900">{u.name}</span>
                       <span className="text-xs text-gray-500">{u.email}</span>
                     </button>

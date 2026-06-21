@@ -193,7 +193,7 @@ export default function ApplyModal({ jobId, jobTitle, screeningQuestions = [] }:
         aria-labelledby={status === "success" ? successHeadingId : headingId}
         className="fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/50 backdrop:backdrop-blur-sm open:flex open:items-center open:justify-center"
       >
-        <div className="mx-auto flex max-h-[90vh] min-h-112 w-full max-w-lg flex-col overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:p-8">
+        <div className="mx-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:p-8">
           {status === "success" ? (
             <div className="flex flex-1 flex-col items-center justify-center py-8 text-center" role="status" aria-live="polite">
               <div

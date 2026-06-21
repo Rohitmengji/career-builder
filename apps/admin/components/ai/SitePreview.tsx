@@ -328,7 +328,7 @@ export default function SitePreview({
   const totalBlocks = site.pages.reduce((s, p) => s + p.blocks.length, 0);
 
   return (
-    <div className="fixed inset-0 z-9999 bg-black/60 flex items-center justify-center">
+    <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center">
       <div className="bg-gray-50 w-[95vw] h-[92vh] max-w-350 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0">

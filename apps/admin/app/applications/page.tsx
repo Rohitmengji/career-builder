@@ -18,6 +18,7 @@ import {
   ButtonLink,
   EmptyState,
   Skeleton,
+  Alert,
   ArrowLeftIcon,
   ArrowRightIcon,
 } from "@/components/ui";
@@ -102,8 +103,8 @@ function screeningFailed(app: Application): boolean {
 
 function ScreeningBadge() {
   return (
-    <span className="mt-0.5 inline-flex w-fit items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-      Failed screening
+    <span className="mt-0.5 w-fit">
+      <Badge tone="danger">Failed screening</Badge>
     </span>
   );
 }
@@ -485,7 +486,9 @@ export default function AdminApplicationsPage() {
           </div>
         )}
         {bulkNotice && (
-          <p className="mb-4 text-sm text-gray-700" role="status">{bulkNotice}</p>
+          <div className="mb-4">
+            <Alert tone={/fail|error|could/i.test(bulkNotice) ? "error" : "success"}>{bulkNotice}</Alert>
+          </div>
         )}
 
         {!loading && applications.length > 0 && (

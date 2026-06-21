@@ -80,7 +80,7 @@ function DevPlanSwitcherInner() {
   if (loading) return null;
 
   return (
-    <div className="fixed top-1.5 left-80 z-9999">
+    <div className="fixed top-1.5 left-80 z-[9999]">
       {/* Collapsed pill */}
       <button
         onClick={() => setExpanded((e) => !e)}
