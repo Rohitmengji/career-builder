@@ -32,6 +32,8 @@ export interface CreateJobInput {
   niceToHave?: string[];
   benefits?: string[];
   tags?: string[];
+  /** Yes/no screening questions with the answer required to pass. */
+  screeningQuestions?: { q: string; requiredAnswer: string }[];
   isRemote?: boolean;
   isPublished?: boolean;
   tenantId: string;
@@ -119,6 +121,7 @@ export const jobRepo = {
         niceToHave: JSON.stringify(data.niceToHave || []),
         benefits: JSON.stringify(data.benefits || []),
         tags: JSON.stringify(data.tags || []),
+        screeningQuestions: JSON.stringify(data.screeningQuestions || []),
         isRemote: data.isRemote ?? false,
         isPublished: data.isPublished ?? false,
         tenantId: data.tenantId,
@@ -156,6 +159,7 @@ export const jobRepo = {
     if (data.niceToHave !== undefined) updateData.niceToHave = JSON.stringify(data.niceToHave);
     if (data.benefits !== undefined) updateData.benefits = JSON.stringify(data.benefits);
     if (data.tags !== undefined) updateData.tags = JSON.stringify(data.tags);
+    if (data.screeningQuestions !== undefined) updateData.screeningQuestions = JSON.stringify(data.screeningQuestions);
 
     return prisma.job.update({ where: { id }, data: updateData });
   },

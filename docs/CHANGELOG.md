@@ -1,5 +1,47 @@
 # Changelog
 
+## Global Job Board + Candidate Application Tracking (2026-06-19)
+
+### 156 global job listings
+Seeded a full job board for an AI developer tools company:
+- **50 US-based roles**: Engineering (ML, Backend, Frontend, DevOps, SRE, Security, etc.), Product, Design, Sales, Marketing, Customer Success, Operations, HR.
+- **50 additional tech roles**: GPU Systems, Inference Engine, Distributed Systems, RL, Compilers, Cryptography, AI Safety, Computer Vision, Speech/Audio, and more.
+- **49 international roles**: London, Berlin, Amsterdam, Paris, Dublin, Zurich, Stockholm, Barcelona, Warsaw, Lisbon, Tel Aviv, Dubai, Singapore, Tokyo, Bangalore, Hyderabad, Seoul, Sydney, Melbourne, Beijing, Toronto, Vancouver, São Paulo, Mexico City, Buenos Aires, Remote-Global/EMEA/LATAM/Africa.
+- **Local currencies**: GBP, EUR, INR, JPY, AUD, SGD, CAD, AED, KRW, CNY, BRL, MXN, ARS, ILS — proper salary ranges per market.
+
+### Candidate "My Applications" page
+- **New page**: `/applications` — candidates see all jobs they applied to with live status badges (Applied, Under Review, Interview, Offer, Hired, Not Selected).
+- **New API**: `GET /api/applications` — returns applications scoped by email + tenant (no internal notes/ratings exposed).
+- **New repo method**: `applicationRepo.findByCandidateEmail()`.
+- **SiteHeader**: added "My applications" nav link for logged-in candidates.
+- **PR #22** — merged via squash.
+
+### Renderer resilience
+- **Block type aliases**: `stats`→`stats-counter`, `cta`→`cta-button`, `video-text`→`video-and-text`, `button`→`basic-button`, `image`→`basic-image`.
+- **Prop normalization**: Features accepts `features`/`items` array field, normalizes `description`→`desc`; StatsCounter accepts `stats`/`items`.
+- Makes renderer robust to AI-generated content naming variations.
+- **PR merged** — `fix(renderer): add block type aliases`.
+
+### Editor UX improvements
+- **Small screen blocker**: screens <1024px show "Larger screen required" message with dashboard link instead of broken editor layout.
+- **Publish button**: replaced raw `<button>` with shared `<Button>` component for consistent styling and loading state.
+- **Loading spinner**: larger (h-8 w-8) for visibility during initial auth check.
+- **Tailwind v4 fixes**: `break-words`→`wrap-break-word`, `min-h-[44px]`→`min-h-11`.
+- **CSS type declarations**: added `global.d.ts` for both apps.
+- **PR #25, #26** — merged.
+
+### Quality & security improvements
+- **Homepage nav**: "Sign in" + "Create account" links added; mobile-responsive collapse (hidden sm:flex + mobile CTA).
+- **Jobs SEO**: `generateMetadata()` in jobs layout with company name.
+- **Rate limiting**: added to `PATCH /api/profile` and `POST /api/media`.
+- **Error logging**: profile PATCH catch block now logs actual error.
+- **Stripe webhook**: migrated all 15 console.log/warn/error calls to structured logger (`@career-builder/observability`).
+- **Tenant API**: public GET access for theme/branding (web app SSR).
+- **Bot detection**: disabled on pages GET handler for public access.
+- **Font preload**: `Geist_Mono` set to `preload: false` in both apps.
+
+---
+
 ## Candidate Accounts + Web Overlay Fix (2026-06-18)
 
 ### Candidate auth (public career site)

@@ -126,6 +126,7 @@ model Job {
   niceToHave      String   @default("[]") // JSON array
   benefits        String   @default("[]") // JSON array
   tags            String   @default("[]") // JSON array
+  screeningQuestions String @default("[]") // JSON array of { q, requiredAnswer }
   isRemote        Boolean  @default(false)
   isPublished     Boolean  @default(false)
   sortOrder       Int      @default(0)
@@ -164,6 +165,7 @@ model Application {
   resumeUrl   String?
   resumePath  String?
   resumeText  String?  // Extracted plain text from the uploaded resume (server-side, best-effort)
+  screeningAnswers String? // JSON: { answers: {idx: yes|no}, passed, failed[] } — non-identifying
   coverLetter String?
   linkedinUrl String?
   status      String   @default("applied")

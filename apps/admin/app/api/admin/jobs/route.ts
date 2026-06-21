@@ -89,6 +89,12 @@ export async function POST(req: Request) {
       niceToHave: (data.niceToHave || []).map((r: string) => sanitizeString(r, 500)),
       benefits: (data.benefits || []).map((r: string) => sanitizeString(r, 500)),
       tags: (data.tags || []).map((t: string) => sanitizeString(t, 50)),
+      screeningQuestions: (data.screeningQuestions || []).map(
+        (sq: { q: string; requiredAnswer: string }) => ({
+          q: sanitizeString(sq.q, 300),
+          requiredAnswer: sq.requiredAnswer === "no" ? "no" : "yes",
+        }),
+      ),
       isRemote: data.isRemote || false,
       isPublished: data.isPublished || false,
       tenantId: session.tenantId,
@@ -139,6 +145,14 @@ export async function PUT(req: Request) {
   if (data.description) sanitized.description = stripHtml(data.description);
   if (data.department) sanitized.department = sanitizeString(data.department, 100);
   if (data.location) sanitized.location = sanitizeString(data.location, 200);
+  if (data.screeningQuestions) {
+    sanitized.screeningQuestions = data.screeningQuestions.map(
+      (sq: { q: string; requiredAnswer: string }) => ({
+        q: sanitizeString(sq.q, 300),
+        requiredAnswer: sq.requiredAnswer === "no" ? "no" : "yes",
+      }),
+    );
+  }
 
   try {
     const job = await jobRepo.update(id, sanitized, session.tenantId);

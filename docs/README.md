@@ -19,6 +19,9 @@
 | [TURSO_MIGRATION_GUIDE.md](./TURSO_MIGRATION_GUIDE.md) | Schema change workflow for production Turso DB | Engineers |
 | [RBAC_RULES.md](./RBAC_RULES.md) | Role-based access control rules and protected accounts | Engineers |
 | [CHANGELOG.md](./CHANGELOG.md) | Notable changes — security/reliability hardening, new env vars, follow-ups | Everyone |
+| [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) | Design tokens, color system, typography, spacing, and accessibility | Design & Engineering |
+| [MULTITENANCY.md](./MULTITENANCY.md) | Multi-tenant architecture, isolation, domain routing | Engineers |
+| [COMPETITIVE_ROADMAP.md](./COMPETITIVE_ROADMAP.md) | Competitive analysis and feature roadmap vs market | Product |
 
 ---
 

@@ -11,6 +11,9 @@
  * Designed for ATS integration (Greenhouse / Lever / Employ style).
  */
 
+import type { ScreeningQuestion } from "@career-builder/shared/screening";
+export type { ScreeningQuestion };
+
 /* ================================================================== */
 /*  Core Job Types                                                     */
 /* ================================================================== */
@@ -43,6 +46,7 @@ export interface Job {
   closesAt: string | null;   // ISO 8601 or null if open
   isRemote: boolean;
   tags: string[];
+  screeningQuestions: ScreeningQuestion[];
   /** Tenant this job belongs to */
   tenantId: string;
 }

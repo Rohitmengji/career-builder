@@ -15,6 +15,7 @@ export interface CreateApplicationInput {
   resumeUrl?: string;
   resumePath?: string;
   resumeText?: string;
+  screeningAnswers?: string;
   coverLetter?: string;
   linkedinUrl?: string;
   source?: string;
@@ -125,6 +126,7 @@ export const applicationRepo = {
         resumeUrl: data.resumeUrl,
         resumePath: data.resumePath,
         resumeText: data.resumeText,
+        screeningAnswers: data.screeningAnswers,
         coverLetter: data.coverLetter,
         linkedinUrl: data.linkedinUrl,
         source: data.source,

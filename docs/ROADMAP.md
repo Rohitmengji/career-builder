@@ -55,6 +55,17 @@ These items from the original roadmap have been implemented:
 | 43 | **Personalized Web Components** | ✅ Done | `PersonalizedSidebar.tsx`, `PersonalizedSuggestions.tsx`, `SiteHeader.tsx` on web app |
 | 44 | **Turso Production DB** | ✅ Done | Turso libsql setup with `push-turso.ts`, migration guide, absolute path fixes. See `TURSO_SETUP.md` + `TURSO_MIGRATION_GUIDE.md`. |
 | 45 | **CI/CD Pipeline** | ✅ Done | `.github/workflows/ci.yml` — Install → Type Check → Lint → Build on every PR |
+| 46 | **Candidate Accounts** | ✅ Done | `/login`, `/register`, `/forgot-password`, `/reset-password`, `/profile` — full auth flow with scrypt hashing, rate limiting, one-time tokens |
+| 47 | **Candidate Application Tracking** | ✅ Done | `/applications` page — candidates see status of all their applications (Applied, Under Review, Interview, Offer, Hired) |
+| 48 | **Global Job Board (156 listings)** | ✅ Done | 33 unique locations, 15 currencies, roles across Engineering, Product, Design, Sales, Marketing, HR, Operations, Customer Success |
+| 49 | **Renderer Block Aliases** | ✅ Done | `stats`→`stats-counter`, `cta`→`cta-button`, etc. — resilient to AI naming variations |
+| 50 | **Editor Mobile Blocker** | ✅ Done | Screens <1024px show "larger screen required" message instead of broken editor |
+| 51 | **Structured Email Automation** | ✅ Done | Auto-sends branded status update emails on pipeline stage changes (interview, offer, hired, rejected) |
+| 52 | **JobPosting Schema.org** | ✅ Done | JSON-LD structured data on `/jobs/[id]` for Google Jobs search integration |
+| 53 | **Bulk Actions (ATS)** | ✅ Done | Select multiple applications → bulk status change, bulk reject with email, bulk CSV export |
+| 54 | **Application Comments** | ✅ Done | Internal hiring-team discussions per application with @mentions |
+| 55 | **Custom Domains** | ✅ Done | `domainRepo`, `/admin/domains`, `/api/domains` — per-tenant custom domain configuration |
+| 56 | **Stripe Structured Logging** | ✅ Done | All webhook console.log migrated to `@career-builder/observability` structured logger |
 
 ---
 

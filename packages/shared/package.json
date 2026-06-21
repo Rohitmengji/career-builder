@@ -16,6 +16,7 @@
     "./blind-hiring": "./blind-hiring.ts",
     "./salary-benchmark": "./salary-benchmark.ts",
     "./responsiveness": "./responsiveness.ts",
+    "./screening": "./screening.ts",
     "./storage": "./storage.ts",
     "./kv": "./kv.ts",
     "./preview-token": "./preview-token.ts"
