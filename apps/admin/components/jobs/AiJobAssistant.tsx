@@ -568,7 +568,7 @@ function JobReviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onDiscard(); }}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-[94vw] max-w-3xl max-h-[88vh] flex flex-col overflow-hidden animate-modal-in">

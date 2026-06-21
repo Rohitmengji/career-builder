@@ -6,10 +6,11 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
+import { Alert, EmptyState, ButtonLink, Button } from "@/components/ui";
 
 interface ApplicationEntry {
   id: string;
@@ -51,25 +52,28 @@ export default function MyApplicationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch("/api/applications");
-        if (res.status === 401) {
-          router.push("/login?redirect=/applications");
-          return;
-        }
-        if (!res.ok) throw new Error("Failed to load");
-        const data = await res.json();
-        setApplications(data.applications || []);
-      } catch {
-        setError("Unable to load your applications. Please try again.");
-      } finally {
-        setLoading(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/applications");
+      if (res.status === 401) {
+        router.push("/login?redirect=/applications");
+        return;
       }
+      if (!res.ok) throw new Error("Failed to load");
+      const data = await res.json();
+      setApplications(data.applications || []);
+    } catch {
+      setError("Unable to load your applications. Please try again in a moment.");
+    } finally {
+      setLoading(false);
     }
-    load();
   }, [router]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -85,8 +89,8 @@ export default function MyApplicationsPage() {
         </div>
 
         {loading && (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
+          <div className="space-y-4" role="status" aria-live="polite" aria-label="Loading your applications">
+            {[1, 2, 3, 4].map((i) => (
               <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
                 <div className="h-5 bg-gray-200 rounded w-2/3 mb-3" />
                 <div className="h-4 bg-gray-100 rounded w-1/3" />
@@ -96,25 +100,23 @@ export default function MyApplicationsPage() {
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
-            {error}
-          </div>
+          <Alert tone="error">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span>{error}</span>
+              <Button size="sm" variant="secondary" onClick={() => void load()}>
+                Try again
+              </Button>
+            </div>
+          </Alert>
         )}
 
         {!loading && !error && applications.length === 0 && (
-          <div className="text-center py-16">
-            <div className="text-4xl mb-4">📋</div>
-            <h2 className="text-lg font-medium text-gray-900 mb-2">No applications yet</h2>
-            <p className="text-sm text-gray-500 mb-6">
-              Browse open positions and apply to get started.
-            </p>
-            <Link
-              href="/jobs"
-              className="inline-flex items-center gap-2 bg-blue-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Browse Jobs
-            </Link>
-          </div>
+          <EmptyState
+            icon={<span className="text-2xl">📋</span>}
+            title="No applications yet"
+            body="Browse open positions and apply to get started — you'll track every application's status right here."
+            action={<ButtonLink href="/jobs">Browse jobs</ButtonLink>}
+          />
         )}
 
         {!loading && !error && applications.length > 0 && (

@@ -18,6 +18,7 @@ import {
   Badge,
   ButtonLink,
   Skeleton,
+  EmptyState,
   ArrowRightIcon,
 } from "@/components/ui";
 
@@ -245,7 +246,11 @@ export default function AdminDashboardPage() {
               </Link>
             </div>
             {data.recentApplications.length === 0 ? (
-              <p className="py-8 text-center text-sm text-gray-600">No applications yet</p>
+              <EmptyState
+                title="No applications yet"
+                body="Publish a job posting and applications will appear here as candidates apply."
+                action={<ButtonLink href="/jobs">Manage jobs</ButtonLink>}
+              />
             ) : (
               <ul className="divide-y divide-gray-100">
                 {data.recentApplications.slice(0, 5).map((app) => (

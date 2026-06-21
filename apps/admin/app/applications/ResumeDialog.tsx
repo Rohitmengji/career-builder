@@ -157,7 +157,7 @@ export default function ResumeDialog({ applicationId, candidateName, onClose }: 
               {data.resumeText ? (
                 <div>
                   <h3 className="mb-2 text-sm font-semibold text-gray-900">Extracted text</h3>
-                  <pre className="max-h-72 overflow-auto whitespace-pre-wrap wrap-break-word rounded-lg border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-700">
+                  <pre className="max-h-96 overflow-auto whitespace-pre-wrap wrap-break-word rounded-lg border border-gray-200 bg-white p-3 text-sm leading-relaxed text-gray-700">
                     {data.resumeText}
                   </pre>
                 </div>

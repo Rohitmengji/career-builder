@@ -1115,7 +1115,7 @@ function ReviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onDiscard(); }}
     >
       <div
