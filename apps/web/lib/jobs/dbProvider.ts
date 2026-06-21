@@ -169,6 +169,7 @@ class DatabaseJobProvider implements JobDataProvider {
         phone: application.phone,
         resumeUrl: application.resumeUrl,
         resumeText: application.resumeText,
+        screeningAnswers: application.screeningAnswers,
         coverLetter: application.coverLetter,
         linkedinUrl: application.linkedinUrl,
         source: "direct",

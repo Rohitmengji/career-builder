@@ -16,6 +16,7 @@ import { createApplicationSchema, safeParse } from "@career-builder/security/val
 import { sanitizeString, sanitizeEmail, stripHtml } from "@career-builder/security/sanitize";
 import { validateUpload, UPLOAD_PRESETS, isPathSafe } from "@career-builder/security/file-upload";
 import { extractResumeText } from "@/lib/resume/extract";
+import { evaluateScreening, parseScreeningAnswers } from "@career-builder/shared/screening";
 import { validateUrl } from "@career-builder/security/url";
 import { getRateLimiter, getClientIp } from "@career-builder/security/rate-limit";
 import { emailService } from "@career-builder/email";
@@ -200,6 +201,24 @@ export async function POST(request: Request) {
     }
 
     const provider = getJobProvider();
+
+    // Screening / knockout questions: evaluate the candidate's answers against
+    // the job's questions and persist a self-contained result. Best-effort —
+    // screening NEVER blocks an application; a knockout just flags it for the
+    // recruiter to triage.
+    let screeningAnswers: string | undefined;
+    try {
+      const jobForScreening = await provider.getById(sanitizeString(parsed.data.jobId, 100), resolvedTenantId);
+      const questions = jobForScreening?.job?.screeningQuestions ?? [];
+      if (questions.length > 0) {
+        const answers = parseScreeningAnswers(parsed.data.screeningAnswers);
+        const evaluated = evaluateScreening(questions, answers);
+        screeningAnswers = JSON.stringify({ answers, passed: evaluated.passed, failed: evaluated.failed });
+      }
+    } catch {
+      /* screening is best-effort; never block the apply */
+    }
+
     const result = await provider.apply({
       jobId: sanitizeString(parsed.data.jobId, 100),
       tenantId: resolvedTenantId, // host-resolved; not the client value
@@ -209,6 +228,7 @@ export async function POST(request: Request) {
       phone: sanitizeString(parsed.data.phone || "", 30),
       resumeUrl: savedResumeUrl,
       ...(resumeText ? { resumeText } : {}),
+      ...(screeningAnswers ? { screeningAnswers } : {}),
       coverLetter: parsed.data.coverLetter ? stripHtml(parsed.data.coverLetter) : "",
       linkedinUrl: parsed.data.linkedinUrl?.trim() || "",
     });

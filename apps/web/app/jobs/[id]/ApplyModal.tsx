@@ -24,6 +24,7 @@ import {
 interface ApplyModalProps {
   jobId: string;
   jobTitle: string;
+  screeningQuestions?: { q: string; requiredAnswer: "yes" | "no" }[];
 }
 
 const INITIAL_FORM: ApplyFormValues = {
@@ -36,10 +37,17 @@ const INITIAL_FORM: ApplyFormValues = {
   coverLetter: "",
 };
 
-export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
+export default function ApplyModal({ jobId, jobTitle, screeningQuestions = [] }: ApplyModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState<ApplyFormValues>(INITIAL_FORM);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+
+  const setScreeningAnswer = useCallback((index: number, value: "yes" | "no") => {
+    setForm((prev) => ({
+      ...prev,
+      screeningAnswers: { ...(prev.screeningAnswers ?? {}), [String(index)]: value },
+    }));
+  }, []);
 
   const {
     status,
@@ -396,6 +404,38 @@ export default function ApplyModal({ jobId, jobTitle }: ApplyModalProps) {
                       {coverLen.toLocaleString()} / {APPLY_LIMITS.maxCoverLetterChars.toLocaleString()}
                     </p>
                   </div>
+
+                  {screeningQuestions.length > 0 && (
+                    <fieldset className="space-y-3 rounded-lg border border-gray-200 p-4">
+                      <legend className="px-1 text-sm font-medium text-gray-700">A few quick questions</legend>
+                      {screeningQuestions.map((sq, i) => {
+                        const selected = form.screeningAnswers?.[String(i)];
+                        return (
+                          <div key={i} role="radiogroup" aria-label={sq.q}>
+                            <p className="mb-1.5 text-sm text-gray-800">{sq.q}</p>
+                            <div className="flex gap-2">
+                              {(["yes", "no"] as const).map((opt) => (
+                                <button
+                                  key={opt}
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={selected === opt}
+                                  onClick={() => setScreeningAnswer(i, opt)}
+                                  className={`h-9 rounded-lg border px-4 text-sm font-medium capitalize transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                                    selected === opt
+                                      ? "border-blue-600 bg-blue-50 text-blue-700"
+                                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                                  }`}
+                                >
+                                  {opt}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </fieldset>
+                  )}
                 </fieldset>
 
                 <div className="flex items-center gap-3 pt-2">

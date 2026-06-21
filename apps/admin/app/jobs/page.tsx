@@ -11,6 +11,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { parseScreeningQuestions } from "@career-builder/shared/screening";
 import AiJobAssistant from "@/components/jobs/AiJobAssistant";
 import type { AiJobFormData } from "@/lib/ai/types";
 import { useAuthGuard } from "@/lib/useAuthGuard";
@@ -80,6 +81,7 @@ interface JobFormData {
   requirements: string;
   benefits: string;
   tags: string;
+  screeningQuestions: { q: string; requiredAnswer: "yes" | "no" }[];
 }
 
 const EMPTY_FORM: JobFormData = {
@@ -96,6 +98,7 @@ const EMPTY_FORM: JobFormData = {
   requirements: "",
   benefits: "",
   tags: "",
+  screeningQuestions: [],
 };
 
 const DEPARTMENTS = ["Engineering", "Design", "Marketing", "Sales", "People", "Finance", "Operations"];
@@ -199,6 +202,7 @@ export default function AdminJobsPage() {
       requirements: formatJsonArray(job.requirements),
       benefits: formatJsonArray(job.benefits),
       tags: formatJsonArray(job.tags),
+      screeningQuestions: parseScreeningQuestions((job as { screeningQuestions?: unknown }).screeningQuestions),
     });
     setError("");
     setView("form");
@@ -222,6 +226,9 @@ export default function AdminJobsPage() {
       requirements: parseJsonArray(form.requirements),
       benefits: parseJsonArray(form.benefits),
       tags: parseJsonArray(form.tags),
+      screeningQuestions: form.screeningQuestions
+        .map((s) => ({ q: s.q.trim(), requiredAnswer: s.requiredAnswer }))
+        .filter((s) => s.q),
     };
 
     if (editingId) {
@@ -300,6 +307,7 @@ export default function AdminJobsPage() {
       requirements: aiJob.requirements || form.requirements,
       benefits: aiJob.benefits || form.benefits,
       tags: aiJob.tags || form.tags,
+      screeningQuestions: form.screeningQuestions,
     });
   }
 
@@ -703,6 +711,77 @@ export default function AdminJobsPage() {
                 onChange={(e) => setForm({ ...form, tags: e.target.value })}
                 placeholder="react, typescript, frontend"
               />
+
+              {/* Screening / knockout questions */}
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-gray-700">Screening questions</label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        screeningQuestions: [...form.screeningQuestions, { q: "", requiredAnswer: "yes" }],
+                      })
+                    }
+                    className="text-sm font-medium text-blue-600 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded"
+                  >
+                    + Add question
+                  </button>
+                </div>
+                <p className="mb-2 text-xs text-gray-500">
+                  Yes/no questions candidates answer when applying. Pick the answer required to pass —
+                  applicants who answer otherwise are flagged for review (never auto-rejected).
+                </p>
+                {form.screeningQuestions.length === 0 ? (
+                  <p className="text-sm text-gray-400">No screening questions.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {form.screeningQuestions.map((sq, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={sq.q}
+                          onChange={(e) => {
+                            const next = [...form.screeningQuestions];
+                            next[i] = { ...next[i], q: e.target.value };
+                            setForm({ ...form, screeningQuestions: next });
+                          }}
+                          placeholder="e.g. Are you authorized to work in the US?"
+                          maxLength={300}
+                          className="h-10 flex-1 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600"
+                        />
+                        <select
+                          value={sq.requiredAnswer}
+                          onChange={(e) => {
+                            const next = [...form.screeningQuestions];
+                            next[i] = { ...next[i], requiredAnswer: e.target.value === "no" ? "no" : "yes" };
+                            setForm({ ...form, screeningQuestions: next });
+                          }}
+                          aria-label="Required answer to pass"
+                          className="h-10 rounded-lg border border-gray-300 bg-white px-2 text-sm focus:outline-none focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600"
+                        >
+                          <option value="yes">Must be Yes</option>
+                          <option value="no">Must be No</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm({
+                              ...form,
+                              screeningQuestions: form.screeningQuestions.filter((_, j) => j !== i),
+                            })
+                          }
+                          aria-label="Remove question"
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Actions */}
               <div className="flex flex-col gap-3 border-t border-gray-200 pt-5 sm:flex-row">

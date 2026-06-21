@@ -46,7 +46,7 @@ export interface Job {
   closesAt: string | null;   // ISO 8601 or null if open
   isRemote: boolean;
   tags: string[];
-  screeningQuestions: ScreeningQuestion[];
+  screeningQuestions?: ScreeningQuestion[];
   /** Tenant this job belongs to */
   tenantId: string;
 }
@@ -130,6 +130,7 @@ export interface JobApplication {
   phone: string;
   resumeUrl: string;
   resumeText?: string;
+  screeningAnswers?: string;
   coverLetter: string;
   linkedinUrl: string;
   submittedAt: string;
