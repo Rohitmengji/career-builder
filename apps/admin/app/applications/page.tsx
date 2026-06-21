@@ -28,6 +28,7 @@ import {
   StarIcon,
 } from "@/components/jobs/icons";
 import CommentsDialog from "./CommentsDialog";
+import ResumeDialog from "./ResumeDialog";
 
 /* ================================================================== */
 /*  Types                                                              */
@@ -103,6 +104,7 @@ export default function AdminApplicationsPage() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkNotice, setBulkNotice] = useState("");
   const [commentsFor, setCommentsFor] = useState<Application | null>(null);
+  const [resumeFor, setResumeFor] = useState<Application | null>(null);
   const { user: authUser } = useAuthGuard();
   const currentUserId = authUser?.id ?? "";
 
@@ -512,6 +514,15 @@ export default function AdminApplicationsPage() {
                           )}
                           <button
                             type="button"
+                            onClick={() => setResumeFor(app)}
+                            aria-label={`View résumé for ${app.firstName} ${app.lastName}`}
+                            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                          >
+                            <DocumentIcon className="h-4 w-4" />
+                            Résumé
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => setCommentsFor(app)}
                             aria-label={`Open comments for ${app.firstName} ${app.lastName}`}
                             className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
@@ -622,6 +633,14 @@ export default function AdminApplicationsPage() {
           currentUserId={currentUserId}
           csrf={csrf}
           onClose={() => setCommentsFor(null)}
+        />
+      )}
+
+      {resumeFor && (
+        <ResumeDialog
+          applicationId={resumeFor.id}
+          candidateName={`${resumeFor.firstName} ${resumeFor.lastName}`}
+          onClose={() => setResumeFor(null)}
         />
       )}
     </main>

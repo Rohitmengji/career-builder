@@ -68,6 +68,15 @@ const FLAG_DEFINITIONS = {
       "minimum-sample guard (ADR-0003). Opt-in per tenant — a 'we don't ghost' " +
       "recruiting signal no other ATS exposes.",
   },
+  ai_resume_insights: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Recruiter-facing structured résumé parsing: turns an applicant's extracted " +
+      "résumé text into skills, titles, total experience, and education (AI, " +
+      "fail-closed). Under Blind Hiring it returns skills/experience but never the " +
+      "raw text or name — skills-first review. Off by default; needs the AI key.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",
