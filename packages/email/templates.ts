@@ -12,6 +12,7 @@ import type {
   ApplicationConfirmationData,
   ApplicationNotificationData,
   StatusUpdateData,
+  InterviewInvitationData,
 } from "./types";
 
 /* ================================================================== */
@@ -225,5 +226,53 @@ Role: ${data.jobTitle}
 ${data.message ? `Message from the team:\n${data.message}\n` : ""}
 View more roles: ${data.siteUrl}/jobs`;
 
+  return { subject, html, text };
+}
+
+const INTERVIEW_TYPE_LABELS: Record<string, string> = {
+  phone: "Phone call",
+  video: "Video call",
+  onsite: "On-site",
+};
+
+export function interviewInvitation(data: InterviewInvitationData) {
+  const typeLabel = INTERVIEW_TYPE_LABELS[data.interviewType] || data.interviewType;
+  if (data.cancelled) {
+    const subject = oneLine(`Interview cancelled — ${data.jobTitle}`);
+    const html = layout(
+      `<h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Interview cancelled</h2>
+<p style="margin:0 0 16px;font-size:15px;color:#4b5563;line-height:1.6;">Hi ${escapeHtml(data.candidateFirstName)},</p>
+<p style="margin:0 0 16px;font-size:15px;color:#4b5563;line-height:1.6;">
+  Your interview for <strong>${escapeHtml(data.jobTitle)}</strong> (was ${escapeHtml(data.whenText)}) has been cancelled.
+  The hiring team will be in touch about next steps.
+</p>
+${btn("View your applications", data.siteUrl + "/applications")}`,
+      data.companyName,
+    );
+    const text = `Interview cancelled\n\nHi ${data.candidateFirstName},\n\nYour interview for ${data.jobTitle} (was ${data.whenText}) has been cancelled.\n\nView your applications: ${data.siteUrl}/applications`;
+    return { subject, html, text };
+  }
+
+  const subject = oneLine(`Interview scheduled — ${data.jobTitle}`);
+  const detail = (label: string, value: string) =>
+    `<p style="margin:8px 0 0;font-size:13px;color:#6b7280;">${escapeHtml(label)}</p><p style="margin:2px 0 0;font-size:14px;font-weight:600;color:#111827;">${escapeHtml(value)}</p>`;
+  const html = layout(
+    `<h2 style="margin:0 0 8px;font-size:20px;color:#111827;">You're invited to interview</h2>
+<p style="margin:0 0 16px;font-size:15px;color:#4b5563;line-height:1.6;">Hi ${escapeHtml(data.candidateFirstName)},</p>
+<p style="margin:0 0 16px;font-size:15px;color:#4b5563;line-height:1.6;">
+  Great news — the team would like to interview you for <strong>${escapeHtml(data.jobTitle)}</strong>.
+</p>
+<div style="background:#f9fafb;border-radius:8px;padding:16px;margin:16px 0;">
+  ${detail("When", data.whenText)}
+  ${detail("Format", typeLabel)}
+  ${data.interviewerName ? detail("With", data.interviewerName) : ""}
+  ${data.location ? detail("Location", data.location) : ""}
+  ${data.meetingUrl ? detail("Meeting link", data.meetingUrl) : ""}
+</div>
+<p style="margin:0 0 16px;font-size:14px;color:#4b5563;line-height:1.6;">Please confirm and add it to your calendar from your applications page.</p>
+${btn("View & confirm", data.siteUrl + "/applications")}`,
+    data.companyName,
+  );
+  const text = `You're invited to interview\n\nHi ${data.candidateFirstName},\n\nThe team would like to interview you for ${data.jobTitle}.\n\nWhen: ${data.whenText}\nFormat: ${typeLabel}${data.interviewerName ? `\nWith: ${data.interviewerName}` : ""}${data.location ? `\nLocation: ${data.location}` : ""}${data.meetingUrl ? `\nMeeting link: ${data.meetingUrl}` : ""}\n\nView & confirm: ${data.siteUrl}/applications`;
   return { subject, html, text };
 }

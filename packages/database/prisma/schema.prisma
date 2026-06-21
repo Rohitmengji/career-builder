@@ -101,6 +101,7 @@ model User {
   // Relations
   auditLogs AuditLog[]
   comments  ApplicationComment[]
+  interviews Interview[]
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -185,6 +186,7 @@ model Application {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   comments ApplicationComment[]
   events   ApplicationEvent[]
+  interviews Interview[]
 
   @@index([jobId])
   @@index([tenantId])
@@ -231,6 +233,33 @@ model ApplicationEvent {
 
   @@index([tenantId, applicationId])
   @@index([tenantId, type])
+}
+
+// --- INTERVIEW (scheduling — see ADR-0006) ---
+
+model Interview {
+  id            String      @id @default(cuid())
+  tenantId      String
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  jobId         String?
+  round         Int         @default(1)
+  type          String      @default("video")     // phone | video | onsite
+  status        String      @default("scheduled") // scheduled | confirmed | cancelled | completed | no_show
+  interviewerId String?
+  interviewer   User?       @relation(fields: [interviewerId], references: [id], onDelete: SetNull)
+  scheduledAt   DateTime                          // stored UTC
+  durationMins  Int         @default(45)
+  timezone      String      @default("UTC")       // IANA, for display
+  location      String?
+  meetingUrl    String?
+  notes         String?                           // internal interviewer notes
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([tenantId, applicationId])
+  @@index([tenantId, status])
+  @@index([interviewerId])
 }
 
 // --- PAGE ---

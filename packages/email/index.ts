@@ -11,6 +11,7 @@ import {
   applicationConfirmation,
   applicationNotification,
   statusUpdate,
+  interviewInvitation,
 } from "./templates";
 import type {
   EmailConfig,
@@ -19,6 +20,7 @@ import type {
   ApplicationConfirmationData,
   ApplicationNotificationData,
   StatusUpdateData,
+  InterviewInvitationData,
   SendResult,
   TenantEmailSettings,
 } from "./types";
@@ -148,6 +150,23 @@ export const emailService = {
     });
   },
 
+  /** Interview invitation (or cancellation) to a candidate. Per-tenant sender. */
+  async sendInterviewInvitation(
+    data: InterviewInvitationData,
+    sender?: TenantEmailSettings,
+  ): Promise<SendResult> {
+    const { from } = resolveSender(sender);
+    const { subject, html, text } = interviewInvitation(data);
+    return getProvider().send({
+      from,
+      to: { email: data.candidateEmail, name: data.candidateFirstName },
+      subject,
+      html,
+      text,
+      tags: [{ name: "type", value: data.cancelled ? "interview-cancelled" : "interview-invite" }],
+    });
+  },
+
   /**
    * Send a password-reset link to a candidate. The URL is HTML-escaped and the
    * token is URL-encoded to prevent attribute/markup injection.
@@ -241,6 +260,7 @@ export type {
   ApplicationConfirmationData,
   ApplicationNotificationData,
   StatusUpdateData,
+  InterviewInvitationData,
   SendResult,
   TenantEmailSettings,
 } from "./types";
