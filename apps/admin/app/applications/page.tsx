@@ -46,6 +46,7 @@ interface Application {
   rating: number | null;
   notes: string | null;
   submittedAt: string;
+  screeningAnswers: string | null;
   job: {
     id: string;
     title: string;
@@ -86,6 +87,25 @@ const STATUS_DOT: Record<string, string> = {
 
 function statusMeta(value: string) {
   return STATUS_OPTIONS.find((s) => s.value === value) ?? STATUS_OPTIONS[0];
+}
+
+/** True when the applicant failed one or more knockout screening questions. */
+function screeningFailed(app: Application): boolean {
+  if (!app.screeningAnswers) return false;
+  try {
+    const parsed = JSON.parse(app.screeningAnswers) as { passed?: boolean };
+    return parsed?.passed === false;
+  } catch {
+    return false;
+  }
+}
+
+function ScreeningBadge() {
+  return (
+    <span className="mt-0.5 inline-flex w-fit items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+      Failed screening
+    </span>
+  );
 }
 
 /* ================================================================== */
@@ -506,8 +526,11 @@ export default function AdminApplicationsPage() {
                         />
                       </td>
                       <td className="px-6 py-4 align-middle">
-                        <div className="font-medium text-gray-900">{app.firstName} {app.lastName}</div>
-                        <div className="mt-0.5 text-sm text-gray-600">{app.email}</div>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-900">{app.firstName} {app.lastName}</span>
+                          <span className="mt-0.5 text-sm text-gray-600">{app.email}</span>
+                          {screeningFailed(app) && <ScreeningBadge />}
+                        </div>
                       </td>
                       <td className="px-6 py-4 align-middle">
                         <div className="text-sm text-gray-900">{app.job.title}</div>
@@ -583,9 +606,10 @@ export default function AdminApplicationsPage() {
                         aria-label={`Select ${app.firstName} ${app.lastName}`}
                         className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600"
                       />
-                      <div className="min-w-0">
+                      <div className="flex min-w-0 flex-col">
                         <p className="font-medium text-gray-900">{app.firstName} {app.lastName}</p>
                         <p className="mt-0.5 truncate text-sm text-gray-600">{app.email}</p>
+                        {screeningFailed(app) && <ScreeningBadge />}
                       </div>
                     </div>
                     <Badge tone={statusMeta(app.status).tone}>

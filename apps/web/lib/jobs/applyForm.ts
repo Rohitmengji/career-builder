@@ -41,6 +41,8 @@ export interface ApplyFormValues {
   /** A URL to a hosted resume — an alternative to uploading a file. */
   resumeUrl?: string;
   coverLetter?: string;
+  /** Yes/no answers to the job's screening questions, keyed by question index. */
+  screeningAnswers?: Record<string, "yes" | "no">;
 }
 
 export type ApplyField =
@@ -216,6 +218,9 @@ export function buildApplyPayload(
   if (values.coverLetter?.trim()) payload.append("coverLetter", values.coverLetter.trim());
   if (values.resumeUrl?.trim()) payload.append("resumeUrl", values.resumeUrl.trim());
   if (resumeFile) payload.append("resume", resumeFile);
+  if (values.screeningAnswers && Object.keys(values.screeningAnswers).length > 0) {
+    payload.append("screeningAnswers", JSON.stringify(values.screeningAnswers));
+  }
   return payload;
 }
 

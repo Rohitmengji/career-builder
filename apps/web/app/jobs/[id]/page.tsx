@@ -285,7 +285,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             jobLocation={job.location}
             jobTags={job.tags || []}
             serverRelatedJobs={relatedJobs}
-            applyModal={<ApplyModal jobId={job.id} jobTitle={job.title} />}
+            applyModal={<ApplyModal jobId={job.id} jobTitle={job.title} screeningQuestions={job.screeningQuestions} />}
           />
         </div>
       </Container>
