@@ -379,6 +379,7 @@ function FiltersPanel({
         buckets={data.facets.department}
         selected={params.department}
         onSelect={(v) => setParam("department", v === params.department ? undefined : v)}
+        defaultExpanded
       />
 
       <FacetGroup
@@ -501,44 +502,58 @@ function FacetGroup({
   selected,
   onSelect,
   formatLabel,
+  defaultExpanded = false,
 }: {
   label: string;
   buckets: FacetBucket[];
   selected?: string;
   onSelect: (value: string) => void;
   formatLabel?: (v: string) => string;
+  defaultExpanded?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(defaultExpanded || !!selected);
+
   if (buckets.length === 0) return null;
 
   return (
     <div>
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">{label}</h3>
-      <ul className="space-y-0.5">
-        {buckets.slice(0, 8).map((bucket) => {
-          const isActive = selected === bucket.value;
-          return (
-            <li key={bucket.value}>
-              <button
-                type="button"
-                onClick={() => onSelect(bucket.value)}
-                aria-pressed={isActive}
-                className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-2.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
-                  isActive
-                    ? "bg-blue-50 font-medium text-blue-700"
-                    : "text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                <span className="truncate">
-                  {formatLabel ? formatLabel(bucket.value) : bucket.value}
-                </span>
-                <span className={`ml-2 shrink-0 text-xs ${isActive ? "text-blue-600" : "text-gray-500"}`}>
-                  {bucket.count}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between py-1 text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-gray-700 transition-colors"
+        aria-expanded={expanded}
+      >
+        <span>{label}</span>
+        <ChevronDownIcon className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
+      </button>
+      {expanded && (
+        <ul className="mt-1.5 space-y-0.5">
+          {buckets.slice(0, 8).map((bucket) => {
+            const isActive = selected === bucket.value;
+            return (
+              <li key={bucket.value}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(bucket.value)}
+                  aria-pressed={isActive}
+                  className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-2.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                    isActive
+                      ? "bg-blue-50 font-medium text-blue-700"
+                      : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <span className="truncate">
+                    {formatLabel ? formatLabel(bucket.value) : bucket.value}
+                  </span>
+                  <span className={`ml-2 shrink-0 text-xs ${isActive ? "text-blue-600" : "text-gray-500"}`}>
+                    {bucket.count}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
