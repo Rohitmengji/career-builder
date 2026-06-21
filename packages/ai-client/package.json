@@ -6,7 +6,8 @@
   "types": "./index.ts",
   "exports": {
     ".": "./index.ts",
-    "./matching": "./matching.ts"
+    "./matching": "./matching.ts",
+    "./resume": "./resume.ts"
   },
   "dependencies": {
     "zod": "^4.3.6"
