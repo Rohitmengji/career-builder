@@ -154,6 +154,28 @@ export const createCommentSchema = z.object({
   body: z.string().min(1).max(5000).transform((v) => v.trim()),
 }).strict();
 
+/* ================================================================== */
+/*  Interview schemas (ADR-0006)                                       */
+/* ================================================================== */
+
+export const createInterviewSchema = z.object({
+  applicationId: cuid,
+  scheduledAt: z.string().datetime(), // ISO-8601 UTC instant
+  durationMins: z.number().int().min(5).max(480).default(45),
+  type: z.enum(["phone", "video", "onsite"]).default("video"),
+  round: z.number().int().min(1).max(20).default(1),
+  interviewerId: cuid.optional(),
+  timezone: z.string().max(64).default("UTC"),
+  location: z.string().max(300).optional(),
+  meetingUrl: z.string().url().max(2048).optional().or(z.literal("")),
+  notes: z.string().max(2000).optional(),
+}).strict();
+
+export const updateInterviewSchema = z.object({
+  id: cuid,
+  action: z.enum(["cancel", "complete", "no_show"]),
+}).strict();
+
 /** Bulk action over a bounded set of applications (status change / reject / export). */
 export const bulkApplicationActionSchema = z.object({
   ids: z.array(cuid).min(1).max(100),

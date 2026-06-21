@@ -86,6 +86,15 @@ const FLAG_DEFINITIONS = {
       "with timestamps, from the ApplicationEvent spine (ADR-0005). Replaces the " +
       "old simulated status block.",
   },
+  interview_scheduling: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Interview scheduling (ADR-0006): recruiters schedule interviews (time, " +
+      "interviewer, type, link) on an application; candidates see them, confirm, " +
+      "and add to calendar (ICS). Emits candidate-visible timeline events + an " +
+      "invitation email. Off by default.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",

@@ -151,6 +151,28 @@ CREATE TABLE "ApplicationEvent" (
 );
 
 -- CreateTable
+CREATE TABLE "Interview" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "applicationId" TEXT NOT NULL,
+    "jobId" TEXT,
+    "round" INTEGER NOT NULL DEFAULT 1,
+    "type" TEXT NOT NULL DEFAULT 'video',
+    "status" TEXT NOT NULL DEFAULT 'scheduled',
+    "interviewerId" TEXT,
+    "scheduledAt" DATETIME NOT NULL,
+    "durationMins" INTEGER NOT NULL DEFAULT 45,
+    "timezone" TEXT NOT NULL DEFAULT 'UTC',
+    "location" TEXT,
+    "meetingUrl" TEXT,
+    "notes" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Interview_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "Application" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Interview_interviewerId_fkey" FOREIGN KEY ("interviewerId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "Page" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "slug" TEXT NOT NULL,
@@ -325,6 +347,15 @@ CREATE INDEX "ApplicationEvent_tenantId_applicationId_idx" ON "ApplicationEvent"
 
 -- CreateIndex
 CREATE INDEX "ApplicationEvent_tenantId_type_idx" ON "ApplicationEvent"("tenantId", "type");
+
+-- CreateIndex
+CREATE INDEX "Interview_tenantId_applicationId_idx" ON "Interview"("tenantId", "applicationId");
+
+-- CreateIndex
+CREATE INDEX "Interview_tenantId_status_idx" ON "Interview"("tenantId", "status");
+
+-- CreateIndex
+CREATE INDEX "Interview_interviewerId_idx" ON "Interview"("interviewerId");
 
 -- CreateIndex
 CREATE INDEX "Page_tenantId_idx" ON "Page"("tenantId");

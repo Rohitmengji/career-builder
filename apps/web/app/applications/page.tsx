@@ -69,9 +69,36 @@ function formatDate(iso: string) {
   });
 }
 
+function formatDateTime(iso: string, tz: string) {
+  const opts: Intl.DateTimeFormatOptions = {
+    weekday: "short", month: "short", day: "numeric",
+    hour: "numeric", minute: "2-digit", timeZoneName: "short",
+  };
+  try {
+    return new Intl.DateTimeFormat("en-US", { ...opts, timeZone: tz }).format(new Date(iso));
+  } catch {
+    return new Intl.DateTimeFormat("en-US", opts).format(new Date(iso));
+  }
+}
+
+interface CandidateInterview {
+  id: string;
+  status: string;
+  type: string;
+  scheduledAt: string;
+  durationMins: number;
+  timezone: string;
+  location: string | null;
+  meetingUrl: string | null;
+  jobTitle: string | null;
+}
+
+const INTERVIEW_TYPE_LABEL: Record<string, string> = { phone: "Phone", video: "Video", onsite: "On-site" };
+
 export default function MyApplicationsPage() {
   const router = useRouter();
   const [applications, setApplications] = useState<ApplicationEntry[]>([]);
+  const [interviews, setInterviews] = useState<CandidateInterview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -87,12 +114,29 @@ export default function MyApplicationsPage() {
       if (!res.ok) throw new Error("Failed to load");
       const data = await res.json();
       setApplications(data.applications || []);
+      // Interviews are flag-gated server-side; a 404/!ok just means "none to show".
+      try {
+        const ivRes = await fetch("/api/interviews");
+        if (ivRes.ok) setInterviews((await ivRes.json()).interviews || []);
+        else setInterviews([]);
+      } catch {
+        setInterviews([]);
+      }
     } catch {
       setError("Unable to load your applications. Please try again in a moment.");
     } finally {
       setLoading(false);
     }
   }, [router]);
+
+  const confirmInterview = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/interviews/${encodeURIComponent(id)}`, { method: "POST" });
+      if (res.ok) setInterviews((prev) => prev.map((i) => (i.id === id ? { ...i, status: "confirmed" } : i)));
+    } catch {
+      /* keep as-is */
+    }
+  }, []);
 
   useEffect(() => {
     load();
@@ -110,6 +154,52 @@ export default function MyApplicationsPage() {
             Track the status of your job applications.
           </p>
         </div>
+
+        {!loading && interviews.filter((iv) => iv.status !== "cancelled").length > 0 && (
+          <section className="mb-8" aria-label="Your interviews">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Interviews</h2>
+            <div className="space-y-3">
+              {interviews
+                .filter((iv) => iv.status !== "cancelled")
+                .map((iv) => (
+                  <div key={iv.id} className="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">{iv.jobTitle || "Interview"}</p>
+                        <p className="mt-0.5 text-sm text-gray-700">{formatDateTime(iv.scheduledAt, iv.timezone)}</p>
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          {INTERVIEW_TYPE_LABEL[iv.type] || iv.type} · {iv.durationMins} min
+                          {iv.location ? ` · ${iv.location}` : ""}
+                        </p>
+                        {iv.meetingUrl && (
+                          <a href={iv.meetingUrl} target="_blank" rel="noopener noreferrer"
+                            className="mt-1 inline-block text-xs font-medium text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded">
+                            Join link
+                          </a>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1.5">
+                        {iv.status === "confirmed" ? (
+                          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Confirmed</span>
+                        ) : iv.status === "scheduled" ? (
+                          <button type="button" onClick={() => confirmInterview(iv.id)}
+                            className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600">
+                            Confirm
+                          </button>
+                        ) : (
+                          <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium capitalize text-gray-600">{iv.status.replace("_", " ")}</span>
+                        )}
+                        <a href={`/api/interviews/${encodeURIComponent(iv.id)}`}
+                          className="text-xs font-medium text-gray-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded">
+                          Add to calendar
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </section>
+        )}
 
         {loading && (
           <div className="space-y-4" role="status" aria-live="polite" aria-label="Loading your applications">

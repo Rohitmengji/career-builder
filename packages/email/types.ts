@@ -75,6 +75,23 @@ export interface StatusUpdateData {
   siteUrl: string;
 }
 
+export interface InterviewInvitationData {
+  candidateFirstName: string;
+  candidateEmail: string;
+  jobTitle: string;
+  companyName: string;
+  siteUrl: string;
+  /** Pre-formatted local date/time incl. timezone, e.g. "Mon, Jun 30 · 2:30 PM PDT". */
+  whenText: string;
+  /** "phone" | "video" | "onsite" — human label resolved by the template. */
+  interviewType: string;
+  interviewerName?: string;
+  location?: string;
+  meetingUrl?: string;
+  /** false = cancellation email instead of an invitation. */
+  cancelled?: boolean;
+}
+
 /* ================================================================== */
 /*  Provider interface                                                 */
 /* ================================================================== */
