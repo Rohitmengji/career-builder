@@ -13,5 +13,7 @@
       ]
     }
   ],
-  "crons": []
+  "crons": [
+    { "path": "/api/cron/health", "schedule": "0 0 * * *" }
+  ]
 }
