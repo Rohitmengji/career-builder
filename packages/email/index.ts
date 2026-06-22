@@ -12,6 +12,8 @@ import {
   applicationNotification,
   statusUpdate,
   interviewInvitation,
+  offerExtended,
+  offerDecision,
 } from "./templates";
 import type {
   EmailConfig,
@@ -21,6 +23,8 @@ import type {
   ApplicationNotificationData,
   StatusUpdateData,
   InterviewInvitationData,
+  OfferExtendedData,
+  OfferDecisionData,
   SendResult,
   TenantEmailSettings,
 } from "./types";
@@ -164,6 +168,47 @@ export const emailService = {
       html,
       text,
       tags: [{ name: "type", value: data.cancelled ? "interview-cancelled" : "interview-invite" }],
+    });
+  },
+
+  /** Offer extended to a candidate (accept/decline from their applications page). Per-tenant sender. */
+  async sendOfferExtended(
+    data: OfferExtendedData,
+    sender?: TenantEmailSettings,
+  ): Promise<SendResult> {
+    const { from } = resolveSender(sender);
+    const { subject, html, text } = offerExtended(data);
+    return getProvider().send({
+      from,
+      to: { email: data.candidateEmail, name: data.candidateFirstName },
+      subject,
+      html,
+      text,
+      tags: [{ name: "type", value: "offer-extended" }],
+    });
+  },
+
+  /** Internal notification to the hiring team when a candidate accepts/declines. */
+  async sendOfferDecision(
+    data: OfferDecisionData,
+    sender?: TenantEmailSettings,
+  ): Promise<SendResult> {
+    const { from, adminEmail } = resolveSender(sender);
+    if (!adminEmail) {
+      console.log("[email] No admin email configured — skipping offer-decision notification");
+      return { success: true, messageId: "no-admin-email" };
+    }
+    const { subject, html, text } = offerDecision(data);
+    return getProvider().send({
+      to: { email: adminEmail },
+      from,
+      subject,
+      html,
+      text,
+      tags: [
+        { name: "type", value: "offer-decision" },
+        { name: "decision", value: data.decision },
+      ],
     });
   },
 

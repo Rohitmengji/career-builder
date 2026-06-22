@@ -13,6 +13,8 @@ import type {
   ApplicationNotificationData,
   StatusUpdateData,
   InterviewInvitationData,
+  OfferExtendedData,
+  OfferDecisionData,
 } from "./types";
 
 /* ================================================================== */
@@ -274,5 +276,49 @@ ${btn("View & confirm", data.siteUrl + "/applications")}`,
     data.companyName,
   );
   const text = `You're invited to interview\n\nHi ${data.candidateFirstName},\n\nThe team would like to interview you for ${data.jobTitle}.\n\nWhen: ${data.whenText}\nFormat: ${typeLabel}${data.interviewerName ? `\nWith: ${data.interviewerName}` : ""}${data.location ? `\nLocation: ${data.location}` : ""}${data.meetingUrl ? `\nMeeting link: ${data.meetingUrl}` : ""}\n\nView & confirm: ${data.siteUrl}/applications`;
+  return { subject, html, text };
+}
+
+/** Offer extended to a candidate — links to the (authenticated) applications page to accept/decline. */
+export function offerExtended(data: OfferExtendedData) {
+  const subject = oneLine(`Your offer — ${data.jobTitle} at ${data.companyName}`);
+  const detail = (label: string, value: string) =>
+    `<p style="margin:8px 0 0;font-size:13px;color:#6b7280;">${escapeHtml(label)}</p><p style="margin:2px 0 0;font-size:14px;font-weight:600;color:#111827;">${escapeHtml(value)}</p>`;
+  const html = layout(
+    `<h2 style="margin:0 0 8px;font-size:20px;color:#111827;">You've received an offer 🎉</h2>
+<p style="margin:0 0 16px;font-size:15px;color:#4b5563;line-height:1.6;">Hi ${escapeHtml(data.candidateFirstName)},</p>
+<p style="margin:0 0 16px;font-size:15px;color:#4b5563;line-height:1.6;">
+  We're delighted to offer you the <strong>${escapeHtml(data.jobTitle)}</strong> role at ${escapeHtml(data.companyName)}.
+</p>
+<div style="background:#f9fafb;border-radius:8px;padding:16px;margin:16px 0;">
+  ${detail("Compensation", data.compText)}
+  ${data.startText ? detail("Start date", data.startText) : ""}
+  ${data.expiresText ? detail("Respond by", data.expiresText) : ""}
+  ${data.terms ? detail("Additional terms", data.terms) : ""}
+</div>
+<p style="margin:0 0 16px;font-size:14px;color:#4b5563;line-height:1.6;">Review the full details and accept or decline from your applications page.</p>
+${btn("View your offer", data.siteUrl + "/applications")}`,
+    data.companyName,
+  );
+  const text = `You've received an offer\n\nHi ${data.candidateFirstName},\n\nWe're delighted to offer you the ${data.jobTitle} role at ${data.companyName}.\n\nCompensation: ${data.compText}${data.startText ? `\nStart date: ${data.startText}` : ""}${data.expiresText ? `\nRespond by: ${data.expiresText}` : ""}${data.terms ? `\nAdditional terms: ${data.terms}` : ""}\n\nReview & respond: ${data.siteUrl}/applications`;
+  return { subject, html, text };
+}
+
+/** Internal notification to the hiring team when a candidate accepts/declines an offer. */
+export function offerDecision(data: OfferDecisionData) {
+  const accepted = data.decision === "accepted";
+  const verb = accepted ? "accepted" : "declined";
+  const name = `${data.candidateFirstName} ${data.candidateLastName}`;
+  const subject = oneLine(`Offer ${verb} — ${name} (${data.jobTitle})`);
+  const html = layout(
+    `<h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Offer ${escapeHtml(verb)}</h2>
+<p style="margin:0 0 16px;font-size:15px;color:#4b5563;line-height:1.6;">
+  <strong>${escapeHtml(name)}</strong> has ${escapeHtml(verb)} the offer for <strong>${escapeHtml(data.jobTitle)}</strong>.
+</p>
+${data.note ? `<div style="background:#f9fafb;border-radius:8px;padding:16px;margin:16px 0;"><p style="margin:0;font-size:13px;color:#6b7280;">Candidate note</p><p style="margin:4px 0 0;font-size:14px;color:#111827;">${escapeHtml(data.note)}</p></div>` : ""}
+${btn("Open application", data.adminUrl + "/applications")}`,
+    data.companyName,
+  );
+  const text = `Offer ${verb}\n\n${name} has ${verb} the offer for ${data.jobTitle}.${data.note ? `\n\nCandidate note: ${data.note}` : ""}\n\nOpen: ${data.adminUrl}/applications`;
   return { subject, html, text };
 }

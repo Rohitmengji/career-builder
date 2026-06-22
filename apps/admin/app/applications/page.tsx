@@ -32,6 +32,7 @@ import CommentsDialog from "./CommentsDialog";
 import ResumeDialog from "./ResumeDialog";
 import InterviewsDialog from "./InterviewsDialog";
 import ScorecardsDialog from "./ScorecardsDialog";
+import OffersDialog from "./OffersDialog";
 
 /* ================================================================== */
 /*  Types                                                              */
@@ -130,6 +131,7 @@ export default function AdminApplicationsPage() {
   const [resumeFor, setResumeFor] = useState<Application | null>(null);
   const [interviewsFor, setInterviewsFor] = useState<Application | null>(null);
   const [scorecardsFor, setScorecardsFor] = useState<Application | null>(null);
+  const [offersFor, setOffersFor] = useState<Application | null>(null);
   const [search, setSearch] = useState("");
   const [appliedQuery, setAppliedQuery] = useState("");
   const [blindHiring, setBlindHiring] = useState(false);
@@ -603,6 +605,15 @@ export default function AdminApplicationsPage() {
                           </button>
                           <button
                             type="button"
+                            onClick={() => setOffersFor(app)}
+                            aria-label={`Offers for ${app.firstName} ${app.lastName}`}
+                            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                          >
+                            <OfferIcon className="h-4 w-4" />
+                            Offers
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => setCommentsFor(app)}
                             aria-label={`Open comments for ${app.firstName} ${app.lastName}`}
                             className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
@@ -671,6 +682,10 @@ export default function AdminApplicationsPage() {
                       <Button variant="secondary" size="sm" onClick={() => setScorecardsFor(app)} aria-label={`Scorecards for ${app.firstName} ${app.lastName}`}>
                         <ClipboardIcon className="h-4 w-4" />
                         Scorecards
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => setOffersFor(app)} aria-label={`Offers for ${app.firstName} ${app.lastName}`}>
+                        <OfferIcon className="h-4 w-4" />
+                        Offers
                       </Button>
                       <Button variant="secondary" size="sm" onClick={() => setCommentsFor(app)} aria-label={`Open comments for ${app.firstName} ${app.lastName}`}>
                         <ChatIcon className="h-4 w-4" />
@@ -750,6 +765,15 @@ export default function AdminApplicationsPage() {
           onClose={() => setScorecardsFor(null)}
         />
       )}
+
+      {offersFor && (
+        <OffersDialog
+          applicationId={offersFor.id}
+          candidateName={`${offersFor.firstName} ${offersFor.lastName}`}
+          csrf={csrf}
+          onClose={() => setOffersFor(null)}
+        />
+      )}
     </main>
   );
 }
@@ -827,6 +851,14 @@ function ClipboardIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 3.75h6M9 6.75h6M9 2.25h6a.75.75 0 01.75.75v.75a1.5 1.5 0 01-1.5 1.5H9.75a1.5 1.5 0 01-1.5-1.5V3a.75.75 0 01.75-.75z M6.75 4.5H6A1.5 1.5 0 004.5 6v13.5A1.5 1.5 0 006 21h12a1.5 1.5 0 001.5-1.5V6A1.5 1.5 0 0018 4.5h-.75" />
+    </svg>
+  );
+}
+
+function OfferIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
     </svg>
   );
 }

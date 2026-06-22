@@ -105,6 +105,16 @@ const FLAG_DEFINITIONS = {
       "a 'needs more feedback' flag. Internal-only (never candidate-visible); " +
       "respects Blind Hiring. Off by default.",
   },
+  offer_management: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Offer management (ADR-0008): a first-class Offer entity with a full approval " +
+      "workflow (draft → submit → approve [hiring_manager+] → send), candidate " +
+      "accept/decline on the web app, lazy expiry, and timeline events. Recruiter " +
+      "offer lists respect Blind Hiring; candidates see only their own offer. " +
+      "Off by default.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",

@@ -35,3 +35,5 @@ export { interviewRepo } from "./interviewRepo";
 export type { CreateInterviewInput } from "./interviewRepo";
 export { scorecardRepo } from "./scorecardRepo";
 export type { SubmitScorecardInput, ScorecardRatingInput } from "./scorecardRepo";
+export { offerRepo } from "./offerRepo";
+export type { CreateOfferInput, OfferUpdateData } from "./offerRepo";

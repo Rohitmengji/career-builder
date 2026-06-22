@@ -199,6 +199,38 @@ export const submitScorecardSchema = z.object({
     .default([]),
 }).strict();
 
+/* ================================================================== */
+/*  Offer schemas (ADR-0008)                                           */
+/* ================================================================== */
+
+export const createOfferSchema = z.object({
+  applicationId: cuid,
+  salaryAmount: z.number().int().positive().max(100_000_000).optional(),
+  salaryCurrency: z.string().regex(/^[A-Z]{3}$/).default("USD"),
+  salaryPeriod: z.enum(["yearly", "monthly", "hourly"]).default("yearly"),
+  startDate: z.string().datetime().optional(),
+  expiresAt: z.string().datetime().optional(),
+  terms: z.string().max(10_000).transform((v) => v.trim()).optional(),
+  notes: z.string().max(5000).transform((v) => v.trim()).optional(),
+}).strict();
+
+/** Admin offer lifecycle action (recruiter+, with approve/rescind/request_changes gated stricter in the route). */
+export const updateOfferSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("submit_for_approval"), id: cuid }).strict(),
+  z.object({ action: z.literal("approve"), id: cuid }).strict(),
+  z.object({ action: z.literal("request_changes"), id: cuid }).strict(),
+  z.object({ action: z.literal("send"), id: cuid }).strict(),
+  z.object({ action: z.literal("accept"), id: cuid }).strict(),
+  z.object({ action: z.literal("decline"), id: cuid }).strict(),
+  z.object({ action: z.literal("rescind"), id: cuid }).strict(),
+]);
+
+/** Candidate-side accept/decline on their own offer. */
+export const offerDecisionSchema = z.object({
+  action: z.enum(["accept", "decline"]),
+  note: z.string().max(1000).transform((v) => v.trim()).optional(),
+}).strict();
+
 /** Bulk action over a bounded set of applications (status change / reject / export). */
 export const bulkApplicationActionSchema = z.object({
   ids: z.array(cuid).min(1).max(100),

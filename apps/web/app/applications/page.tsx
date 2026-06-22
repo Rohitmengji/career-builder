@@ -54,6 +54,7 @@ const EVENT_LABELS: Record<string, string> = {
   offer_extended: "Offer extended",
   offer_accepted: "Offer accepted",
   offer_declined: "Offer declined",
+  offer_rescinded: "Offer withdrawn",
 };
 
 function timelineLabel(ev: TimelineEvent): string {
@@ -95,10 +96,37 @@ interface CandidateInterview {
 
 const INTERVIEW_TYPE_LABEL: Record<string, string> = { phone: "Phone", video: "Video", onsite: "On-site" };
 
+interface CandidateOffer {
+  id: string;
+  status: string; // sent | accepted | declined | expired | rescinded
+  salaryAmount: number | null;
+  salaryCurrency: string;
+  salaryPeriod: string;
+  startDate: string | null;
+  expiresAt: string | null;
+  terms: string | null;
+  jobTitle: string | null;
+}
+
+const OFFER_PERIOD_SUFFIX: Record<string, string> = { yearly: "/yr", monthly: "/mo", hourly: "/hr" };
+
+function formatOfferComp(o: CandidateOffer): string {
+  if (o.salaryAmount == null) return "";
+  let money: string;
+  try {
+    money = new Intl.NumberFormat("en-US", { style: "currency", currency: o.salaryCurrency, maximumFractionDigits: 0 }).format(o.salaryAmount);
+  } catch {
+    money = `${o.salaryAmount.toLocaleString()} ${o.salaryCurrency}`;
+  }
+  return `${money} ${OFFER_PERIOD_SUFFIX[o.salaryPeriod] || ""}`.trim();
+}
+
 export default function MyApplicationsPage() {
   const router = useRouter();
   const [applications, setApplications] = useState<ApplicationEntry[]>([]);
   const [interviews, setInterviews] = useState<CandidateInterview[]>([]);
+  const [offers, setOffers] = useState<CandidateOffer[]>([]);
+  const [offerBusy, setOfferBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -114,13 +142,20 @@ export default function MyApplicationsPage() {
       if (!res.ok) throw new Error("Failed to load");
       const data = await res.json();
       setApplications(data.applications || []);
-      // Interviews are flag-gated server-side; a 404/!ok just means "none to show".
+      // Interviews + offers are flag-gated server-side; a 404/!ok just means "none to show".
       try {
         const ivRes = await fetch("/api/interviews");
         if (ivRes.ok) setInterviews((await ivRes.json()).interviews || []);
         else setInterviews([]);
       } catch {
         setInterviews([]);
+      }
+      try {
+        const ofRes = await fetch("/api/offers");
+        if (ofRes.ok) setOffers((await ofRes.json()).offers || []);
+        else setOffers([]);
+      } catch {
+        setOffers([]);
       }
     } catch {
       setError("Unable to load your applications. Please try again in a moment.");
@@ -138,6 +173,28 @@ export default function MyApplicationsPage() {
     }
   }, []);
 
+  const decideOffer = useCallback(async (id: string, action: "accept" | "decline") => {
+    if (offerBusy) return;
+    if (action === "decline" && !confirm("Decline this offer? This can't be undone.")) return;
+    setOfferBusy(id);
+    try {
+      const res = await fetch(`/api/offers/${encodeURIComponent(id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json().catch(() => ({}));
+      // The server returns the authoritative status (handles races/expiry).
+      const next = res.ok ? (action === "accept" ? "accepted" : "declined") : data.status;
+      if (next) setOffers((prev) => prev.map((o) => (o.id === id ? { ...o, status: next } : o)));
+      if (res.ok) void load();
+    } catch {
+      /* keep as-is */
+    } finally {
+      setOfferBusy(null);
+    }
+  }, [offerBusy, load]);
+
   useEffect(() => {
     load();
   }, [load]);
@@ -154,6 +211,54 @@ export default function MyApplicationsPage() {
             Track the status of your job applications.
           </p>
         </div>
+
+        {!loading && offers.filter((o) => o.status !== "rescinded").length > 0 && (
+          <section className="mb-8" aria-label="Your offers">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Offers</h2>
+            <div className="space-y-3">
+              {offers
+                .filter((o) => o.status !== "rescinded")
+                .map((o) => {
+                  const comp = formatOfferComp(o);
+                  return (
+                    <div key={o.id} className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900">{o.jobTitle || "Offer"}</p>
+                          {comp && <p className="mt-0.5 text-sm text-gray-800">{comp}</p>}
+                          <p className="mt-0.5 text-xs text-gray-500">
+                            {o.startDate ? `Starts ${formatDate(o.startDate)}` : "Start date TBD"}
+                            {o.status === "sent" && o.expiresAt ? ` · Respond by ${formatDate(o.expiresAt)}` : ""}
+                          </p>
+                          {o.terms && <p className="mt-1.5 whitespace-pre-wrap text-xs text-gray-600">{o.terms}</p>}
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1.5">
+                          {o.status === "sent" ? (
+                            <>
+                              <button type="button" disabled={offerBusy === o.id} onClick={() => decideOffer(o.id, "accept")}
+                                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-600">
+                                Accept offer
+                              </button>
+                              <button type="button" disabled={offerBusy === o.id} onClick={() => decideOffer(o.id, "decline")}
+                                className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-red-600 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+                                Decline
+                              </button>
+                            </>
+                          ) : o.status === "accepted" ? (
+                            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Accepted ✓</span>
+                          ) : o.status === "declined" ? (
+                            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">Declined</span>
+                          ) : (
+                            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500">Expired</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </section>
+        )}
 
         {!loading && interviews.filter((iv) => iv.status !== "cancelled").length > 0 && (
           <section className="mb-8" aria-label="Your interviews">

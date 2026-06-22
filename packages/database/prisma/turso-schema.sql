@@ -199,6 +199,33 @@ CREATE TABLE "ScorecardRating" (
 );
 
 -- CreateTable
+CREATE TABLE "Offer" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "applicationId" TEXT NOT NULL,
+    "jobId" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'draft',
+    "salaryAmount" INTEGER,
+    "salaryCurrency" TEXT NOT NULL DEFAULT 'USD',
+    "salaryPeriod" TEXT NOT NULL DEFAULT 'yearly',
+    "startDate" DATETIME,
+    "expiresAt" DATETIME,
+    "terms" TEXT,
+    "notes" TEXT,
+    "createdById" TEXT NOT NULL,
+    "approverId" TEXT,
+    "approvedAt" DATETIME,
+    "sentAt" DATETIME,
+    "respondedAt" DATETIME,
+    "decisionNote" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Offer_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "Application" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Offer_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Offer_approverId_fkey" FOREIGN KEY ("approverId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "Page" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "slug" TEXT NOT NULL,
@@ -391,6 +418,15 @@ CREATE UNIQUE INDEX "Scorecard_tenantId_applicationId_interviewerId_key" ON "Sco
 
 -- CreateIndex
 CREATE INDEX "ScorecardRating_scorecardId_idx" ON "ScorecardRating"("scorecardId");
+
+-- CreateIndex
+CREATE INDEX "Offer_tenantId_applicationId_idx" ON "Offer"("tenantId", "applicationId");
+
+-- CreateIndex
+CREATE INDEX "Offer_tenantId_status_idx" ON "Offer"("tenantId", "status");
+
+-- CreateIndex
+CREATE INDEX "Offer_approverId_idx" ON "Offer"("approverId");
 
 -- CreateIndex
 CREATE INDEX "Page_tenantId_idx" ON "Page"("tenantId");
