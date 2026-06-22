@@ -92,6 +92,35 @@ export interface InterviewInvitationData {
   cancelled?: boolean;
 }
 
+export interface OfferExtendedData {
+  candidateFirstName: string;
+  candidateEmail: string;
+  jobTitle: string;
+  companyName: string;
+  siteUrl: string;
+  /** Pre-formatted compensation, e.g. "$145,000 / yr". */
+  compText: string;
+  /** Pre-formatted start date, e.g. "Aug 1, 2026". */
+  startText?: string;
+  /** Pre-formatted expiry, e.g. "Respond by Jul 1, 2026". */
+  expiresText?: string;
+  /** Candidate-visible additional terms. */
+  terms?: string;
+}
+
+export interface OfferDecisionData {
+  decision: "accepted" | "declined";
+  candidateFirstName: string;
+  candidateLastName: string;
+  jobTitle: string;
+  companyName: string;
+  /** Admin app base URL; the template links to the application. */
+  adminUrl: string;
+  applicationId: string;
+  /** The candidate's optional note (internal-facing). */
+  note?: string;
+}
+
 /* ================================================================== */
 /*  Provider interface                                                 */
 /* ================================================================== */

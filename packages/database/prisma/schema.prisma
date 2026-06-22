@@ -103,6 +103,8 @@ model User {
   comments  ApplicationComment[]
   interviews Interview[]
   scorecards Scorecard[]
+  offersCreated  Offer[] @relation("OfferCreatedBy")
+  offersApproved Offer[] @relation("OfferApprover")
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -190,6 +192,7 @@ model Application {
   events   ApplicationEvent[]
   interviews Interview[]
   scorecards Scorecard[]
+  offers   Offer[]
 
   @@index([jobId])
   @@index([tenantId])
@@ -295,6 +298,48 @@ model ScorecardRating {
   comment     String?
 
   @@index([scorecardId])
+}
+
+// --- OFFER (ADR-0008) ---
+
+model Offer {
+  id             String      @id @default(cuid())
+  tenantId       String
+  applicationId  String
+  application    Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  jobId          String?
+
+  status         String      @default("draft")
+  // draft | pending_approval | approved | sent | accepted | declined | expired | rescinded
+
+  // Compensation (mirrors Job's money convention)
+  salaryAmount   Int?
+  salaryCurrency String      @default("USD")
+  salaryPeriod   String      @default("yearly") // yearly | monthly | hourly
+
+  startDate      DateTime?                       // proposed start (stored UTC)
+  expiresAt      DateTime?                       // offer deadline (UTC); null = no expiry
+  terms          String?                         // candidate-visible additional terms
+  notes          String?                         // internal recruiter notes — NEVER candidate-visible
+
+  // People
+  createdById    String
+  createdBy      User        @relation("OfferCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  approverId     String?
+  approver       User?       @relation("OfferApprover", fields: [approverId], references: [id], onDelete: SetNull)
+
+  // Lifecycle stamps
+  approvedAt     DateTime?
+  sentAt         DateTime?
+  respondedAt    DateTime?                       // accepted OR declined time
+  decisionNote   String?                         // candidate-authored note on accept/decline
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([tenantId, applicationId])
+  @@index([tenantId, status])
+  @@index([approverId])
 }
 
 // --- PAGE ---

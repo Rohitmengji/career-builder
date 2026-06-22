@@ -18,6 +18,7 @@
     "./responsiveness": "./responsiveness.ts",
     "./screening": "./screening.ts",
     "./scorecard": "./scorecard.ts",
+    "./offer": "./offer.ts",
     "./ics": "./ics.ts",
     "./storage": "./storage.ts",
     "./kv": "./kv.ts",
