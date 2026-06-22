@@ -160,10 +160,71 @@ export default function ProfilePage() {
             </form>
 
             <WhoViewedMe />
+            <PrivacyAndData />
           </>
         )}
       </main>
     </div>
+  );
+}
+
+/* ================================================================== */
+/*  Privacy & your data — GDPR §15 export + §17 deletion (ADR-0011)     */
+/* ================================================================== */
+
+function PrivacyAndData() {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function onDelete() {
+    if (busy) return;
+    if (!window.confirm("Permanently delete your account and personal data? This cannot be undone.")) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/profile/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 404) { setMsg("Account deletion isn't available right now."); return; }
+      if (!res.ok) { setMsg(data.error || "We couldn't process your request."); return; }
+      if (data.deferred) { setMsg(data.message || "Your request is on hold and will be completed soon."); return; }
+      // Erased — log out and return home.
+      await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+      window.location.href = "/";
+    } catch {
+      setMsg("Network error. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section aria-labelledby="privacy-heading" className="mt-12 border-t border-gray-200 pt-8">
+      <h2 id="privacy-heading" className="text-xl font-semibold tracking-tight text-gray-900">Privacy &amp; your data</h2>
+      <p className="mt-1 text-sm text-gray-600">You own your data. Download a copy anytime, or delete your account.</p>
+
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => { window.location.href = "/api/profile/export"; }}
+          className="inline-flex items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+        >
+          Download my data (JSON)
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={busy}
+          className="inline-flex items-center justify-center rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+        >
+          {busy ? "Working…" : "Delete my account"}
+        </button>
+      </div>
+      {msg && <p role="status" className="mt-3 text-sm text-gray-700">{msg}</p>}
+    </section>
   );
 }
 

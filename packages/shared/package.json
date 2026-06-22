@@ -21,6 +21,7 @@
     "./offer": "./offer.ts",
     "./pipeline": "./pipeline.ts",
     "./adverse-action": "./adverse-action.ts",
+    "./data-export": "./data-export.ts",
     "./ics": "./ics.ts",
     "./storage": "./storage.ts",
     "./kv": "./kv.ts",

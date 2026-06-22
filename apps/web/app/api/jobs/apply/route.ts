@@ -21,6 +21,8 @@ import { validateUrl } from "@career-builder/security/url";
 import { getRateLimiter, getClientIp } from "@career-builder/security/rate-limit";
 import { emailService } from "@career-builder/email";
 import { getKV } from "@career-builder/shared/kv";
+import { isEnabled } from "@career-builder/shared/feature-flags";
+import { consentRepo } from "@career-builder/database";
 import { getWebTenantId, isMultiTenantWeb, getWebTenantEmailSettings } from "@/lib/tenant-runtime";
 import type { ApplyResponse } from "@/lib/jobs/types";
 
@@ -159,6 +161,7 @@ export async function POST(request: Request) {
 
     // Validate resume file using security package — magic bytes + extension + size
     let savedResumeUrl = parsed.data.resumeUrl?.trim() || "";
+    let savedResumePath = ""; // storage key — persisted so a §17 erasure can delete the blob
     let resumeText: string | null = null;
     if (hasFile && resumeFile) {
       const buffer = Buffer.from(await resumeFile.arrayBuffer());
@@ -191,6 +194,7 @@ export async function POST(request: Request) {
       });
       const stored = await storage.put(filename, buffer, resumeFile.type || "application/octet-stream");
       savedResumeUrl = stored.url;
+      savedResumePath = stored.key;
 
       // Best-effort resume text extraction (PDF / plain text). Fail-safe: returns
       // null and NEVER blocks the application. Runs on the validated buffer.
@@ -227,6 +231,7 @@ export async function POST(request: Request) {
       email,
       phone: sanitizeString(parsed.data.phone || "", 30),
       resumeUrl: savedResumeUrl,
+      ...(savedResumePath ? { resumePath: savedResumePath } : {}),
       ...(resumeText ? { resumeText } : {}),
       ...(screeningAnswers ? { screeningAnswers } : {}),
       coverLetter: parsed.data.coverLetter ? stripHtml(parsed.data.coverLetter) : "",
@@ -250,6 +255,17 @@ export async function POST(request: Request) {
       } catch {
         /* best-effort */
       }
+    }
+
+    // Consent ledger (ADR-0011): applying records privacy-policy + data-processing
+    // consent (versioned, append-only). Best-effort; flag-gated.
+    if (isEnabled("consent_capture")) {
+      const policyVersion = process.env.NEXT_PUBLIC_PRIVACY_POLICY_VERSION || "1.0";
+      Promise.allSettled(
+        (["privacy_policy", "data_processing"] as const).map((type) =>
+          consentRepo.record({ tenantId: resolvedTenantId, subjectEmail: email, type, policyVersion, granted: true, source: "apply", ipAddress: ip }),
+        ),
+      ).catch(() => {});
     }
 
     // ── Send email notifications (fire-and-forget — don't block response) ──

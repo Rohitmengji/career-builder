@@ -125,6 +125,21 @@ const FLAG_DEFINITIONS = {
       "dropdown in the candidate header and the admin dashboard. Recipient-scoped " +
       "and tenant-isolated. Off by default.",
   },
+  data_export: {
+    default: false,
+    envOverrides: { development: true },
+    description: "GDPR §15 data export (ADR-0011): a candidate can download all their own data (profile, applications, interviews, offers, consents) as JSON. Whitelisted — never internal recruiter data or EEO. Off by default.",
+  },
+  data_deletion: {
+    default: false,
+    envOverrides: { development: true },
+    description: "GDPR §17 erasure (ADR-0011): a candidate can delete their account. Anonymize-in-place — PII is destroyed but non-identifying decision/audit records are retained; deferred under legal hold. Off by default.",
+  },
+  consent_capture: {
+    default: false,
+    envOverrides: { development: true },
+    description: "Consent ledger (ADR-0011): records privacy-policy + data-processing consent (versioned, append-only) at apply time, and lets candidates withdraw marketing consent. Off by default.",
+  },
   adverse_action_disclosure: {
     default: false,
     envOverrides: { development: true },
