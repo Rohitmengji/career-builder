@@ -22,6 +22,7 @@
     "./pipeline": "./pipeline.ts",
     "./adverse-action": "./adverse-action.ts",
     "./data-export": "./data-export.ts",
+    "./retention": "./retention.ts",
     "./ics": "./ics.ts",
     "./storage": "./storage.ts",
     "./kv": "./kv.ts",

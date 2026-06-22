@@ -132,4 +132,62 @@ export const dataRightsRepo = {
       throw e;
     }
   },
+
+  /**
+   * Retention sweep for ONE tenant (ADR-0011, A3). Anonymizes TERMINAL applications
+   * older than the per-status cutoffs (skipping held / already-anonymized), reusing
+   * the same anonymizer as §17 erasure but PER APPLICATION (each candidate's own
+   * pseudonym). Each row is re-guarded in the write (legalHold:false, anonymizedAt:null)
+   * so a concurrently-placed hold can't be bypassed. Returns the count + the résumé
+   * keys of only the rows ACTUALLY anonymized (caller deletes those blobs).
+   * `before` cutoffs of null disable that status's purge.
+   */
+  async retentionSweepForTenant(
+    tenantId: string,
+    opts: { rejectedBefore: Date | null; hiredBefore: Date | null; cap?: number },
+    now: Date,
+  ): Promise<{ anonymized: number; resumeKeys: string[] }> {
+    const conds: Array<Record<string, unknown>> = [];
+    if (opts.rejectedBefore) conds.push({ status: "rejected", updatedAt: { lt: opts.rejectedBefore } });
+    if (opts.hiredBefore) conds.push({ status: "hired", updatedAt: { lt: opts.hiredBefore } });
+    if (conds.length === 0) return { anonymized: 0, resumeKeys: [] };
+
+    const due = await prisma.application.findMany({
+      where: { tenantId, anonymizedAt: null, legalHold: false, OR: conds },
+      select: { id: true, email: true, resumePath: true, status: true },
+      take: opts.cap ?? 200,
+    });
+    if (due.length === 0) return { anonymized: 0, resumeKeys: [] };
+
+    const appIds = due.map((d) => d.id);
+    const ops = [
+      // Per-row anonymize, re-guarded atomically. Re-checks legalHold + anonymizedAt
+      // AND the original status + age cutoff — so an app reopened (un-rejected) or
+      // touched between the read and the write comes back count=0 and is skipped
+      // (its résumé blob preserved). Closes the read→commit TOCTOU window.
+      ...due.map((d) => {
+        const before = d.status === "rejected" ? opts.rejectedBefore : opts.hiredBefore;
+        return prisma.application.updateMany({
+          where: { id: d.id, tenantId, legalHold: false, anonymizedAt: null, status: d.status, updatedAt: { lt: before ?? now } },
+          data: anonymizedApplicationData(d.email, now),
+        });
+      }),
+      prisma.adverseAction.updateMany({ where: { tenantId, applicationId: { in: appIds } }, data: { candidateMessage: null, freeText: null } }),
+      prisma.offer.updateMany({ where: { tenantId, applicationId: { in: appIds } }, data: { decisionNote: null } }),
+      prisma.auditLog.create({ data: { tenantId, action: "retention_purge", entity: "application", details: JSON.stringify({ candidates: due.length }) } }),
+    ];
+    const results = await prisma.$transaction(ops);
+
+    // Only the rows whose guarded update actually applied (count === 1) are anonymized.
+    let anonymized = 0;
+    const resumeKeys: string[] = [];
+    due.forEach((d, i) => {
+      const count = (results[i] as { count?: number } | undefined)?.count ?? 0;
+      if (count === 1) {
+        anonymized += 1;
+        if (d.resumePath) resumeKeys.push(d.resumePath);
+      }
+    });
+    return { anonymized, resumeKeys };
+  },
 };
