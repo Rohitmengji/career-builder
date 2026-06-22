@@ -118,8 +118,10 @@ CREATE TABLE "Application" (
     "externalId" TEXT,
     "jobId" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
+    "stageId" TEXT,
     CONSTRAINT "Application_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "Job" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "Application_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "Application_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Application_stageId_fkey" FOREIGN KEY ("stageId") REFERENCES "PipelineStage" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -238,6 +240,24 @@ CREATE TABLE "Notification" (
     "applicationId" TEXT,
     "readAt" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
+CREATE TABLE "PipelineStage" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "jobId" TEXT,
+    "key" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "kind" TEXT NOT NULL,
+    "order" INTEGER NOT NULL DEFAULT 0,
+    "color" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "isTerminal" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "PipelineStage_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "PipelineStage_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "Job" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -399,6 +419,9 @@ CREATE INDEX "Application_tenantId_idx" ON "Application"("tenantId");
 CREATE INDEX "Application_tenantId_status_idx" ON "Application"("tenantId", "status");
 
 -- CreateIndex
+CREATE INDEX "Application_tenantId_stageId_idx" ON "Application"("tenantId", "stageId");
+
+-- CreateIndex
 CREATE INDEX "Application_email_tenantId_idx" ON "Application"("email", "tenantId");
 
 -- CreateIndex
@@ -448,6 +471,15 @@ CREATE INDEX "Notification_tenantId_recipientType_recipientId_readAt_idx" ON "No
 
 -- CreateIndex
 CREATE INDEX "Notification_tenantId_recipientType_recipientId_createdAt_idx" ON "Notification"("tenantId", "recipientType", "recipientId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "PipelineStage_tenantId_idx" ON "PipelineStage"("tenantId");
+
+-- CreateIndex
+CREATE INDEX "PipelineStage_tenantId_jobId_order_idx" ON "PipelineStage"("tenantId", "jobId", "order");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PipelineStage_tenantId_jobId_key_key" ON "PipelineStage"("tenantId", "jobId", "key");
 
 -- CreateIndex
 CREATE INDEX "Page_tenantId_idx" ON "Page"("tenantId");
