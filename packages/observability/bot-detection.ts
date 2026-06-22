@@ -96,6 +96,24 @@ const HEADLESS_BROWSERS = [
   /playwright/i,
 ];
 
+/**
+ * Loopback IPs are the local machine — never a remote attacker. A developer's
+ * browser hitting localhost appears as ::1 / 127.0.0.1; if it ever scored as a
+ * bot (e.g. a stray header-less request shared its IP) the in-memory blocklist
+ * would lock the ENTIRE local app out — every API would 403 and pages that
+ * fetch data would hang on their loading state. Behind a real proxy
+ * (Vercel/Cloudflare) the client IP is the public one and never loopback, so
+ * exempting loopback is safe in production too.
+ */
+export function isLoopbackIp(ip: string): boolean {
+  return (
+    ip === "::1" ||
+    ip === "::ffff:127.0.0.1" ||
+    ip === "localhost" ||
+    ip.startsWith("127.")
+  );
+}
+
 /* ================================================================== */
 /*  Request Pattern Tracker                                            */
 /* ================================================================== */
@@ -155,6 +173,12 @@ export function detectBot(
   config: BotDetectionConfig = {},
 ): BotDetectionResult {
   const cfg = { ...DEFAULT_CONFIG, ...config };
+
+  // Loopback is the local machine — never block it (would lock out local dev).
+  if (isLoopbackIp(clientIp)) {
+    return { score: 0, isBot: false, signals: ["loopback"], action: "allow" };
+  }
+
   let score = 0;
   const signals: string[] = [];
   let category: string | undefined;

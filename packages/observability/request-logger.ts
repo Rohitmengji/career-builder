@@ -21,7 +21,7 @@ import {
   type RequestContext,
   REQUEST_ID_HEADER,
 } from "./correlation";
-import { detectBot, isIpBlocked, blockIp } from "./bot-detection";
+import { detectBot, isIpBlocked, blockIp, isLoopbackIp } from "./bot-detection";
 import { anomalyDetector, ANOMALY_METRIC } from "./anomaly";
 
 const logger = getLogger("request");
@@ -138,8 +138,13 @@ export function withRequestLogging(
 
     const clientIp = getClientIp(req);
 
+    // Loopback (local dev) bypasses IP blocklist + bot detection entirely —
+    // the local machine is never a remote attacker, and blocking it would 403
+    // every API call from the developer's own browser.
+    const loopback = isLoopbackIp(clientIp);
+
     // ── IP blocklist check ───────────────────────────────────
-    const blockCheck = isIpBlocked(clientIp);
+    const blockCheck = loopback ? { blocked: false } : isIpBlocked(clientIp);
     if (blockCheck.blocked) {
       metrics.increment(METRIC.HTTP_REQUESTS_TOTAL, { method: req.method, path, status: "403" });
       logger.warn("blocked_ip_request", { ip: clientIp, reason: blockCheck.reason, route: path });
@@ -150,7 +155,7 @@ export function withRequestLogging(
     }
 
     // ── Bot detection ────────────────────────────────────────
-    if (config.enableBotDetection !== false) {
+    if (config.enableBotDetection !== false && !loopback) {
       const botResult = detectBot(req, clientIp);
       if (botResult.action === "block") {
         blockIp(clientIp, `Bot score: ${botResult.score} (${botResult.signals.join(", ")})`, 3_600_000, botResult.score);
