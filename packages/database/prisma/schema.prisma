@@ -180,6 +180,11 @@ model Application {
   rating      Int?
   notes       String?
   source      String?
+  // Data-rights (ADR-0011): set when this application's PII has been anonymized
+  // (GDPR §17 erasure / retention purge). legalHold exempts it from both.
+  anonymizedAt   DateTime?
+  legalHold      Boolean  @default(false)
+  legalHoldReason String?
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -368,6 +373,22 @@ model Notification {
 
   @@index([tenantId, recipientType, recipientId, readAt])
   @@index([tenantId, recipientType, recipientId, createdAt])
+}
+
+// --- CONSENT (ADR-0011) ---
+
+model Consent {
+  id            String   @id @default(cuid())
+  tenantId      String
+  subjectEmail  String   // lowercased — keyed by email+tenant (ADR-0001, no candidateId FK)
+  type          String   // privacy_policy | data_processing | marketing
+  policyVersion String   // the exact version consented to, e.g. "2026-06-01"
+  granted       Boolean  // append-only: withdrawal is a NEW granted=false row
+  source        String   // apply | register | profile_settings
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId, subjectEmail, type, createdAt])
 }
 
 // --- ADVERSE ACTION (ADR-0010) ---

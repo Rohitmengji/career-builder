@@ -21,6 +21,8 @@ interface RouteRateLimitConfig {
 const ROUTE_LIMITS: Record<string, RouteRateLimitConfig> = {
   "/api/auth": { maxRequests: 30, windowMs: 60_000, message: "Too many auth requests. Please wait." },
   "/api/jobs/apply": { maxRequests: 3, windowMs: 60_000, message: "Too many applications. Please slow down." },
+  "/api/profile/export": { maxRequests: 5, windowMs: 60_000, message: "Too many export requests. Please wait." },
+  "/api/profile/delete": { maxRequests: 5, windowMs: 60_000, message: "Too many requests. Please wait." },
   "/api/media": { maxRequests: 10, windowMs: 300_000, message: "Too many uploads. Please wait." },
   "/api/jobs": { maxRequests: 60, windowMs: 60_000 },
   "/api/pages": { maxRequests: 30, windowMs: 60_000 },

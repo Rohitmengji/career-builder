@@ -41,3 +41,7 @@ export { notificationRepo } from "./notificationRepo";
 export type { CreateNotificationInput, RecipientType } from "./notificationRepo";
 export { adverseActionRepo } from "./adverseActionRepo";
 export type { UpsertAdverseActionInput } from "./adverseActionRepo";
+export { consentRepo } from "./consentRepo";
+export type { RecordConsentInput } from "./consentRepo";
+export { dataRightsRepo, anonymizedApplicationData } from "./dataRightsRepo";
+export type { DeleteResult } from "./dataRightsRepo";

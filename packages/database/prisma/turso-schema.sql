@@ -113,6 +113,9 @@ CREATE TABLE "Application" (
     "rating" INTEGER,
     "notes" TEXT,
     "source" TEXT,
+    "anonymizedAt" DATETIME,
+    "legalHold" BOOLEAN NOT NULL DEFAULT false,
+    "legalHoldReason" TEXT,
     "submittedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     "externalId" TEXT,
@@ -239,6 +242,19 @@ CREATE TABLE "Notification" (
     "link" TEXT,
     "applicationId" TEXT,
     "readAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
+CREATE TABLE "Consent" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "subjectEmail" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "policyVersion" TEXT NOT NULL,
+    "granted" BOOLEAN NOT NULL,
+    "source" TEXT NOT NULL,
+    "ipAddress" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -490,6 +506,9 @@ CREATE INDEX "Notification_tenantId_recipientType_recipientId_readAt_idx" ON "No
 
 -- CreateIndex
 CREATE INDEX "Notification_tenantId_recipientType_recipientId_createdAt_idx" ON "Notification"("tenantId", "recipientType", "recipientId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "Consent_tenantId_subjectEmail_type_createdAt_idx" ON "Consent"("tenantId", "subjectEmail", "type", "createdAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "AdverseAction_applicationId_key" ON "AdverseAction"("applicationId");

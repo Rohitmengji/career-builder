@@ -129,6 +129,7 @@ export interface JobApplication {
   email: string;
   phone: string;
   resumeUrl: string;
+  resumePath?: string; // storage key (for deletion on GDPR erasure)
   resumeText?: string;
   screeningAnswers?: string;
   coverLetter: string;

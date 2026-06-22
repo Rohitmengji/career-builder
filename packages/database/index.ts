@@ -30,6 +30,9 @@ export {
   offerRepo,
   notificationRepo,
   adverseActionRepo,
+  consentRepo,
+  dataRightsRepo,
+  anonymizedApplicationData,
 } from "./repositories";
 export type {
   CreateDomainInput,
@@ -49,6 +52,8 @@ export type {
   CreateNotificationInput,
   RecipientType,
   UpsertAdverseActionInput,
+  RecordConsentInput,
+  DeleteResult,
 } from "./repositories";
 
 // Re-export all domain types and constants
