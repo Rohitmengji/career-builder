@@ -39,3 +39,5 @@ export { offerRepo } from "./offerRepo";
 export type { CreateOfferInput, OfferUpdateData } from "./offerRepo";
 export { notificationRepo } from "./notificationRepo";
 export type { CreateNotificationInput, RecipientType } from "./notificationRepo";
+export { adverseActionRepo } from "./adverseActionRepo";
+export type { UpsertAdverseActionInput } from "./adverseActionRepo";

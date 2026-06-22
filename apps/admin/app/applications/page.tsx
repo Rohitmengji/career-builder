@@ -33,6 +33,8 @@ import ResumeDialog from "./ResumeDialog";
 import InterviewsDialog from "./InterviewsDialog";
 import ScorecardsDialog from "./ScorecardsDialog";
 import OffersDialog from "./OffersDialog";
+import RejectionReasonDialog from "./RejectionReasonDialog";
+import { isEnabled } from "@career-builder/shared/feature-flags";
 
 /* ================================================================== */
 /*  Types                                                              */
@@ -132,6 +134,7 @@ export default function AdminApplicationsPage() {
   const [interviewsFor, setInterviewsFor] = useState<Application | null>(null);
   const [scorecardsFor, setScorecardsFor] = useState<Application | null>(null);
   const [offersFor, setOffersFor] = useState<Application | null>(null);
+  const [rejectingApp, setRejectingApp] = useState<Application | null>(null);
   const [search, setSearch] = useState("");
   const [appliedQuery, setAppliedQuery] = useState("");
   const [blindHiring, setBlindHiring] = useState(false);
@@ -172,6 +175,11 @@ export default function AdminApplicationsPage() {
   /* ─── Actions ──────────────────────────────────────────────── */
 
   async function handleStatusChange(appId: string, newStatus: string) {
+    // Rejecting opens a dialog to (optionally) capture a structured reason (ADR-0010).
+    if (newStatus === "rejected") {
+      const app = applications.find((a) => a.id === appId);
+      if (app) { setRejectingApp(app); return; }
+    }
     try {
       await fetch("/api/admin/applications", {
         method: "PATCH",
@@ -772,6 +780,16 @@ export default function AdminApplicationsPage() {
           candidateName={`${offersFor.firstName} ${offersFor.lastName}`}
           csrf={csrf}
           onClose={() => setOffersFor(null)}
+        />
+      )}
+
+      {rejectingApp && (
+        <RejectionReasonDialog
+          applicationId={rejectingApp.id}
+          candidateName={`${rejectingApp.firstName} ${rejectingApp.lastName}`}
+          csrf={csrf}
+          disclosureEnabled={isEnabled("adverse_action_disclosure")}
+          onClose={(rejected) => { setRejectingApp(null); if (rejected) loadApplications(); }}
         />
       )}
     </main>

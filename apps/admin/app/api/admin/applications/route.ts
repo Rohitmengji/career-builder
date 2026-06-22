@@ -8,12 +8,14 @@
 
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
-import { applicationRepo, eventRepo } from "@career-builder/database";
+import { applicationRepo, eventRepo, adverseActionRepo } from "@career-builder/database";
 import type { ApplicationFilters } from "@career-builder/database";
 import { updateApplicationSchema, paginationSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString, sanitizeEmail } from "@career-builder/security/sanitize";
 import { emailService } from "@career-builder/email";
 import { getBlindHiringConfig, redactApplicants, redactApplicant } from "@/lib/blindHiring";
+import { isEnabled } from "@career-builder/shared/feature-flags";
+import { candidateLabel, type AdverseCategory } from "@career-builder/shared/adverse-action";
 
 /** GET /api/admin/applications — list applications (recruiter+ only) */
 export async function GET(req: Request) {
@@ -104,7 +106,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { id, status, rating, notes } = parsed.data;
+  const { id, status, rating, notes, adverseAction } = parsed.data;
 
   // Verify application belongs to tenant
   const existing = await applicationRepo.findById(id);
@@ -142,6 +144,38 @@ export async function PATCH(req: Request) {
         .catch((err) => console.error("[applications] event record failed:", err));
     }
 
+    // Structured rejection reason (ADR-0010). Stored on reject; the recruiter's
+    // per-record `sharedWithCandidate` intent is persisted as-is. Candidate display
+    // (timeline + this email) is gated by the `adverse_action_disclosure` flag AND
+    // that opt-in — so freeText is never auto-disclosed.
+    let candidateRejectionMessage: string | undefined;
+    if (status === "rejected" && adverseAction) {
+      try {
+        await adverseActionRepo.upsert({
+          tenantId: session.tenantId,
+          applicationId: id,
+          kind: "rejection",
+          category: adverseAction.category,
+          freeText: adverseAction.freeText ? sanitizeString(adverseAction.freeText, 5000) : null,
+          stage: existing.status,
+          sharedWithCandidate: !!adverseAction.sharedWithCandidate,
+          candidateMessage: adverseAction.candidateMessage ? sanitizeString(adverseAction.candidateMessage, 2000) : null,
+          decidedById: session.userId,
+        });
+        // Disclose to the candidate ONLY if the record persisted AND disclosure is
+        // gated on (flag + per-record opt-in) — so the email and the in-app
+        // "why we didn't move forward" view never diverge from the stored record.
+        if (isEnabled("adverse_action_disclosure") && adverseAction.sharedWithCandidate) {
+          candidateRejectionMessage =
+            (adverseAction.candidateMessage && sanitizeString(adverseAction.candidateMessage, 2000)) ||
+            candidateLabel(adverseAction.category as AdverseCategory);
+        }
+      } catch (err) {
+        // Record failed → do NOT disclose anything (consistency over a half-written reason).
+        console.error("[applications] adverse action record failed:", err);
+      }
+    }
+
     // Status email goes to the CANDIDATE about themselves — not redacted
     // (redaction protects RECRUITER views, not the candidate's own email).
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:3000";
@@ -153,7 +187,7 @@ export async function PATCH(req: Request) {
       newStatus: status,
       companyName,
       siteUrl,
-      message: notes ? sanitizeString(notes, 2000) : undefined,
+      message: candidateRejectionMessage ?? (notes ? sanitizeString(notes, 2000) : undefined),
     }).catch((err) => console.error("[applications] Status email failed:", err));
 
     return NextResponse.json({ application: redactApplicant(updated, blind) });

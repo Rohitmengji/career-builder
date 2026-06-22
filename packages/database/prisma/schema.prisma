@@ -106,6 +106,7 @@ model User {
   scorecards Scorecard[]
   offersCreated  Offer[] @relation("OfferCreatedBy")
   offersApproved Offer[] @relation("OfferApprover")
+  adverseActions AdverseAction[]
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -199,6 +200,7 @@ model Application {
   interviews Interview[]
   scorecards Scorecard[]
   offers   Offer[]
+  adverseAction AdverseAction?
 
   @@index([jobId])
   @@index([tenantId])
@@ -366,6 +368,29 @@ model Notification {
 
   @@index([tenantId, recipientType, recipientId, readAt])
   @@index([tenantId, recipientType, recipientId, createdAt])
+}
+
+// --- ADVERSE ACTION (ADR-0010) ---
+
+model AdverseAction {
+  id            String      @id @default(cuid())
+  tenantId      String
+  applicationId String      @unique
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  kind          String      @default("rejection") // rejection | offer_declined | offer_rescinded
+  category      String      // CLOSED vocab (see shared/adverse-action.ts)
+  freeText      String?     // INTERNAL rationale — NEVER auto-shown to the candidate
+  stage         String?     // application status/stage at decision (funnel analytics)
+  sharedWithCandidate Boolean @default(false)
+  candidateMessage    String? // curated, candidate-safe copy (distinct from freeText)
+  decidedById   String?
+  decidedBy     User?       @relation(fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt     DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([tenantId, category])
+  @@index([tenantId, kind])
 }
 
 // --- PIPELINE STAGE (ADR-0015) ---

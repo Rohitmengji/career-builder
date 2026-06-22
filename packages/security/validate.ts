@@ -149,6 +149,13 @@ export const updateApplicationSchema = z.object({
   status: z.enum(["applied", "screening", "interview", "offer", "hired", "rejected"]).optional(),
   rating: z.number().int().min(1).max(5).optional(),
   notes: z.string().max(5000).optional(),
+  // Structured rejection reason (ADR-0010) — recorded when status → rejected.
+  adverseAction: z.object({
+    category: z.enum(["screening_failed", "experience_gap", "role_filled", "stronger_candidates", "not_responsive", "other"]),
+    freeText: z.string().max(5000).transform((v) => v.trim()).optional(),
+    sharedWithCandidate: z.boolean().optional().default(false),
+    candidateMessage: z.string().max(2000).transform((v) => v.trim()).optional(),
+  }).strict().optional(),
 }).strict();
 
 /** Internal comment on an application (mentions are parsed from the body server-side). */

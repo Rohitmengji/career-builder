@@ -30,6 +30,7 @@ interface ApplicationEntry {
     location: string | null;
   };
   timeline?: TimelineEvent[];
+  rejectionReason?: { category: string; message: string } | null;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
@@ -377,6 +378,12 @@ export default function MyApplicationsPage() {
                       <span>Updated {formatDate(app.updatedAt)}</span>
                     )}
                   </div>
+                  {app.rejectionReason && (
+                    <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <p className="text-xs font-semibold text-gray-700">Why we didn&apos;t move forward</p>
+                      <p className="mt-1 text-sm text-gray-600">{app.rejectionReason.message}</p>
+                    </div>
+                  )}
                   {app.timeline && app.timeline.length > 0 && (
                     <ol className="mt-3 space-y-2 border-t border-gray-100 pt-3" aria-label="Status history">
                       {app.timeline.map((ev, i) => (

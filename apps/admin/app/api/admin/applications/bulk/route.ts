@@ -16,7 +16,6 @@ import { NextResponse } from "next/server";
 import { getSession, validateCsrf, writeAuditLog } from "@/lib/auth";
 import { applicationRepo, eventRepo } from "@career-builder/database";
 import { bulkApplicationActionSchema, safeParse } from "@career-builder/security/validate";
-import { sanitizeString } from "@career-builder/security/sanitize";
 import { emailService } from "@career-builder/email";
 import { applicationsToCsv } from "@/lib/csvExport";
 import { getBlindHiringConfig, redactApplicants } from "@/lib/blindHiring";
@@ -42,7 +41,7 @@ export async function POST(req: Request) {
   const parsed = safeParse(bulkApplicationActionSchema, body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
-  const { ids, action, status, message } = parsed.data;
+  const { ids, action, status } = parsed.data;
 
   // Tenant-scoped fetch — foreign/unknown ids are dropped here.
   const owned = await applicationRepo.findManyByIds(ids, session.tenantId);
@@ -101,10 +100,13 @@ export async function POST(req: Request) {
   ).catch((err) => console.error("[applications/bulk] event record failed:", err));
 
   // Reject: notify candidates (fire-and-forget; never block the response).
+  // Bulk reject sends only the template's generic rejection copy. It has no
+  // per-record disclosure opt-in, so an uncurated free-text message must NOT be
+  // emailed to candidates ungated (ADR-0010) — candidate-facing rejection reasons
+  // flow exclusively through the gated single-application adverse-action path.
   if (action === "reject") {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:3000";
     const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME || "Our Company";
-    const note = message ? sanitizeString(message, 2000) : undefined;
     Promise.allSettled(
       owned.map((a) =>
         emailService.sendStatusUpdate({
@@ -114,7 +116,6 @@ export async function POST(req: Request) {
           newStatus: "rejected",
           companyName,
           siteUrl,
-          message: note,
         }),
       ),
     ).catch((err) => console.error("[applications/bulk] reject emails failed:", err));
