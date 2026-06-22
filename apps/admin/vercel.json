@@ -14,6 +14,7 @@
     }
   ],
   "crons": [
-    { "path": "/api/cron/health", "schedule": "0 0 * * *" }
+    { "path": "/api/cron/health", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/retention-sweep", "schedule": "0 3 * * *" }
   ]
 }
