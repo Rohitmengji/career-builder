@@ -37,3 +37,5 @@ export { scorecardRepo } from "./scorecardRepo";
 export type { SubmitScorecardInput, ScorecardRatingInput } from "./scorecardRepo";
 export { offerRepo } from "./offerRepo";
 export type { CreateOfferInput, OfferUpdateData } from "./offerRepo";
+export { notificationRepo } from "./notificationRepo";
+export type { CreateNotificationInput, RecipientType } from "./notificationRepo";

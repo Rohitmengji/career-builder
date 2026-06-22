@@ -342,6 +342,25 @@ model Offer {
   @@index([approverId])
 }
 
+// --- NOTIFICATION (ADR-0009, Phase 4) ---
+
+model Notification {
+  id            String    @id @default(cuid())
+  tenantId      String
+  recipientType String    // "user" (recruiter) | "candidate"
+  recipientId   String    // User id (user) OR lowercased application email (candidate, ADR-0001)
+  type          String    // event type / notification kind
+  title         String
+  body          String?
+  link          String?
+  applicationId String?    // optional deep-link context
+  readAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([tenantId, recipientType, recipientId, readAt])
+  @@index([tenantId, recipientType, recipientId, createdAt])
+}
+
 // --- PAGE ---
 
 model Page {

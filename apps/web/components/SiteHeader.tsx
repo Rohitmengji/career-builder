@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, ButtonLink } from "@/components/ui";
+import NotificationBell from "@/components/NotificationBell";
 
 interface SessionCandidate {
   firstName: string;
@@ -54,6 +55,7 @@ export default function SiteHeader({ brand = "Careers" }: { brand?: string }) {
           <div className="flex items-center gap-2" style={{ minHeight: 40 }}>
             {ready && candidate && (
               <>
+                <NotificationBell />
                 <ButtonLink href="/applications" variant="ghost" size="sm">My applications</ButtonLink>
                 <ButtonLink href="/profile" variant="ghost" size="sm">My profile</ButtonLink>
                 <Button variant="secondary" size="sm" onClick={onLogout}>Sign out</Button>

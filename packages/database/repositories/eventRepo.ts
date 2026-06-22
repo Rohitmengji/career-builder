@@ -41,10 +41,65 @@ export interface CandidateVisibleEvent {
   at: Date;
 }
 
+/** Candidate-facing status labels (kept local — packages/database must not import shared). */
+const STATUS_LABELS: Record<string, string> = {
+  applied: "Applied",
+  screening: "Under review",
+  interview: "Interview",
+  offer: "Offer",
+  hired: "Hired",
+  rejected: "Not selected",
+};
+
+/** Map a candidate-visible event to notification copy, or null if it shouldn't notify. */
+function candidateNotificationContent(type: string, toStatus: string | null): { title: string; body: string | null } | null {
+  switch (type) {
+    case "status_change":
+      return toStatus ? { title: "Application update", body: `Your status is now “${STATUS_LABELS[toStatus] ?? toStatus}”.` } : null;
+    case "interview_scheduled":
+      return { title: "Interview scheduled", body: "A new interview has been scheduled — open your applications to confirm." };
+    case "interview_rescheduled":
+      return { title: "Interview rescheduled", body: "Your interview time has changed." };
+    case "interview_cancelled":
+      return { title: "Interview cancelled", body: "An interview was cancelled. The team will be in touch about next steps." };
+    case "offer_extended":
+      return { title: "You’ve received an offer 🎉", body: "Open your applications to review and respond." };
+    case "offer_rescinded":
+      return { title: "Offer withdrawn", body: null };
+    default:
+      return null;
+  }
+}
+
+/**
+ * Best-effort: turn a candidate-visible event into a candidate notification.
+ * Keyed by the application's email (ADR-0001). Never gated here — the API/UI gate
+ * exposure (incl. per-tenant flag); writing history regardless means enabling the
+ * feature surfaces recent activity immediately. Failures are swallowed by the caller.
+ */
+async function fanOutCandidateNotification(tenantId: string, applicationId: string, type: string, toStatus: string | null) {
+  const content = candidateNotificationContent(type, toStatus);
+  if (!content) return;
+  const app = await prisma.application.findFirst({ where: { id: applicationId, tenantId }, select: { email: true } });
+  if (!app?.email) return;
+  await prisma.notification.create({
+    data: {
+      tenantId,
+      recipientType: "candidate",
+      recipientId: app.email.toLowerCase(),
+      type,
+      title: content.title,
+      body: content.body,
+      link: "/applications",
+      applicationId,
+    },
+  });
+}
+
 export const eventRepo = {
   /** Append an event. metadata is JSON-stringified; never put candidate PII in it. */
   async record(input: RecordEventInput) {
-    return prisma.applicationEvent.create({
+    const event = await prisma.applicationEvent.create({
       data: {
         tenantId: input.tenantId,
         applicationId: input.applicationId,
@@ -57,6 +112,16 @@ export const eventRepo = {
         metadata: input.metadata ? JSON.stringify(input.metadata) : null,
       },
     });
+    // Candidate-visible events NOT initiated by the candidate become candidate
+    // notifications (don't notify someone about their own action). Best-effort.
+    if ((input.visibility ?? "internal") === "candidate" && (input.actorType ?? "system") !== "candidate") {
+      try {
+        await fanOutCandidateNotification(input.tenantId, input.applicationId, input.type, input.toStatus ?? null);
+      } catch {
+        /* notifications are best-effort — never block event recording */
+      }
+    }
+    return event;
   },
 
   /** Full event history for ONE application (internal/admin), tenant-scoped, chronological. */
