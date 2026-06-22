@@ -34,6 +34,8 @@ export interface CreateJobInput {
   tags?: string[];
   /** Yes/no screening questions with the answer required to pass. */
   screeningQuestions?: { q: string; requiredAnswer: string }[];
+  /** Interview scorecard rubric — list of criterion labels (ADR-0007). */
+  scorecardCriteria?: string[];
   isRemote?: boolean;
   isPublished?: boolean;
   tenantId: string;
@@ -122,6 +124,7 @@ export const jobRepo = {
         benefits: JSON.stringify(data.benefits || []),
         tags: JSON.stringify(data.tags || []),
         screeningQuestions: JSON.stringify(data.screeningQuestions || []),
+        scorecardCriteria: JSON.stringify(data.scorecardCriteria || []),
         isRemote: data.isRemote ?? false,
         isPublished: data.isPublished ?? false,
         tenantId: data.tenantId,
@@ -160,6 +163,7 @@ export const jobRepo = {
     if (data.benefits !== undefined) updateData.benefits = JSON.stringify(data.benefits);
     if (data.tags !== undefined) updateData.tags = JSON.stringify(data.tags);
     if (data.screeningQuestions !== undefined) updateData.screeningQuestions = JSON.stringify(data.screeningQuestions);
+    if (data.scorecardCriteria !== undefined) updateData.scorecardCriteria = JSON.stringify(data.scorecardCriteria);
 
     return prisma.job.update({ where: { id }, data: updateData });
   },

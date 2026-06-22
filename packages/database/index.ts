@@ -26,6 +26,7 @@ export {
   salaryBenchmarkRepo,
   eventRepo,
   interviewRepo,
+  scorecardRepo,
 } from "./repositories";
 export type {
   CreateDomainInput,
@@ -38,6 +39,8 @@ export type {
   RecordEventInput,
   CandidateVisibleEvent,
   CreateInterviewInput,
+  SubmitScorecardInput,
+  ScorecardRatingInput,
 } from "./repositories";
 
 // Re-export all domain types and constants

@@ -17,6 +17,7 @@
     "./salary-benchmark": "./salary-benchmark.ts",
     "./responsiveness": "./responsiveness.ts",
     "./screening": "./screening.ts",
+    "./scorecard": "./scorecard.ts",
     "./ics": "./ics.ts",
     "./storage": "./storage.ts",
     "./kv": "./kv.ts",

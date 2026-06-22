@@ -31,6 +31,7 @@ import {
 import CommentsDialog from "./CommentsDialog";
 import ResumeDialog from "./ResumeDialog";
 import InterviewsDialog from "./InterviewsDialog";
+import ScorecardsDialog from "./ScorecardsDialog";
 
 /* ================================================================== */
 /*  Types                                                              */
@@ -128,6 +129,7 @@ export default function AdminApplicationsPage() {
   const [commentsFor, setCommentsFor] = useState<Application | null>(null);
   const [resumeFor, setResumeFor] = useState<Application | null>(null);
   const [interviewsFor, setInterviewsFor] = useState<Application | null>(null);
+  const [scorecardsFor, setScorecardsFor] = useState<Application | null>(null);
   const [search, setSearch] = useState("");
   const [appliedQuery, setAppliedQuery] = useState("");
   const [blindHiring, setBlindHiring] = useState(false);
@@ -592,6 +594,15 @@ export default function AdminApplicationsPage() {
                           </button>
                           <button
                             type="button"
+                            onClick={() => setScorecardsFor(app)}
+                            aria-label={`Scorecards for ${app.firstName} ${app.lastName}`}
+                            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                          >
+                            <ClipboardIcon className="h-4 w-4" />
+                            Scorecards
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => setCommentsFor(app)}
                             aria-label={`Open comments for ${app.firstName} ${app.lastName}`}
                             className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
@@ -656,6 +667,10 @@ export default function AdminApplicationsPage() {
                       <Button variant="secondary" size="sm" onClick={() => setInterviewsFor(app)} aria-label={`Interviews for ${app.firstName} ${app.lastName}`}>
                         <CalendarIcon className="h-4 w-4" />
                         Interviews
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => setScorecardsFor(app)} aria-label={`Scorecards for ${app.firstName} ${app.lastName}`}>
+                        <ClipboardIcon className="h-4 w-4" />
+                        Scorecards
                       </Button>
                       <Button variant="secondary" size="sm" onClick={() => setCommentsFor(app)} aria-label={`Open comments for ${app.firstName} ${app.lastName}`}>
                         <ChatIcon className="h-4 w-4" />
@@ -724,6 +739,15 @@ export default function AdminApplicationsPage() {
           candidateName={`${interviewsFor.firstName} ${interviewsFor.lastName}`}
           csrf={csrf}
           onClose={() => setInterviewsFor(null)}
+        />
+      )}
+
+      {scorecardsFor && (
+        <ScorecardsDialog
+          applicationId={scorecardsFor.id}
+          candidateName={`${scorecardsFor.firstName} ${scorecardsFor.lastName}`}
+          csrf={csrf}
+          onClose={() => setScorecardsFor(null)}
         />
       )}
     </main>
@@ -795,6 +819,14 @@ function CalendarIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0V11.25A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+    </svg>
+  );
+}
+
+function ClipboardIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 3.75h6M9 6.75h6M9 2.25h6a.75.75 0 01.75.75v.75a1.5 1.5 0 01-1.5 1.5H9.75a1.5 1.5 0 01-1.5-1.5V3a.75.75 0 01.75-.75z M6.75 4.5H6A1.5 1.5 0 004.5 6v13.5A1.5 1.5 0 006 21h12a1.5 1.5 0 001.5-1.5V6A1.5 1.5 0 0018 4.5h-.75" />
     </svg>
   );
 }

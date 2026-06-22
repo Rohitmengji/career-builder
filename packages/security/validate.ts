@@ -80,6 +80,7 @@ export const createJobSchema = z.object({
     )
     .max(15)
     .default([]),
+  scorecardCriteria: z.array(z.string().min(1).max(120).transform((v) => v.trim())).max(12).default([]),
   isRemote: z.boolean().default(false),
   isPublished: z.boolean().default(false),
 }).strict().refine(
@@ -113,6 +114,7 @@ export const updateJobSchema = z.object({
     )
     .max(15)
     .optional(),
+  scorecardCriteria: z.array(z.string().min(1).max(120).transform((v) => v.trim())).max(12).optional(),
   isRemote: z.boolean().optional(),
   isPublished: z.boolean().optional(),
 }).strict();
@@ -174,6 +176,27 @@ export const createInterviewSchema = z.object({
 export const updateInterviewSchema = z.object({
   id: cuid,
   action: z.enum(["cancel", "complete", "no_show"]),
+}).strict();
+
+/* ================================================================== */
+/*  Scorecard schema (ADR-0007)                                        */
+/* ================================================================== */
+
+export const submitScorecardSchema = z.object({
+  applicationId: cuid,
+  interviewId: cuid.optional(),
+  recommendation: z.enum(["strong_yes", "yes", "no", "strong_no"]),
+  overallNotes: z.string().max(5000).transform((v) => v.trim()).optional(),
+  ratings: z
+    .array(
+      z.object({
+        criterion: z.string().min(1).max(120).transform((v) => v.trim()),
+        score: z.number().int().min(1).max(5),
+        comment: z.string().max(1000).transform((v) => v.trim()).optional(),
+      }).strict(),
+    )
+    .max(12)
+    .default([]),
 }).strict();
 
 /** Bulk action over a bounded set of applications (status change / reject / export). */
