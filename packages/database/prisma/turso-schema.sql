@@ -81,6 +81,7 @@ CREATE TABLE "Job" (
     "benefits" TEXT NOT NULL DEFAULT '[]',
     "tags" TEXT NOT NULL DEFAULT '[]',
     "screeningQuestions" TEXT NOT NULL DEFAULT '[]',
+    "scorecardCriteria" TEXT NOT NULL DEFAULT '[]',
     "isRemote" BOOLEAN NOT NULL DEFAULT false,
     "isPublished" BOOLEAN NOT NULL DEFAULT false,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
@@ -170,6 +171,31 @@ CREATE TABLE "Interview" (
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "Interview_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "Application" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "Interview_interviewerId_fkey" FOREIGN KEY ("interviewerId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "Scorecard" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "applicationId" TEXT NOT NULL,
+    "interviewId" TEXT,
+    "interviewerId" TEXT NOT NULL,
+    "recommendation" TEXT NOT NULL,
+    "overallNotes" TEXT,
+    "submittedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Scorecard_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "Application" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Scorecard_interviewerId_fkey" FOREIGN KEY ("interviewerId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "ScorecardRating" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "scorecardId" TEXT NOT NULL,
+    "criterion" TEXT NOT NULL,
+    "score" INTEGER NOT NULL,
+    "comment" TEXT,
+    CONSTRAINT "ScorecardRating_scorecardId_fkey" FOREIGN KEY ("scorecardId") REFERENCES "Scorecard" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -356,6 +382,15 @@ CREATE INDEX "Interview_tenantId_status_idx" ON "Interview"("tenantId", "status"
 
 -- CreateIndex
 CREATE INDEX "Interview_interviewerId_idx" ON "Interview"("interviewerId");
+
+-- CreateIndex
+CREATE INDEX "Scorecard_tenantId_applicationId_idx" ON "Scorecard"("tenantId", "applicationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Scorecard_tenantId_applicationId_interviewerId_key" ON "Scorecard"("tenantId", "applicationId", "interviewerId");
+
+-- CreateIndex
+CREATE INDEX "ScorecardRating_scorecardId_idx" ON "ScorecardRating"("scorecardId");
 
 -- CreateIndex
 CREATE INDEX "Page_tenantId_idx" ON "Page"("tenantId");

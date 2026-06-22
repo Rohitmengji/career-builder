@@ -95,6 +95,9 @@ export async function POST(req: Request) {
           requiredAnswer: sq.requiredAnswer === "no" ? "no" : "yes",
         }),
       ),
+      scorecardCriteria: (data.scorecardCriteria || [])
+        .map((c: string) => sanitizeString(c, 120))
+        .filter(Boolean),
       isRemote: data.isRemote || false,
       isPublished: data.isPublished || false,
       tenantId: session.tenantId,
@@ -152,6 +155,11 @@ export async function PUT(req: Request) {
         requiredAnswer: sq.requiredAnswer === "no" ? "no" : "yes",
       }),
     );
+  }
+  if (data.scorecardCriteria) {
+    sanitized.scorecardCriteria = data.scorecardCriteria
+      .map((c: string) => sanitizeString(c, 120))
+      .filter(Boolean);
   }
 
   try {

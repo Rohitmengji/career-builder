@@ -95,6 +95,16 @@ const FLAG_DEFINITIONS = {
       "and add to calendar (ICS). Emits candidate-visible timeline events + an " +
       "invitation email. Off by default.",
   },
+  interview_scorecards: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Structured interview scorecards (ADR-0007): a per-job rubric of criteria; " +
+      "each interviewer submits 1-5 scores + an overall recommendation; an " +
+      "aggregated decision panel shows averages, recommendation distribution, and " +
+      "a 'needs more feedback' flag. Internal-only (never candidate-visible); " +
+      "respects Blind Hiring. Off by default.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",

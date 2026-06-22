@@ -33,3 +33,5 @@ export { eventRepo } from "./eventRepo";
 export type { ApplicationEventType, RecordEventInput, CandidateVisibleEvent } from "./eventRepo";
 export { interviewRepo } from "./interviewRepo";
 export type { CreateInterviewInput } from "./interviewRepo";
+export { scorecardRepo } from "./scorecardRepo";
+export type { SubmitScorecardInput, ScorecardRatingInput } from "./scorecardRepo";

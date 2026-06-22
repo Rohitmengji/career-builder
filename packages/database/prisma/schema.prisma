@@ -102,6 +102,7 @@ model User {
   auditLogs AuditLog[]
   comments  ApplicationComment[]
   interviews Interview[]
+  scorecards Scorecard[]
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -128,6 +129,7 @@ model Job {
   benefits        String   @default("[]") // JSON array
   tags            String   @default("[]") // JSON array
   screeningQuestions String @default("[]") // JSON array of { q, requiredAnswer }
+  scorecardCriteria  String @default("[]") // JSON array of criterion label strings
   isRemote        Boolean  @default(false)
   isPublished     Boolean  @default(false)
   sortOrder       Int      @default(0)
@@ -187,6 +189,7 @@ model Application {
   comments ApplicationComment[]
   events   ApplicationEvent[]
   interviews Interview[]
+  scorecards Scorecard[]
 
   @@index([jobId])
   @@index([tenantId])
@@ -260,6 +263,38 @@ model Interview {
   @@index([tenantId, applicationId])
   @@index([tenantId, status])
   @@index([interviewerId])
+}
+
+// --- SCORECARD (ADR-0007) ---
+
+model Scorecard {
+  id             String            @id @default(cuid())
+  tenantId       String
+  applicationId  String
+  application    Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewId    String?                                  // optional link to a specific interview
+  interviewerId  String                                   // the User who submitted it
+  interviewer    User              @relation(fields: [interviewerId], references: [id], onDelete: Cascade)
+  recommendation String                                   // strong_yes | yes | no | strong_no
+  overallNotes   String?
+  ratings        ScorecardRating[]
+  submittedAt    DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // One scorecard per interviewer per application — re-submitting replaces theirs.
+  @@unique([tenantId, applicationId, interviewerId])
+  @@index([tenantId, applicationId])
+}
+
+model ScorecardRating {
+  id          String    @id @default(cuid())
+  scorecardId String
+  scorecard   Scorecard @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
+  criterion   String                                      // denormalized label (survives rubric edits)
+  score       Int                                         // 1-5
+  comment     String?
+
+  @@index([scorecardId])
 }
 
 // --- PAGE ---

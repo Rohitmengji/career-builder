@@ -82,6 +82,7 @@ interface JobFormData {
   benefits: string;
   tags: string;
   screeningQuestions: { q: string; requiredAnswer: "yes" | "no" }[];
+  scorecardCriteria: string; // one criterion per line (textarea)
 }
 
 const EMPTY_FORM: JobFormData = {
@@ -99,6 +100,7 @@ const EMPTY_FORM: JobFormData = {
   benefits: "",
   tags: "",
   screeningQuestions: [],
+  scorecardCriteria: "",
 };
 
 const DEPARTMENTS = ["Engineering", "Design", "Marketing", "Sales", "People", "Finance", "Operations"];
@@ -203,6 +205,7 @@ export default function AdminJobsPage() {
       benefits: formatJsonArray(job.benefits),
       tags: formatJsonArray(job.tags),
       screeningQuestions: parseScreeningQuestions((job as { screeningQuestions?: unknown }).screeningQuestions),
+      scorecardCriteria: formatJsonArray((job as { scorecardCriteria?: string }).scorecardCriteria ?? "[]"),
     });
     setError("");
     setView("form");
@@ -229,6 +232,7 @@ export default function AdminJobsPage() {
       screeningQuestions: form.screeningQuestions
         .map((s) => ({ q: s.q.trim(), requiredAnswer: s.requiredAnswer }))
         .filter((s) => s.q),
+      scorecardCriteria: parseJsonArray(form.scorecardCriteria),
     };
 
     if (editingId) {
@@ -308,6 +312,7 @@ export default function AdminJobsPage() {
       benefits: aiJob.benefits || form.benefits,
       tags: aiJob.tags || form.tags,
       screeningQuestions: form.screeningQuestions,
+      scorecardCriteria: form.scorecardCriteria,
     });
   }
 
@@ -782,6 +787,16 @@ export default function AdminJobsPage() {
                   </div>
                 )}
               </div>
+
+              {/* Interview scorecard rubric (ADR-0007) */}
+              <TextareaField
+                label="Interview scorecard rubric"
+                hint="One criterion per line. Interviewers score each 1–5."
+                rows={4}
+                value={form.scorecardCriteria}
+                onChange={(e) => setForm({ ...form, scorecardCriteria: e.target.value })}
+                placeholder={"Technical depth\nProblem solving\nCommunication\nCulture add"}
+              />
 
               {/* Actions */}
               <div className="flex flex-col gap-3 border-t border-gray-200 pt-5 sm:flex-row">
