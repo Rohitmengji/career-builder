@@ -125,6 +125,15 @@ const FLAG_DEFINITIONS = {
       "dropdown in the candidate header and the admin dashboard. Recipient-scoped " +
       "and tenant-isolated. Off by default.",
   },
+  custom_pipeline_stages: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Customizable pipeline stages (ADR-0015): per-tenant ordered stages with a " +
+      "semantic `kind` so renaming/inserting stages doesn't break offers status-sync, " +
+      "responsiveness, or analytics. When OFF the system uses the fixed 6 statuses " +
+      "exactly as before. Unblocks the drag-drop kanban board. Off by default.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",

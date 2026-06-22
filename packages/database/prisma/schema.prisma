@@ -41,6 +41,7 @@ model Tenant {
   webhooks     Webhook[]
   candidates   Candidate[]
   domains      Domain[]
+  pipelineStages PipelineStage[]
 }
 
 // --- DOMAIN (custom domains per tenant) ---
@@ -151,6 +152,7 @@ model Job {
 
   // Relations
   applications Application[]
+  pipelineStages PipelineStage[]
 
   @@unique([slug, tenantId])
   @@index([tenantId])
@@ -188,6 +190,10 @@ model Application {
   job      Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // Customizable pipeline stage (ADR-0015). `status` (above) is RETAINED as a
+  // derived back-compat cache; stageId is the FK once custom stages are enabled.
+  stageId  String?
+  stage    PipelineStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
   comments ApplicationComment[]
   events   ApplicationEvent[]
   interviews Interview[]
@@ -197,6 +203,7 @@ model Application {
   @@index([jobId])
   @@index([tenantId])
   @@index([tenantId, status])
+  @@index([tenantId, stageId])
   @@index([email, tenantId])
   // One application per candidate per job (email is stored lowercased). The
   // ATOMIC backstop for duplicate prevention: a concurrent double-submit that
@@ -359,6 +366,32 @@ model Notification {
 
   @@index([tenantId, recipientType, recipientId, readAt])
   @@index([tenantId, recipientType, recipientId, createdAt])
+}
+
+// --- PIPELINE STAGE (ADR-0015) ---
+
+model PipelineStage {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobId     String?  // null = tenant-default pipeline; set = per-job override
+  job       Job?     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  key        String  // stable slug (== legacy status string for default stages)
+  label      String  // display name
+  kind       String  // applied | in_process | offer | hired | rejected | custom
+  order      Int     @default(0)
+  color      String?
+  isActive   Boolean @default(true)  // soft-retire (history still references it)
+  isTerminal Boolean @default(false) // hired/rejected — no auto-advance out
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  applications Application[]
+
+  @@unique([tenantId, jobId, key])
+  @@index([tenantId])
+  @@index([tenantId, jobId, order])
 }
 
 // --- PAGE ---
