@@ -125,6 +125,15 @@ const FLAG_DEFINITIONS = {
       "dropdown in the candidate header and the admin dashboard. Recipient-scoped " +
       "and tenant-isolated. Off by default.",
   },
+  adverse_action_disclosure: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Rejection-reason disclosure (ADR-0010): recruiters record a structured " +
+      "adverse-action reason on reject (category + internal notes); when this flag " +
+      "is on AND the recruiter opts in per-record, the candidate sees a curated " +
+      "'why we didn't move forward' message (never the internal notes). Off by default.",
+  },
   custom_pipeline_stages: {
     default: false,
     envOverrides: { development: true },

@@ -7,8 +7,9 @@
 
 import { NextResponse } from "next/server";
 import { getCandidateSession } from "@/lib/candidateAuth";
-import { applicationRepo, eventRepo } from "@career-builder/database";
+import { applicationRepo, eventRepo, adverseActionRepo } from "@career-builder/database";
 import { isEnabled } from "@career-builder/shared/feature-flags";
+import { candidateProjection } from "@career-builder/shared/adverse-action";
 
 export async function GET() {
   const session = await getCandidateSession();
@@ -39,6 +40,21 @@ export async function GET() {
     }
   }
 
+  // Rejection reason (ADR-0010): only shared records, only when the flag is on, only
+  // the candidate-safe projection (never freeText). Gated twice (flag + per-record
+  // sharedWithCandidate, which the repo already filters).
+  const reasonByApp: Record<string, { category: string; message: string }> = {};
+  if (isEnabled("adverse_action_disclosure") && applications.length > 0) {
+    const rows = await adverseActionRepo.findCandidateVisible(
+      session.tenantId,
+      applications.map((a) => a.id),
+    );
+    for (const r of rows) {
+      const proj = candidateProjection(r);
+      if (proj) reasonByApp[r.applicationId] = proj;
+    }
+  }
+
   // Return only safe fields (no internal notes, ratings, etc.)
   const safe = applications.map((app) => ({
     id: app.id,
@@ -52,6 +68,7 @@ export async function GET() {
       location: app.job.location,
     },
     timeline: timelineByApp[app.id] ?? [],
+    rejectionReason: reasonByApp[app.id] ?? null,
   }));
 
   return NextResponse.json({ applications: safe });

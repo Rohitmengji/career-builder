@@ -20,6 +20,7 @@
     "./scorecard": "./scorecard.ts",
     "./offer": "./offer.ts",
     "./pipeline": "./pipeline.ts",
+    "./adverse-action": "./adverse-action.ts",
     "./ics": "./ics.ts",
     "./storage": "./storage.ts",
     "./kv": "./kv.ts",

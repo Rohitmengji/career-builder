@@ -29,6 +29,7 @@ export {
   scorecardRepo,
   offerRepo,
   notificationRepo,
+  adverseActionRepo,
 } from "./repositories";
 export type {
   CreateDomainInput,
@@ -47,6 +48,7 @@ export type {
   OfferUpdateData,
   CreateNotificationInput,
   RecipientType,
+  UpsertAdverseActionInput,
 } from "./repositories";
 
 // Re-export all domain types and constants

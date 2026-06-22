@@ -243,6 +243,25 @@ CREATE TABLE "Notification" (
 );
 
 -- CreateTable
+CREATE TABLE "AdverseAction" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "applicationId" TEXT NOT NULL,
+    "kind" TEXT NOT NULL DEFAULT 'rejection',
+    "category" TEXT NOT NULL,
+    "freeText" TEXT,
+    "stage" TEXT,
+    "sharedWithCandidate" BOOLEAN NOT NULL DEFAULT false,
+    "candidateMessage" TEXT,
+    "decidedById" TEXT,
+    "decidedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "AdverseAction_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "Application" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "AdverseAction_decidedById_fkey" FOREIGN KEY ("decidedById") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "PipelineStage" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "tenantId" TEXT NOT NULL,
@@ -471,6 +490,15 @@ CREATE INDEX "Notification_tenantId_recipientType_recipientId_readAt_idx" ON "No
 
 -- CreateIndex
 CREATE INDEX "Notification_tenantId_recipientType_recipientId_createdAt_idx" ON "Notification"("tenantId", "recipientType", "recipientId", "createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AdverseAction_applicationId_key" ON "AdverseAction"("applicationId");
+
+-- CreateIndex
+CREATE INDEX "AdverseAction_tenantId_category_idx" ON "AdverseAction"("tenantId", "category");
+
+-- CreateIndex
+CREATE INDEX "AdverseAction_tenantId_kind_idx" ON "AdverseAction"("tenantId", "kind");
 
 -- CreateIndex
 CREATE INDEX "PipelineStage_tenantId_idx" ON "PipelineStage"("tenantId");
