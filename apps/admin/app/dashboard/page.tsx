@@ -13,6 +13,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuthGuard } from "@/lib/useAuthGuard";
+import NotificationBell from "@/components/NotificationBell";
 import {
   Card,
   Badge,
@@ -134,9 +135,12 @@ export default function AdminDashboardPage() {
     <main className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <header className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">Dashboard</h1>
-          <p className="mt-1 text-gray-600">Hiring platform overview</p>
+        <header className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-gray-900">Dashboard</h1>
+            <p className="mt-1 text-gray-600">Hiring platform overview</p>
+          </div>
+          <NotificationBell />
         </header>
 
         {/* KPI Cards */}

@@ -226,6 +226,21 @@ CREATE TABLE "Offer" (
 );
 
 -- CreateTable
+CREATE TABLE "Notification" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "recipientType" TEXT NOT NULL,
+    "recipientId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "body" TEXT,
+    "link" TEXT,
+    "applicationId" TEXT,
+    "readAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
 CREATE TABLE "Page" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "slug" TEXT NOT NULL,
@@ -427,6 +442,12 @@ CREATE INDEX "Offer_tenantId_status_idx" ON "Offer"("tenantId", "status");
 
 -- CreateIndex
 CREATE INDEX "Offer_approverId_idx" ON "Offer"("approverId");
+
+-- CreateIndex
+CREATE INDEX "Notification_tenantId_recipientType_recipientId_readAt_idx" ON "Notification"("tenantId", "recipientType", "recipientId", "readAt");
+
+-- CreateIndex
+CREATE INDEX "Notification_tenantId_recipientType_recipientId_createdAt_idx" ON "Notification"("tenantId", "recipientType", "recipientId", "createdAt");
 
 -- CreateIndex
 CREATE INDEX "Page_tenantId_idx" ON "Page"("tenantId");

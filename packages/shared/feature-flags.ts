@@ -115,6 +115,16 @@ const FLAG_DEFINITIONS = {
       "offer lists respect Blind Hiring; candidates see only their own offer. " +
       "Off by default.",
   },
+  notifications: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "In-app notification center (ADR-0009): candidate-visible workflow events " +
+      "(status changes, interviews, offers) become candidate notifications; " +
+      "recruiters get an 'offer pending approval' notification. Unread badge + " +
+      "dropdown in the candidate header and the admin dashboard. Recipient-scoped " +
+      "and tenant-isolated. Off by default.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",

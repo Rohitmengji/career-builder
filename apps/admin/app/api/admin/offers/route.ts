@@ -15,7 +15,7 @@
 
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
-import { applicationRepo, offerRepo, eventRepo } from "@career-builder/database";
+import { applicationRepo, offerRepo, eventRepo, userRepo, notificationRepo } from "@career-builder/database";
 import { createOfferSchema, updateOfferSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString } from "@career-builder/security/sanitize";
 import { emailService } from "@career-builder/email";
@@ -210,8 +210,31 @@ export async function PATCH(req: Request) {
     void recordEvent("offer_declined", "candidate");
   } else if (action === "rescind") {
     void recordEvent("offer_rescinded", "candidate");
+  } else if (action === "submit_for_approval") {
+    // Notify the tenant's approvers (manager+) that an offer needs sign-off.
+    // No candidate identity in the body — respects Blind Hiring (recruiter surface).
+    try {
+      const members = await userRepo.findByTenant(session.tenantId);
+      const approvers = members.filter((u) => APPROVE_ROLES.includes(u.role) && u.id !== session.userId);
+      if (approvers.length > 0) {
+        await notificationRepo.createMany(
+          approvers.map((u) => ({
+            tenantId: session.tenantId,
+            recipientType: "user" as const,
+            recipientId: u.id,
+            type: "offer_approval_needed",
+            title: "Offer needs approval",
+            body: `An offer for ${offer.application?.job?.title ?? "a role"} is awaiting your approval.`,
+            link: "/applications",
+            applicationId: offer.applicationId,
+          })),
+        );
+      }
+    } catch (err) {
+      console.error("[offers] approval notification failed:", err);
+    }
   }
-  // submit_for_approval / approve / request_changes are internal — audit only.
+  // approve / request_changes are internal — audit only.
 
   return NextResponse.json({ success: true, status: target }, { headers: NO_STORE });
 }
