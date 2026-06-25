@@ -125,6 +125,14 @@ const FLAG_DEFINITIONS = {
       "dropdown in the candidate header and the admin dashboard. Recipient-scoped " +
       "and tenant-isolated. Off by default.",
   },
+  ai_jd_bias_detection: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "AI job-description bias check (ADR-0014, EU AI-Act §6 safeguard): flags " +
+      "potentially exclusionary language (gendered/age/ableist) in the job editor " +
+      "before publish. Advisory + non-blocking; fail-closed. Off by default.",
+  },
   eeo_self_id: {
     default: false,
     envOverrides: { development: true },
