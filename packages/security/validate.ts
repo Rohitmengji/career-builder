@@ -232,6 +232,19 @@ export const updateOfferSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("rescind"), id: cuid }).strict(),
 ]);
 
+/* ================================================================== */
+/*  EEO voluntary self-ID (ADR-0013) — closed vocab incl. decline_to_state */
+/* ================================================================== */
+
+export const eeoSelfIdSchema = z.object({
+  applicationId: cuid,
+  gender: z.enum(["female", "male", "nonbinary", "other", "decline_to_state"]).optional(),
+  race: z.enum(["american_indian", "asian", "black", "hispanic", "native_hawaiian", "white", "two_or_more", "other", "decline_to_state"]).optional(),
+  ethnicity: z.enum(["hispanic_latino", "not_hispanic_latino", "decline_to_state"]).optional(),
+  veteranStatus: z.enum(["veteran", "not_veteran", "decline_to_state"]).optional(),
+  disability: z.enum(["yes", "no", "decline_to_state"]).optional(),
+}).strict();
+
 /** Candidate-side accept/decline on their own offer. */
 export const offerDecisionSchema = z.object({
   action: z.enum(["accept", "decline"]),

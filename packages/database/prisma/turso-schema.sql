@@ -247,6 +247,19 @@ CREATE TABLE "Notification" (
 );
 
 -- CreateTable
+CREATE TABLE "EeoSelfId" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "applicationId" TEXT NOT NULL,
+    "gender" TEXT,
+    "race" TEXT,
+    "ethnicity" TEXT,
+    "veteranStatus" TEXT,
+    "disability" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
 CREATE TABLE "Consent" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "tenantId" TEXT NOT NULL,
@@ -507,6 +520,12 @@ CREATE INDEX "Notification_tenantId_recipientType_recipientId_readAt_idx" ON "No
 
 -- CreateIndex
 CREATE INDEX "Notification_tenantId_recipientType_recipientId_createdAt_idx" ON "Notification"("tenantId", "recipientType", "recipientId", "createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "EeoSelfId_applicationId_key" ON "EeoSelfId"("applicationId");
+
+-- CreateIndex
+CREATE INDEX "EeoSelfId_tenantId_idx" ON "EeoSelfId"("tenantId");
 
 -- CreateIndex
 CREATE INDEX "Consent_tenantId_subjectEmail_type_createdAt_idx" ON "Consent"("tenantId", "subjectEmail", "type", "createdAt");

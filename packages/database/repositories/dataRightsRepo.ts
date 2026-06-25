@@ -91,6 +91,8 @@ export const dataRightsRepo = {
             where: { tenantId, applicationId: { in: appIds } },
             data: { decisionNote: null },
           });
+          // 3b. Hard-delete EEO self-ID (sensitive; never retained — ADR-0013).
+          await tx.eeoSelfId.deleteMany({ where: { tenantId, applicationId: { in: appIds } } });
         }
 
         // 4. Notifications are keyed by email (no FK) — hard-delete the candidate's.
@@ -181,13 +183,22 @@ export const dataRightsRepo = {
     // Only the rows whose guarded update actually applied (count === 1) are anonymized.
     let anonymized = 0;
     const resumeKeys: string[] = [];
+    const anonymizedAppIds: string[] = [];
     due.forEach((d, i) => {
       const count = (results[i] as { count?: number } | undefined)?.count ?? 0;
       if (count === 1) {
         anonymized += 1;
+        anonymizedAppIds.push(d.id);
         if (d.resumePath) resumeKeys.push(d.resumePath);
       }
     });
+
+    // Delete EEO ONLY for apps actually anonymized — never for one preserved by the
+    // per-row guard (held/reopened mid-sweep), which must keep its EEO for the hold.
+    if (anonymizedAppIds.length > 0) {
+      await prisma.eeoSelfId.deleteMany({ where: { tenantId, applicationId: { in: anonymizedAppIds } } });
+    }
+
     return { anonymized, resumeKeys };
   },
 };

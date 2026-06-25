@@ -11,10 +11,12 @@ const auditCreate = vi.fn();
 const consentCreate = vi.fn();
 const consentFindMany = vi.fn();
 
+const eeoDeleteMany = vi.fn();
 const tx = {
   application: { findMany: (...a: unknown[]) => appFindMany(...a), updateMany: (...a: unknown[]) => appUpdateMany(...a) },
   adverseAction: { updateMany: (...a: unknown[]) => adverseUpdateMany(...a) },
   offer: { updateMany: (...a: unknown[]) => offerUpdateMany(...a) },
+  eeoSelfId: { deleteMany: (...a: unknown[]) => eeoDeleteMany(...a) },
   notification: { deleteMany: (...a: unknown[]) => notifDeleteMany(...a) },
   consent: { updateMany: (...a: unknown[]) => consentUpdateMany(...a) },
   candidate: { deleteMany: (...a: unknown[]) => candidateDeleteMany(...a) },
@@ -32,7 +34,7 @@ import { dataRightsRepo, anonymizedApplicationData } from "./repositories/dataRi
 import { consentRepo } from "./repositories/consentRepo";
 
 beforeEach(() => {
-  [appFindMany, appUpdateMany, adverseUpdateMany, offerUpdateMany, notifDeleteMany, consentUpdateMany, candidateDeleteMany, auditCreate, consentCreate, consentFindMany].forEach((f) => f.mockReset());
+  [appFindMany, appUpdateMany, adverseUpdateMany, offerUpdateMany, eeoDeleteMany, notifDeleteMany, consentUpdateMany, candidateDeleteMany, auditCreate, consentCreate, consentFindMany].forEach((f) => f.mockReset());
 });
 
 const NOW = new Date("2026-06-22T00:00:00Z");

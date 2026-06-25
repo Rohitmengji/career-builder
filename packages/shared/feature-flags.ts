@@ -125,6 +125,15 @@ const FLAG_DEFINITIONS = {
       "dropdown in the candidate header and the admin dashboard. Recipient-scoped " +
       "and tenant-isolated. Off by default.",
   },
+  eeo_self_id: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Voluntary EEO self-identification (ADR-0013): candidates may optionally report " +
+      "demographics for AGGREGATE reporting only. Architecturally isolated from the " +
+      "hiring path (no recruiter/AI access); admin reports are small-cell + " +
+      "complementary suppressed. Off by default.",
+  },
   interview_feedback: {
     default: false,
     envOverrides: { development: true },

@@ -33,6 +33,7 @@ export {
   consentRepo,
   dataRightsRepo,
   anonymizedApplicationData,
+  eeoRepo,
 } from "./repositories";
 export type {
   CreateDomainInput,
@@ -54,6 +55,7 @@ export type {
   UpsertAdverseActionInput,
   RecordConsentInput,
   DeleteResult,
+  RecordEeoInput,
 } from "./repositories";
 
 // Re-export all domain types and constants

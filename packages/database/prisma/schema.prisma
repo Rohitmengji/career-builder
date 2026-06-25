@@ -378,6 +378,27 @@ model Notification {
   @@index([tenantId, recipientType, recipientId, createdAt])
 }
 
+// --- EEO SELF-ID (ADR-0013) ---
+//
+// Voluntary candidate demographics for AGGREGATE EEO reporting only. ARCHITECTURALLY
+// ISOLATED from the hiring path: there is deliberately NO Prisma relation to/from
+// Application (so no recruiter query can `include` it), and eeoRepo exposes no
+// individual read — only record() + a suppressed aggregate(). Keyed by applicationId
+// but it is a plain column, not a foreign key.
+model EeoSelfId {
+  id            String   @id @default(cuid())
+  tenantId      String
+  applicationId String   @unique
+  gender        String?  // closed vocab incl. "decline_to_state"
+  race          String?
+  ethnicity     String?
+  veteranStatus String?
+  disability    String?
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId])
+}
+
 // --- CONSENT (ADR-0011) ---
 
 model Consent {
