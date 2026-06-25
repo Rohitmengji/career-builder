@@ -76,5 +76,5 @@ export async function GET() {
     feedbackReleased: feedbackEnabled && !!(app as { feedbackReleasedAt?: Date | null }).feedbackReleasedAt,
   }));
 
-  return NextResponse.json({ applications: safe });
+  return NextResponse.json({ applications: safe, eeoEnabled: isEnabled("eeo_self_id") });
 }

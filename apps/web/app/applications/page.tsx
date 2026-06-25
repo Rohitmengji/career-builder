@@ -129,6 +129,7 @@ export default function MyApplicationsPage() {
   const [interviews, setInterviews] = useState<CandidateInterview[]>([]);
   const [offers, setOffers] = useState<CandidateOffer[]>([]);
   const [offerBusy, setOfferBusy] = useState<string | null>(null);
+  const [eeoEnabled, setEeoEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -144,6 +145,7 @@ export default function MyApplicationsPage() {
       if (!res.ok) throw new Error("Failed to load");
       const data = await res.json();
       setApplications(data.applications || []);
+      setEeoEnabled(!!data.eeoEnabled);
       // Interviews + offers are flag-gated server-side; a 404/!ok just means "none to show".
       try {
         const ivRes = await fetch("/api/interviews");
@@ -403,6 +405,10 @@ export default function MyApplicationsPage() {
             })}
           </div>
         )}
+
+        {!loading && eeoEnabled && applications.length > 0 && (
+          <EeoSelfIdSection apps={applications.map((a) => ({ id: a.id, title: a.job.title }))} />
+        )}
       </main>
     </div>
   );
@@ -462,5 +468,81 @@ function InterviewFeedback({ applicationId }: { applicationId: string }) {
         <p className="mt-2 text-xs text-gray-600">Overall: <span className="font-semibold text-gray-900">{data.overallAverage} / 5</span></p>
       )}
     </div>
+  );
+}
+
+/* ================================================================== */
+/*  Voluntary EEO self-identification (ADR-0013) — optional, isolated   */
+/* ================================================================== */
+
+const EEO_FIELDS: { key: string; label: string; options: { value: string; label: string }[] }[] = [
+  { key: "gender", label: "Gender", options: [
+    { value: "female", label: "Female" }, { value: "male", label: "Male" }, { value: "nonbinary", label: "Non-binary" }, { value: "other", label: "Other" }, { value: "decline_to_state", label: "Decline to state" },
+  ] },
+  { key: "race", label: "Race", options: [
+    { value: "american_indian", label: "American Indian / Alaska Native" }, { value: "asian", label: "Asian" }, { value: "black", label: "Black / African American" }, { value: "hispanic", label: "Hispanic / Latino" }, { value: "native_hawaiian", label: "Native Hawaiian / Pacific Islander" }, { value: "white", label: "White" }, { value: "two_or_more", label: "Two or more races" }, { value: "other", label: "Other" }, { value: "decline_to_state", label: "Decline to state" },
+  ] },
+  { key: "veteranStatus", label: "Veteran status", options: [
+    { value: "veteran", label: "Veteran" }, { value: "not_veteran", label: "Not a veteran" }, { value: "decline_to_state", label: "Decline to state" },
+  ] },
+  { key: "disability", label: "Disability", options: [
+    { value: "yes", label: "Yes" }, { value: "no", label: "No" }, { value: "decline_to_state", label: "Decline to state" },
+  ] },
+];
+
+function EeoSelfIdSection({ apps }: { apps: { id: string; title: string }[] }) {
+  const [appId, setAppId] = useState(apps[0]?.id ?? "");
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy || !appId) return;
+    setBusy(true);
+    try {
+      const body: Record<string, string> = { applicationId: appId };
+      for (const [k, v] of Object.entries(vals)) if (v) body[k] = v;
+      const res = await fetch("/api/eeo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (res.ok) setSaved(true);
+    } catch {
+      /* keep */
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section aria-labelledby="eeo-heading" className="mt-12 border-t border-gray-200 pt-8">
+      <h2 id="eeo-heading" className="text-xl font-semibold tracking-tight text-gray-900">Voluntary self-identification</h2>
+      <p className="mt-1 text-sm text-gray-500">
+        Optional and confidential. This is used only for aggregate, anonymized diversity reporting — it is
+        <strong> never</strong> shown to the hiring team and does <strong>not</strong> affect your application.
+      </p>
+      {saved ? (
+        <p className="mt-4 text-sm text-emerald-700">Thanks — your responses were recorded.</p>
+      ) : (
+        <form onSubmit={submit} className="mt-4 space-y-3">
+          {apps.length > 1 && (
+            <label className="block text-xs font-medium text-gray-600">Application
+              <select value={appId} onChange={(e) => setAppId(e.target.value)} className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+                {apps.map((a) => <option key={a.id} value={a.id}>{a.title}</option>)}
+              </select>
+            </label>
+          )}
+          {EEO_FIELDS.map((f) => (
+            <label key={f.key} className="block text-xs font-medium text-gray-600">{f.label}
+              <select value={vals[f.key] ?? ""} onChange={(e) => setVals((v) => ({ ...v, [f.key]: e.target.value }))} className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+                <option value="">Prefer not to answer</option>
+                {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </label>
+          ))}
+          <button type="submit" disabled={busy || !appId} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600">
+            {busy ? "Submitting…" : "Submit"}
+          </button>
+        </form>
+      )}
+    </section>
   );
 }

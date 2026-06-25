@@ -23,6 +23,7 @@
     "./adverse-action": "./adverse-action.ts",
     "./data-export": "./data-export.ts",
     "./retention": "./retention.ts",
+    "./eeo-aggregate": "./eeo-aggregate.ts",
     "./ics": "./ics.ts",
     "./storage": "./storage.ts",
     "./kv": "./kv.ts",

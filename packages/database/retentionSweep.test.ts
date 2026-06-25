@@ -15,6 +15,7 @@ vi.mock("./client", () => ({
     },
     adverseAction: { updateMany: (...a: unknown[]) => adverseUpdateMany(...a) },
     offer: { updateMany: (...a: unknown[]) => offerUpdateMany(...a) },
+    eeoSelfId: { deleteMany: vi.fn() },
     auditLog: { create: (...a: unknown[]) => auditCreate(...a) },
     $transaction: (...a: unknown[]) => $transaction(...a),
   },

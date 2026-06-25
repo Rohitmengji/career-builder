@@ -45,3 +45,5 @@ export { consentRepo } from "./consentRepo";
 export type { RecordConsentInput } from "./consentRepo";
 export { dataRightsRepo, anonymizedApplicationData } from "./dataRightsRepo";
 export type { DeleteResult } from "./dataRightsRepo";
+export { eeoRepo } from "./eeoRepo";
+export type { RecordEeoInput } from "./eeoRepo";
