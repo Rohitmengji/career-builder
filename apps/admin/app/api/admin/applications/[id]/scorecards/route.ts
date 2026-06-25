@@ -66,9 +66,37 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       aggregate: aggregateScorecards(aggregateInput, rubric),
       // The caller's own scorecard id (so the UI can show "edit yours" vs "add yours").
       mySubmissionId: scorecards.find((sc) => sc.interviewerId === session.userId)?.id ?? null,
+      // Whether an anonymized summary has been released to the candidate (ADR-0012).
+      feedbackReleased: !!(app as { feedbackReleasedAt?: Date | null }).feedbackReleasedAt,
+      feedbackEnabled: isEnabled("interview_feedback"),
     },
     { headers: NO_STORE },
   );
+}
+
+/* ---------------------------------------------------------------- PATCH */
+/** Release / un-release the candidate-visible feedback summary (ADR-0012). Recruiter+, CSRF, flag interview_feedback. */
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!isEnabled("interview_feedback")) return NextResponse.json({ error: "Not found" }, { status: 404, headers: NO_STORE });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: NO_STORE });
+  if (!WRITE_ROLES.includes(session.role)) return NextResponse.json({ error: "Insufficient permissions" }, { status: 403, headers: NO_STORE });
+  if (!(await validateCsrf(req))) return NextResponse.json({ error: "Invalid CSRF token" }, { status: 403, headers: NO_STORE });
+
+  const { id } = await params;
+  let body: { action?: unknown };
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request body." }, { status: 400, headers: NO_STORE }); }
+  if (body?.action !== "release" && body?.action !== "unrelease") {
+    return NextResponse.json({ error: "action must be release|unrelease." }, { status: 400, headers: NO_STORE });
+  }
+
+  const app = await applicationRepo.findByIdScoped(id, session.tenantId);
+  if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
+
+  const releasedAt = body.action === "release" ? new Date() : null;
+  await applicationRepo.setFeedbackReleased(id, session.tenantId, releasedAt);
+  await writeAuditLog(session.userId, session.email, `interview_feedback_${body.action}`, `application ${id.slice(-6)}`);
+  return NextResponse.json({ success: true, feedbackReleased: releasedAt !== null }, { headers: NO_STORE });
 }
 
 /* ----------------------------------------------------------------- POST */

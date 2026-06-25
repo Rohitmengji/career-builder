@@ -125,6 +125,15 @@ const FLAG_DEFINITIONS = {
       "dropdown in the candidate header and the admin dashboard. Recipient-scoped " +
       "and tenant-isolated. Off by default.",
   },
+  interview_feedback: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Candidate-visible interview feedback (ADR-0012): a recruiter can release an " +
+      "ANONYMIZED scorecard summary (per-criterion averages + overall, no interviewer " +
+      "identity / recommendation labels / comments) to the candidate, per application. " +
+      "Off by default.",
+  },
   data_export: {
     default: false,
     envOverrides: { development: true },

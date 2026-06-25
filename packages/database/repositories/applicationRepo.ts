@@ -178,6 +178,12 @@ export const applicationRepo = {
     });
   },
 
+  /** Release / un-release anonymized interview feedback to the candidate (ADR-0012). Tenant-scoped; returns rows changed. */
+  async setFeedbackReleased(id: string, tenantId: string, releasedAt: Date | null) {
+    const res = await prisma.application.updateMany({ where: { id, tenantId }, data: { feedbackReleasedAt: releasedAt } });
+    return res.count;
+  },
+
   async updateRating(id: string, rating: number) {
     return prisma.application.update({
       where: { id },

@@ -185,6 +185,9 @@ model Application {
   anonymizedAt   DateTime?
   legalHold      Boolean  @default(false)
   legalHoldReason String?
+  // Interview feedback (ADR-0012): when set, an anonymized scorecard summary is
+  // released to the candidate (deliberate recruiter action, post-decision).
+  feedbackReleasedAt DateTime?
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

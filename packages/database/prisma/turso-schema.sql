@@ -116,6 +116,7 @@ CREATE TABLE "Application" (
     "anonymizedAt" DATETIME,
     "legalHold" BOOLEAN NOT NULL DEFAULT false,
     "legalHoldReason" TEXT,
+    "feedbackReleasedAt" DATETIME,
     "submittedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     "externalId" TEXT,
