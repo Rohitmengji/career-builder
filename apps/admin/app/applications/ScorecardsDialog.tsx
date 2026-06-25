@@ -38,6 +38,8 @@ interface Payload {
   scorecards: Scorecard[];
   aggregate: Aggregate;
   mySubmissionId: string | null;
+  feedbackReleased?: boolean;
+  feedbackEnabled?: boolean;
 }
 
 interface Props {
@@ -78,6 +80,7 @@ export default function ScorecardsDialog({ applicationId, candidateName, csrf, o
   const [recommendation, setRecommendation] = useState<Recommendation>("yes");
   const [scores, setScores] = useState<Record<string, number>>({});
   const [overallNotes, setOverallNotes] = useState("");
+  const [releaseBusy, setReleaseBusy] = useState(false);
 
   const base = `/api/admin/applications/${encodeURIComponent(applicationId)}/scorecards`;
 
@@ -115,6 +118,24 @@ export default function ScorecardsDialog({ applicationId, candidateName, csrf, o
     dialogRef.current?.close();
     onClose();
   }, [onClose]);
+
+  const toggleRelease = useCallback(async () => {
+    if (releaseBusy || !data) return;
+    setReleaseBusy(true);
+    try {
+      const action = data.feedbackReleased ? "unrelease" : "release";
+      const res = await fetch(base, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-csrf-token": csrf },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) setData((d) => (d ? { ...d, feedbackReleased: !d.feedbackReleased } : d));
+    } catch {
+      /* keep current */
+    } finally {
+      setReleaseBusy(false);
+    }
+  }, [releaseBusy, data, base, csrf]);
 
   const submit = useCallback(
     async (e: React.FormEvent) => {
@@ -211,6 +232,17 @@ export default function ScorecardsDialog({ applicationId, candidateName, csrf, o
                         </li>
                       ))}
                     </ul>
+                  )}
+                  {data.feedbackEnabled && (
+                    <div className="mt-3 border-t border-gray-200 pt-3">
+                      <button type="button" onClick={toggleRelease} disabled={releaseBusy}
+                        className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded">
+                        {data.feedbackReleased ? "Hide feedback from candidate" : "Release anonymized feedback to candidate"}
+                      </button>
+                      {data.feedbackReleased && (
+                        <p className="mt-1 text-[11px] text-emerald-700">Shared with the candidate — per-criterion averages only (no names, notes, or recommendations).</p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

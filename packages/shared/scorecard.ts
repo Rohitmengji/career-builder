@@ -187,3 +187,30 @@ export function aggregateScorecards(
     needsMoreFeedback: total < MIN_SCORECARDS_FOR_DECISION,
   };
 }
+
+/* ── Candidate-visible feedback (ADR-0012) ─────────────────────────── */
+
+export interface CandidateFeedback {
+  /** Per-criterion average scores — only criteria that were actually rated. */
+  criteria: { criterion: string; average: number }[];
+  /** Overall average across all criterion scores (null if none). */
+  overallAverage: number | null;
+  /** How many interviewers contributed (context only — NO identities). */
+  interviewerCount: number;
+}
+
+/**
+ * Candidate-safe projection of aggregated scorecards: per-criterion averages +
+ * the overall average + an interviewer count. Deliberately omits interviewer
+ * identity, recommendation labels (too blunt to surface raw), and all free-text
+ * comments. The recruiter releases this explicitly per application.
+ */
+export function candidateFeedbackProjection(agg: ScorecardAggregate): CandidateFeedback {
+  return {
+    criteria: agg.perCriterion
+      .filter((c) => c.average !== null)
+      .map((c) => ({ criterion: c.criterion, average: c.average as number })),
+    overallAverage: agg.overallAverage,
+    interviewerCount: agg.total,
+  };
+}

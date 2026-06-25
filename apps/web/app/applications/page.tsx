@@ -31,6 +31,7 @@ interface ApplicationEntry {
   };
   timeline?: TimelineEvent[];
   rejectionReason?: { category: string; message: string } | null;
+  feedbackReleased?: boolean;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
@@ -384,6 +385,7 @@ export default function MyApplicationsPage() {
                       <p className="mt-1 text-sm text-gray-600">{app.rejectionReason.message}</p>
                     </div>
                   )}
+                  {app.feedbackReleased && <InterviewFeedback applicationId={app.id} />}
                   {app.timeline && app.timeline.length > 0 && (
                     <ol className="mt-3 space-y-2 border-t border-gray-100 pt-3" aria-label="Status history">
                       {app.timeline.map((ev, i) => (
@@ -402,6 +404,63 @@ export default function MyApplicationsPage() {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  Interview feedback — anonymized scorecard summary (ADR-0012)        */
+/* ================================================================== */
+
+interface FeedbackData {
+  criteria: { criterion: string; average: number }[];
+  overallAverage: number | null;
+  interviewerCount: number;
+}
+
+function InterviewFeedback({ applicationId }: { applicationId: string }) {
+  const [data, setData] = useState<FeedbackData | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/applications/${encodeURIComponent(applicationId)}/feedback`, { cache: "no-store" });
+        if (!res.ok || !active) return;
+        const json = await res.json();
+        if (active) setData(json.feedback ?? null);
+      } catch {
+        /* leave empty */
+      } finally {
+        if (active) setLoaded(true);
+      }
+    };
+    void run();
+    return () => { active = false; };
+  }, [applicationId]);
+
+  if (!loaded || !data || (data.criteria.length === 0 && data.overallAverage === null)) return null;
+
+  return (
+    <div className="mt-3 rounded-lg border border-indigo-100 bg-indigo-50/40 p-3">
+      <p className="text-xs font-semibold text-gray-700">Your interview feedback</p>
+      <p className="mt-0.5 text-[11px] text-gray-500">
+        Anonymized summary across {data.interviewerCount} interviewer{data.interviewerCount === 1 ? "" : "s"}.
+      </p>
+      {data.criteria.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {data.criteria.map((c) => (
+            <li key={c.criterion} className="flex items-center justify-between text-xs">
+              <span className="text-gray-600">{c.criterion}</span>
+              <span className="font-medium text-gray-900">{c.average} / 5</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {data.overallAverage !== null && (
+        <p className="mt-2 text-xs text-gray-600">Overall: <span className="font-semibold text-gray-900">{data.overallAverage} / 5</span></p>
+      )}
     </div>
   );
 }

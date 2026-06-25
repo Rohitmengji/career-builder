@@ -55,6 +55,8 @@ export async function GET() {
     }
   }
 
+  const feedbackEnabled = isEnabled("interview_feedback");
+
   // Return only safe fields (no internal notes, ratings, etc.)
   const safe = applications.map((app) => ({
     id: app.id,
@@ -69,6 +71,9 @@ export async function GET() {
     },
     timeline: timelineByApp[app.id] ?? [],
     rejectionReason: reasonByApp[app.id] ?? null,
+    // Anonymized interview feedback is available (fetch detail from /feedback) once
+    // a recruiter releases it (ADR-0012). Flag-gated.
+    feedbackReleased: feedbackEnabled && !!(app as { feedbackReleasedAt?: Date | null }).feedbackReleasedAt,
   }));
 
   return NextResponse.json({ applications: safe });

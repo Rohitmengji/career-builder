@@ -3,6 +3,7 @@ import {
   parseScorecardCriteria,
   clampScore,
   aggregateScorecards,
+  candidateFeedbackProjection,
   isRecommendation,
   MAX_CRITERIA,
   MIN_SCORECARDS_FOR_DECISION,
@@ -143,5 +144,36 @@ describe("aggregateScorecards", () => {
     ];
     const agg = aggregateScorecards(cards, criteria);
     expect(agg.perCriterion.find((c) => c.criterion === "Coding")!.average).toBe(5);
+  });
+});
+
+describe("candidateFeedbackProjection — candidate-safe (ADR-0012)", () => {
+  const cards = [
+    { interviewerId: "u1", recommendation: "yes" as const, ratings: [{ criterion: "Coding", score: 4 }, { criterion: "Communication", score: 5 }] },
+    { interviewerId: "u2", recommendation: "strong_no" as const, ratings: [{ criterion: "Coding", score: 2, comment: "SECRET internal comment" }] },
+  ];
+  const agg = aggregateScorecards(cards, ["Coding", "Communication"]);
+  const fb = candidateFeedbackProjection(agg);
+
+  it("returns per-criterion averages + overall + interviewer count", () => {
+    expect(fb.interviewerCount).toBe(2);
+    expect(fb.criteria).toContainEqual({ criterion: "Coding", average: 3 });
+    expect(fb.criteria).toContainEqual({ criterion: "Communication", average: 5 });
+    expect(fb.overallAverage).not.toBeNull();
+  });
+
+  it("NEVER leaks interviewer identity, recommendation labels, or comments", () => {
+    const s = JSON.stringify(fb);
+    expect(s).not.toContain("u1");
+    expect(s).not.toContain("u2");
+    expect(s).not.toContain("strong_no");
+    expect(s).not.toContain("recommendation");
+    expect(s).not.toContain("SECRET internal comment");
+  });
+
+  it("omits criteria nobody rated", () => {
+    const empty = candidateFeedbackProjection(aggregateScorecards([], ["Coding"]));
+    expect(empty.criteria).toEqual([]);
+    expect(empty.overallAverage).toBeNull();
   });
 });
