@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { parseScreeningQuestions } from "@career-builder/shared/screening";
+import { isEnabled } from "@career-builder/shared/feature-flags";
 import AiJobAssistant from "@/components/jobs/AiJobAssistant";
 import type { AiJobFormData } from "@/lib/ai/types";
 import { useAuthGuard } from "@/lib/useAuthGuard";
@@ -127,6 +128,8 @@ export default function AdminJobsPage() {
   const [view, setView] = useState<"list" | "form">("list");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<JobFormData>(EMPTY_FORM);
+  const [biasBusy, setBiasBusy] = useState(false);
+  const [biasFindings, setBiasFindings] = useState<{ phrase: string; category: string; suggestion: string }[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   useAuthGuard();
@@ -209,6 +212,26 @@ export default function AdminJobsPage() {
     });
     setError("");
     setView("form");
+  }
+
+  async function checkBias() {
+    if (biasBusy) return;
+    setBiasBusy(true);
+    setBiasFindings(null);
+    try {
+      const res = await fetch("/api/admin/jobs/bias-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-csrf-token": csrf },
+        body: JSON.stringify({ description: form.description }),
+      });
+      if (!res.ok) { setBiasFindings([]); return; } // unavailable/off → treat as no findings
+      const data = await res.json();
+      setBiasFindings(data.available ? data.findings : []);
+    } catch {
+      setBiasFindings([]);
+    } finally {
+      setBiasBusy(false);
+    }
   }
 
   async function handleSave() {
@@ -684,9 +707,35 @@ export default function AdminJobsPage() {
                 required
                 rows={6}
                 value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                onChange={(e) => { setForm({ ...form, description: e.target.value }); setBiasFindings(null); }}
                 placeholder="Describe the role, responsibilities, and team…"
               />
+
+              {/* Inclusive-language check (ADR-0014) — advisory, non-blocking */}
+              {isEnabled("ai_jd_bias_detection") && (
+                <div className="-mt-2">
+                  <button
+                    type="button"
+                    onClick={checkBias}
+                    disabled={biasBusy || !form.description.trim()}
+                    className="text-sm font-medium text-blue-600 hover:underline disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded"
+                  >
+                    {biasBusy ? "Checking…" : "Check for inclusive language"}
+                  </button>
+                  {biasFindings !== null && biasFindings.length === 0 && (
+                    <p className="mt-1.5 text-xs text-emerald-700">No exclusionary language detected.</p>
+                  )}
+                  {biasFindings !== null && biasFindings.length > 0 && (
+                    <ul className="mt-2 space-y-1.5">
+                      {biasFindings.map((f, i) => (
+                        <li key={i} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                          <span className="font-semibold">“{f.phrase}”</span> <span className="text-amber-700">({f.category})</span> — {f.suggestion}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
 
               {/* Requirements */}
               <TextareaField
