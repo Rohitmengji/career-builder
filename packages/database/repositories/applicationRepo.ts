@@ -31,6 +31,10 @@ export interface ApplicationFilters {
    *  (SQLite LIKE is case-insensitive for ASCII.) Callers MUST NOT pass this
    *  while blind hiring is on — it would let a recruiter de-anonymize. */
   q?: string;
+  /** Tag ids to filter by (ADR-0016). AND semantics: an application must carry
+   *  ALL of these tags to match (narrowing filter). Ids are tenant-scoped via the
+   *  join, so a foreign tagId simply matches nothing. */
+  tags?: string[];
 }
 
 export const applicationRepo = {
@@ -75,6 +79,12 @@ export const applicationRepo = {
           { resumeText: { contains: q } },
         ];
       }
+    }
+    if (filters.tags && filters.tags.length > 0) {
+      // AND across tags: one `some` clause per tag id, so the application must
+      // have a join row for EVERY requested tag. Tenant scoping comes from the
+      // top-level tenantId — a foreign tagId just never matches.
+      where.AND = filters.tags.map((tagId) => ({ tags: { some: { tagId } } }));
     }
 
     const [data, total] = await Promise.all([

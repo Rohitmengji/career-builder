@@ -8,7 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
-import { applicationRepo, eventRepo, adverseActionRepo, stageRepo } from "@career-builder/database";
+import { applicationRepo, eventRepo, adverseActionRepo, stageRepo, tagRepo } from "@career-builder/database";
 import type { ApplicationFilters } from "@career-builder/database";
 import { updateApplicationSchema, paginationSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString, sanitizeEmail } from "@career-builder/security/sanitize";
@@ -69,12 +69,39 @@ export async function GET(req: Request) {
   const q = searchParams.get("q");
   if (q && !blind.enabled) filters.q = sanitizeString(q, 100);
 
+  // Tag filter (ADR-0016) — comma-separated tag ids, AND semantics. Only honoured
+  // when the flag is on; foreign tag ids match nothing (tenant-scoped via the join).
+  const tagsEnabled = isEnabled("application_tags");
+  if (tagsEnabled) {
+    const tagsParam = searchParams.get("tags");
+    if (tagsParam) {
+      const tagIds = tagsParam.split(",").map((t) => sanitizeString(t, 50)).filter(Boolean).slice(0, 50);
+      if (tagIds.length > 0) filters.tags = tagIds;
+    }
+  }
+
   const result = await applicationRepo.findByTenant(filters, page, perPage);
   const stats = await applicationRepo.countByStatus(session.tenantId);
 
   // Redact identifying fields server-side BEFORE the payload leaves the API
   // (default-deny). Recruiters never receive PII when blind hiring is on.
   const applications = redactApplicants(result.data, blind);
+
+  // Attach each application's tags — but NOT under blind hiring. Tags are free-text
+  // recruiter labels rendered next to the candidate row; a label like "John — Google
+  // referral" would re-identify a candidate the blind-hiring redaction just hid (same
+  // de-anonymization risk as free-text search, which is also disabled above). So tags
+  // are suppressed server-side whenever blind hiring is on (default-deny — a redaction
+  // leak is Sev1). The tag FILTER still works (it matches by tag id, not label).
+  if (tagsEnabled && !blind.enabled && applications.length > 0) {
+    const tagMap = await tagRepo.listForApplications(
+      session.tenantId,
+      applications.map((a) => a.id),
+    );
+    for (const a of applications as Array<{ id: string; tags?: unknown }>) {
+      a.tags = tagMap.get(a.id) ?? [];
+    }
+  }
 
   return NextResponse.json({
     applications,

@@ -416,6 +416,43 @@ CREATE TABLE "AppConfig" (
     "updatedAt" DATETIME NOT NULL
 );
 
+-- CreateTable
+CREATE TABLE "ApplicationTag" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "color" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "ApplicationTag_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "ApplicationTagOnApplication" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "applicationId" TEXT NOT NULL,
+    "tagId" TEXT NOT NULL,
+    "createdById" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ApplicationTagOnApplication_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "ApplicationTagOnApplication_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "Application" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "ApplicationTagOnApplication_tagId_fkey" FOREIGN KEY ("tagId") REFERENCES "ApplicationTag" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "SavedView" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "filters" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "SavedView_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "SavedView_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "Tenant_domain_key" ON "Tenant"("domain");
 
@@ -598,4 +635,22 @@ CREATE INDEX "Candidate_resetTokenHash_idx" ON "Candidate"("resetTokenHash");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Candidate_email_tenantId_key" ON "Candidate"("email", "tenantId");
+
+-- CreateIndex
+CREATE INDEX "ApplicationTag_tenantId_idx" ON "ApplicationTag"("tenantId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ApplicationTag_tenantId_label_key" ON "ApplicationTag"("tenantId", "label");
+
+-- CreateIndex
+CREATE INDEX "ApplicationTagOnApplication_tenantId_tagId_idx" ON "ApplicationTagOnApplication"("tenantId", "tagId");
+
+-- CreateIndex
+CREATE INDEX "ApplicationTagOnApplication_tenantId_applicationId_idx" ON "ApplicationTagOnApplication"("tenantId", "applicationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ApplicationTagOnApplication_applicationId_tagId_key" ON "ApplicationTagOnApplication"("applicationId", "tagId");
+
+-- CreateIndex
+CREATE INDEX "SavedView_tenantId_userId_idx" ON "SavedView"("tenantId", "userId");
 

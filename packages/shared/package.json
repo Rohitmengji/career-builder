@@ -28,6 +28,8 @@
     "./ics": "./ics.ts",
     "./storage": "./storage.ts",
     "./kv": "./kv.ts",
-    "./preview-token": "./preview-token.ts"
+    "./preview-token": "./preview-token.ts",
+    "./tags": "./tags.ts",
+    "./saved-view": "./saved-view.ts"
   }
 }

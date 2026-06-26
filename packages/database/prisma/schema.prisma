@@ -42,6 +42,9 @@ model Tenant {
   candidates   Candidate[]
   domains      Domain[]
   pipelineStages PipelineStage[]
+  applicationTags     ApplicationTag[]
+  applicationTagLinks ApplicationTagOnApplication[]
+  savedViews          SavedView[]
 }
 
 // --- DOMAIN (custom domains per tenant) ---
@@ -107,6 +110,7 @@ model User {
   offersCreated  Offer[] @relation("OfferCreatedBy")
   offersApproved Offer[] @relation("OfferApprover")
   adverseActions AdverseAction[]
+  savedViews     SavedView[]
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -209,6 +213,7 @@ model Application {
   scorecards Scorecard[]
   offers   Offer[]
   adverseAction AdverseAction?
+  tags     ApplicationTagOnApplication[]
 
   @@index([jobId])
   @@index([tenantId])
@@ -623,4 +628,63 @@ model AppConfig {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// --- APPLICATION TAGS (ADR-0016, B2b) ---
+// Per-tenant tag library (ApplicationTag) + a many-to-many join to applications
+// (ApplicationTagOnApplication). Tags let recruiters annotate/segment candidates
+// (e.g. "referral", "strong-culture-fit") and filter the pipeline by them.
+// tenantId is carried on BOTH sides AND on the join row: tag-link rows are the
+// cross-tenant-sensitive surface, so the join is unambiguously tenant-owned
+// (defense-in-depth on top of the application's + tag's own tenantId).
+
+model ApplicationTag {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  label     String
+  color     String?  // a key from shared/tags.TAG_COLORS (closed palette — never raw CSS)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications ApplicationTagOnApplication[]
+
+  @@unique([tenantId, label]) // one tag per label per tenant (rename-safe library)
+  @@index([tenantId])
+}
+
+model ApplicationTagOnApplication {
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  applicationId String
+  application   Application    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  tagId         String
+  tag           ApplicationTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdById   String?        // who tagged it (no FK — survives user deletion)
+  createdAt     DateTime       @default(now())
+
+  @@unique([applicationId, tagId]) // a tag is on an application at most once
+  @@index([tenantId, tagId])
+  @@index([tenantId, applicationId])
+}
+
+// --- SAVED VIEWS (ADR-0016, B2b) ---
+// Named filter presets on the applications list, PRIVATE to the user who saved
+// them (scoped by tenantId + userId). `filters` is a JSON object restricted to a
+// whitelisted key set (shared/saved-view.SAVED_VIEW_FILTER_KEYS) so it can never
+// smuggle arbitrary query shape into the list endpoint.
+
+model SavedView {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  filters   String   // JSON: { status?, jobId?, department?, q?, tags?: string[] }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, userId])
 }
