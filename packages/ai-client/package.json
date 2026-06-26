@@ -8,7 +8,8 @@
     ".": "./index.ts",
     "./matching": "./matching.ts",
     "./resume": "./resume.ts",
-    "./jd-bias": "./jd-bias.ts"
+    "./jd-bias": "./jd-bias.ts",
+    "./scorecard-audit": "./scorecard-audit.ts"
   },
   "dependencies": {
     "zod": "^4.3.6"

@@ -141,6 +141,15 @@ const FLAG_DEFINITIONS = {
       "potentially exclusionary language (gendered/age/ableist) in the job editor " +
       "before publish. Advisory + non-blocking; fail-closed. Off by default.",
   },
+  ai_scorecard_audit: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "AI scorecard bias & consistency linter (ADR-0026, EU AI-Act safeguard): audits " +
+      "an interviewer's OWN written scorecard for bias-coded language, score/comment " +
+      "mismatch, and vague/unsubstantiated judgments — extending JD-bias detection to " +
+      "the EVALUATION itself. Internal-only, advisory, fail-closed. Off by default.",
+  },
   eeo_self_id: {
     default: false,
     envOverrides: { development: true },

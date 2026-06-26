@@ -8,6 +8,8 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button, Spinner, XIcon } from "@/components/ui";
+import { isEnabled } from "@career-builder/shared/feature-flags";
+import ScorecardAuditButton from "./ScorecardAuditButton";
 
 type Recommendation = "strong_yes" | "yes" | "no" | "strong_no";
 
@@ -275,6 +277,9 @@ export default function ScorecardsDialog({ applicationId, candidateName, csrf, o
                         </ul>
                       )}
                       {sc.overallNotes && <p className="mt-2 whitespace-pre-wrap text-xs text-gray-600">{sc.overallNotes}</p>}
+                      {isEnabled("ai_scorecard_audit") && (
+                        <ScorecardAuditButton applicationId={applicationId} scorecardId={sc.id} csrf={csrf} />
+                      )}
                     </li>
                   ))}
                 </ul>
