@@ -47,3 +47,5 @@ export { dataRightsRepo, anonymizedApplicationData } from "./dataRightsRepo";
 export type { DeleteResult } from "./dataRightsRepo";
 export { eeoRepo } from "./eeoRepo";
 export type { RecordEeoInput } from "./eeoRepo";
+export { stageRepo } from "./stageRepo";
+export type { CreateStageInput } from "./stageRepo";

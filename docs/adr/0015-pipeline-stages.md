@@ -1,20 +1,28 @@
 # ADR-0015: Customizable pipeline stages
 
-Status: Accepted · 2026-06-22 · Program B (recruiter power), slice B1. Foundation for the kanban board + custom funnels. Shipped in two halves; **B1a (this) is inert**.
+Status: Accepted · 2026-06-26 · Program B (recruiter power), slice B1. Shipped in two halves: **B1a** (#46, inert foundation) + **B1b** (this — activation, behind `custom_pipeline_stages`).
 
 ## Context
 
-`Application.status` is effectively a fixed 6-value enum (`applied|screening|interview|offer|hired|rejected`) referenced across offers status-sync, responsiveness (a public badge), analytics, candidate labels, and the event spine. Recruiters want to rename/insert/reorder stages, and the kanban board needs ordered columns — but a naive change would break all those consumers. This is the riskiest refactor, so it ships low-risk in two halves.
+`Application.status` is effectively a fixed 6-value enum (`applied|screening|interview|offer|hired|rejected`) that offers status-sync, the **public** responsiveness badge, and analytics all read. Recruiters want to rename / insert / reorder stages — but a naive change would break all those readers. This is the riskiest refactor in the roadmap, so it shipped low-risk.
 
 ## Decision
 
-**Keep `Application.status` (string) AND add `stageId` FK** — the single decision that makes this backward-compatible and reversible. `status` stays the source of truth until B1b; then it becomes a derived back-compat cache (`= stage.key`), so every existing `groupBy(status)`, email, and historical event keeps working unchanged.
+**Keep `Application.status` as the canonical 6-value field the reasoners read — UNTOUCHED.** Custom stages are an additive display/assignment layer; the readers never change.
 
-- **`PipelineStage`** (per-tenant; optional per-job override via nullable `jobId`): `{ key, label, kind, order, color?, isActive, isTerminal }`. `@@unique([tenantId, jobId, key])`.
-- **The `kind` semantic layer is the linchpin.** `kind ∈ {applied, in_process, offer, hired, rejected, custom}`. Every consumer reasons about `kind`, never the literal label — so a tenant can rename "Screening" → "Recruiter Chat" or insert "Take-home" without breaking offers/responsiveness/analytics. Pure `packages/shared/pipeline.ts` owns the contract: `DEFAULT_STAGES` (1:1 with today's 6), `isResponded/isPreOffer/isPreHire/isTerminal(kind)`, `LEGACY_STATUS_TO_KIND`, `KIND_DEFAULT_KEY`. (`packages/database` must not import shared — the backfill duplicates the seed.)
-- **B1a (this slice — inert, flag off):** additive schema (`PipelineStage` + `Application.stageId`) + `pipeline.ts` + an idempotent backfill (`packages/database/backfill-pipeline-stages.ts`) that seeds the 6 default stages per tenant and sets `stageId` from `status`. **Zero behavior change** — no consumer reads `stageId` yet; a unit test proves the `kind` helpers classify the 6 default stages identically to today's hardcoded `PRE_OFFER`/`PRE_HIRE`/responded/terminal sets.
-- **B1b (next, behind `custom_pipeline_stages`):** flip the 4 status-writers to set `stageId` + derive `status`; switch the 3 reasoners (offers, responsiveness, analytics) to `kind`; validate supplied stages against the tenant's in-route (keep the enum as the flag-off fallback — a security boundary); ship the per-tenant pipeline editor. Never store `stageId` in event `fromStatus/toStatus` (historical strings must survive renames). The editor forbids deleting the last stage of a required kind.
+- **B1a (#46):** additive `PipelineStage` (per-tenant; `key`, `label`, `kind`, `order`, `color`, `isActive`, `isTerminal`) + `Application.stageId` FK + pure `shared/pipeline.ts` `kind` semantics + an idempotent backfill seeding the 6 default stages per tenant. Inert (flag off, nothing read `stageId`).
+- **B1b (this):**
+  - `shared/pipeline.statusForStage(stage)` — derives the canonical status to persist: a default stage keeps its exact key (`screening` stays `screening`); a custom stage collapses to its `kind`'s canonical status (`in_process`/`custom` → `interview`). So `status` is **always** one of the 6 — reasoners stay valid.
+  - `stageRepo` (tenant-scoped CRUD) + `/api/admin/pipeline-stages` (GET list / POST add / PATCH reorder|update; manager+, CSRF, flag). The editor (`/pipeline`) forbids deactivating the last active stage of a required `kind` (applied/offer/hired/rejected), and key generation is collision-iterative + P2002-guarded.
+  - The applications PATCH accepts `stageId` (flag-gated): resolve the stage **tenant-scoped** (`findByIdScoped` → cross-tenant = 400), persist `stageId` + the derived `status` via `applicationRepo.setStage`, then run the existing status-change side-effects (audit + candidate-visible event + email) with the **canonical** status. Events/timeline never store a `stageId` — only status strings.
+  - The applications status dropdown renders the tenant's stages when present (value = `stageId`); otherwise the standard 6 statuses. Flag **off ⇒ byte-identical** to before.
+
+**Trade-off (documented):** custom mid-funnel stages collapse to `interview` for analytics/responsiveness (those metrics can't yet distinguish "Take-home" from "Onsite"). Richer per-stage timing is B5's job (reads the event spine). This deliberate simplification is what lets the reasoners stay untouched.
 
 ## Consequences
 
-The kind layer + retained `status` lets every status-coupled consumer migrate independently in B1b instead of a risky big-bang. Unblocks the drag-drop kanban (a card move = a `{id, stageId}` PATCH, reusing the existing event/notification side-effects). Backfill must run once per environment (`npx tsx backfill-pipeline-stages.ts`).
+Tenants get custom stages + assignment without any risk to the public responsiveness badge / offers / analytics. Unblocks the drag-drop kanban board (B2 — a card move is a `{id, stageId}` PATCH, reusing the same side-effects).
+
+## Verification
+
+Adversarial review (2 lenses, each finding verified) confirmed flag-off safety + reasoner isolation + tenant scoping; found + fixed 1 medium (non-iterative stage-key collision → 500; now iterative + P2002→409). `pipeline.ts` no-regression tests prove the `kind` helpers match the legacy sets; 410 unit tests green.

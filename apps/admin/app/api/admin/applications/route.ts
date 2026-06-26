@@ -8,7 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
-import { applicationRepo, eventRepo, adverseActionRepo } from "@career-builder/database";
+import { applicationRepo, eventRepo, adverseActionRepo, stageRepo } from "@career-builder/database";
 import type { ApplicationFilters } from "@career-builder/database";
 import { updateApplicationSchema, paginationSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString, sanitizeEmail } from "@career-builder/security/sanitize";
@@ -16,6 +16,7 @@ import { emailService } from "@career-builder/email";
 import { getBlindHiringConfig, redactApplicants, redactApplicant } from "@/lib/blindHiring";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import { candidateLabel, type AdverseCategory } from "@career-builder/shared/adverse-action";
+import { statusForStage } from "@career-builder/shared/pipeline";
 
 /** GET /api/admin/applications — list applications (recruiter+ only) */
 export async function GET(req: Request) {
@@ -106,7 +107,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { id, status, rating, notes, adverseAction } = parsed.data;
+  const { id, status, stageId, rating, notes, adverseAction } = parsed.data;
 
   // Verify application belongs to tenant
   const existing = await applicationRepo.findById(id);
@@ -118,25 +119,43 @@ export async function PATCH(req: Request) {
   // (long-lived) audit log so identity can't leak via the audit feed.
   const blind = await getBlindHiringConfig(session.tenantId);
 
-  if (status) {
-    const updated = await applicationRepo.updateStatus(id, status, notes ? sanitizeString(notes, 2000) : undefined);
+  // Custom pipeline stage assignment (ADR-0015, flag-gated). `status` stays the
+  // canonical 6-value field the reasoners use; a stage's `kind` derives it. The
+  // specific stage is persisted in `stageId` (for the board), `status` for everyone else.
+  let effStatus: typeof status = status;
+  let assignStageId: string | null = null;
+  if (stageId && isEnabled("custom_pipeline_stages")) {
+    const stage = await stageRepo.findByIdScoped(stageId, session.tenantId);
+    if (!stage) return NextResponse.json({ error: "Unknown stage." }, { status: 400 });
+    assignStageId = stage.id;
+    effStatus = statusForStage(stage) as typeof status;
+  }
+
+  if (effStatus) {
+    if (assignStageId) {
+      await applicationRepo.setStage(id, session.tenantId, assignStageId, effStatus);
+    } else {
+      await applicationRepo.updateStatus(id, effStatus, notes ? sanitizeString(notes, 2000) : undefined);
+    }
+    const updated = await applicationRepo.findByIdScoped(id, session.tenantId);
+    if (!updated) return NextResponse.json({ error: "Application not found" }, { status: 404 });
     await writeAuditLog(
       session.userId,
       session.email,
       "application_status_change",
-      `application ${id.slice(-6)}: ${existing.status} → ${status}`,
+      `application ${id.slice(-6)}: ${existing.status} → ${effStatus}`,
     );
 
     // Structured, candidate-visible workflow event (ADR-0005) — powers the real
     // candidate timeline + accurate responsiveness timing. Best-effort.
-    if (status !== existing.status) {
+    if (effStatus !== existing.status) {
       eventRepo
         .record({
           tenantId: session.tenantId,
           applicationId: id,
           type: "status_change",
           fromStatus: existing.status,
-          toStatus: status,
+          toStatus: effStatus,
           actorId: session.userId,
           actorType: "recruiter",
           visibility: "candidate",
@@ -149,7 +168,7 @@ export async function PATCH(req: Request) {
     // (timeline + this email) is gated by the `adverse_action_disclosure` flag AND
     // that opt-in — so freeText is never auto-disclosed.
     let candidateRejectionMessage: string | undefined;
-    if (status === "rejected" && adverseAction) {
+    if (effStatus === "rejected" && adverseAction) {
       try {
         await adverseActionRepo.upsert({
           tenantId: session.tenantId,
@@ -184,7 +203,7 @@ export async function PATCH(req: Request) {
       candidateFirstName: existing.firstName,
       candidateEmail: existing.email,
       jobTitle: existing.job?.title || "the position",
-      newStatus: status,
+      newStatus: effStatus,
       companyName,
       siteUrl,
       message: candidateRejectionMessage ?? (notes ? sanitizeString(notes, 2000) : undefined),

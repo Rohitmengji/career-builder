@@ -147,6 +147,9 @@ export const createApplicationSchema = z.object({
 export const updateApplicationSchema = z.object({
   id: cuid,
   status: z.enum(["applied", "screening", "interview", "offer", "hired", "rejected"]).optional(),
+  // Custom pipeline stage assignment (ADR-0015) — validated against the tenant's
+  // stages in-route; derives a canonical `status` via shared/pipeline.statusForStage.
+  stageId: cuid.optional(),
   rating: z.number().int().min(1).max(5).optional(),
   notes: z.string().max(5000).optional(),
   // Structured rejection reason (ADR-0010) — recorded when status → rejected.

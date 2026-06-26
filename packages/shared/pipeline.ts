@@ -86,3 +86,28 @@ export function isPreOffer(kind: StageKind): boolean {
 export function isPreHire(kind: StageKind): boolean {
   return isPreOffer(kind) || kind === "offer";
 }
+
+/** The 6 canonical application statuses the reasoners (offers/responsiveness/analytics) use. */
+export const CANONICAL_STATUSES = ["applied", "screening", "interview", "offer", "hired", "rejected"] as const;
+
+/** Canonical status a kind collapses to (custom mid-funnel stages count as "interview"). */
+const KIND_TO_STATUS: Record<StageKind, string> = {
+  applied: "applied",
+  in_process: "interview",
+  offer: "offer",
+  hired: "hired",
+  rejected: "rejected",
+  custom: "interview",
+};
+
+/**
+ * The canonical `Application.status` to persist for a given stage. This keeps the
+ * 6-value `status` field — which offers status-sync, the responsiveness badge, and
+ * analytics all read UNCHANGED — valid even for custom stages. A default stage keeps
+ * its exact key (so screening stays "screening"); a custom stage collapses to its
+ * kind's canonical status. The custom stage detail lives in `stageId` for the board.
+ */
+export function statusForStage(stage: { key: string; kind: StageKind | string }): string {
+  if ((CANONICAL_STATUSES as readonly string[]).includes(stage.key)) return stage.key;
+  return KIND_TO_STATUS[stage.kind as StageKind] ?? "interview";
+}
