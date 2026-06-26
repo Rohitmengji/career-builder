@@ -38,6 +38,7 @@ import RejectionReasonDialog from "./RejectionReasonDialog";
 import TagChips, { type Tag } from "./TagChips";
 import ManageTagsDialog, { type LibTag } from "./ManageTagsDialog";
 import SavedViews from "./SavedViews";
+import AddToPoolButton from "./AddToPoolButton";
 import { chipClass } from "./tagColors";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 
@@ -149,6 +150,7 @@ export default function AdminApplicationsPage() {
   // Tags + saved views (ADR-0016, B2b)
   const tagsEnabled = isEnabled("application_tags");
   const savedViewsEnabled = isEnabled("saved_views");
+  const talentPoolEnabled = isEnabled("talent_pool");
   const [tagLibrary, setTagLibrary] = useState<LibTag[]>([]);
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [manageTagsOpen, setManageTagsOpen] = useState(false);
@@ -449,6 +451,11 @@ export default function AdminApplicationsPage() {
               >
                 Manage tags
               </button>
+            )}
+            {talentPoolEnabled && (
+              <Link href="/talent-pools" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+                Talent pools
+              </Link>
             )}
             <Link href="/applications/board" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
               Board view
@@ -755,6 +762,7 @@ export default function AdminApplicationsPage() {
                             <ChatIcon className="h-4 w-4" />
                             Comments
                           </button>
+                          {talentPoolEnabled && <AddToPoolButton applicationId={app.id} csrf={csrf} />}
                         </div>
                       </td>
                     </tr>
@@ -828,6 +836,7 @@ export default function AdminApplicationsPage() {
                         <ChatIcon className="h-4 w-4" />
                         Comments
                       </Button>
+                      {talentPoolEnabled && <AddToPoolButton applicationId={app.id} csrf={csrf} />}
                     </div>
                   </div>
                 </li>

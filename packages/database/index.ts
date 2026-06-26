@@ -37,6 +37,7 @@ export {
   stageRepo,
   tagRepo,
   savedViewRepo,
+  talentPoolRepo,
 } from "./repositories";
 export type {
   CreateDomainInput,
@@ -62,6 +63,7 @@ export type {
   CreateStageInput,
   CreateTagInput,
   CreateSavedViewInput,
+  CreateTalentPoolInput,
 } from "./repositories";
 
 // Re-export all domain types and constants

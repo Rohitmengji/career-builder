@@ -359,6 +359,40 @@ export const createSavedViewSchema = z.object({
 export const deleteSavedViewSchema = z.object({ id: cuid }).strict();
 
 /* ================================================================== */
+/*  Talent pool / CRM (ADR-0018, B3)                                    */
+/* ================================================================== */
+
+export const createTalentPoolSchema = z.object({
+  name: z.string().min(1).max(80).transform((v) => v.trim()),
+  description: z.string().max(500).transform((v) => v.trim()).optional(),
+}).strict();
+
+export const updateTalentPoolSchema = z.object({
+  id: cuid,
+  name: z.string().min(1).max(80).transform((v) => v.trim()).optional(),
+  description: z.string().max(500).transform((v) => v.trim()).optional(),
+}).strict().refine((d) => d.name !== undefined || d.description !== undefined, {
+  message: "Provide at least one of name or description",
+});
+
+export const deleteTalentPoolSchema = z.object({ id: cuid }).strict();
+
+// Add a candidate to a pool BY APPLICATION — the route resolves the email from the
+// tenant-scoped application (never trusts a client-supplied email).
+export const addPoolMemberSchema = z.object({
+  applicationId: cuid,
+  note: z.string().max(500).transform((v) => v.trim()).optional(),
+}).strict();
+
+export const removePoolMemberSchema = z.object({ email }).strict();
+
+// Consent-gated re-engagement broadcast to a pool.
+export const reengagePoolSchema = z.object({
+  subject: z.string().min(1).max(200).transform((v) => v.trim()),
+  message: z.string().min(1).max(5000).transform((v) => v.trim()),
+}).strict();
+
+/* ================================================================== */
 /*  Helpers                                                            */
 /* ================================================================== */
 

@@ -14,6 +14,7 @@ import {
   interviewInvitation,
   offerExtended,
   offerDecision,
+  talentPoolReengagement,
 } from "./templates";
 import type {
   EmailConfig,
@@ -291,6 +292,30 @@ export const emailService = {
       html,
       text,
       tags: [{ name: "type", value: "mention-notification" }],
+    });
+  },
+
+  /**
+   * Consent-gated talent-pool re-engagement to ONE candidate (ADR-0018). The route
+   * sends only to candidates with marketing consent; this just renders + sends.
+   */
+  async sendTalentPoolReengagement(
+    data: { to: string; companyName: string; subject: string; message: string },
+    sender?: TenantEmailSettings,
+  ): Promise<SendResult> {
+    const { from } = resolveSender(sender);
+    const { subject, html, text } = talentPoolReengagement({
+      companyName: data.companyName,
+      subject: data.subject,
+      message: data.message,
+    });
+    return getProvider().send({
+      to: { email: data.to },
+      from,
+      subject,
+      html,
+      text,
+      tags: [{ name: "type", value: "talent-pool-reengagement" }],
     });
   },
 };

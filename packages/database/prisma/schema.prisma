@@ -45,6 +45,8 @@ model Tenant {
   applicationTags     ApplicationTag[]
   applicationTagLinks ApplicationTagOnApplication[]
   savedViews          SavedView[]
+  talentPools        TalentPool[]
+  talentPoolMembers  TalentPoolMember[]
 }
 
 // --- DOMAIN (custom domains per tenant) ---
@@ -687,4 +689,44 @@ model SavedView {
   updatedAt DateTime @updatedAt
 
   @@index([tenantId, userId])
+}
+
+// --- TALENT POOL / CRM (ADR-0018, B3) ---
+// Per-tenant named buckets of candidates a recruiter wants to keep warm for future
+// roles. Membership is keyed by candidate EMAIL (the person, not a single
+// application — ADR-0001 candidate ownership by email+tenant, no candidateId FK).
+// candidateName is a denormalized snapshot for display (redacted under blind hiring
+// at the API; deleted on GDPR erasure along with the email — ADR-0011).
+
+model TalentPool {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  createdById String?  // who created it (no FK — survives user deletion)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members TalentPoolMember[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model TalentPoolMember {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  poolId         String
+  pool           TalentPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  candidateEmail String   // lowercased — the CRM identity (PII; erased on GDPR §17)
+  candidateName  String?  // denormalized snapshot for display (PII; erased on §17)
+  note           String?
+  addedById      String?  // who added them (no FK)
+  createdAt      DateTime @default(now())
+
+  @@unique([poolId, candidateEmail]) // a candidate is in a pool at most once
+  @@index([tenantId, poolId])
+  @@index([tenantId, candidateEmail]) // fast erasure delete-by-email (ADR-0011)
 }
