@@ -49,3 +49,7 @@ export { eeoRepo } from "./eeoRepo";
 export type { RecordEeoInput } from "./eeoRepo";
 export { stageRepo } from "./stageRepo";
 export type { CreateStageInput } from "./stageRepo";
+export { tagRepo } from "./tagRepo";
+export type { CreateTagInput } from "./tagRepo";
+export { savedViewRepo } from "./savedViewRepo";
+export type { CreateSavedViewInput } from "./savedViewRepo";

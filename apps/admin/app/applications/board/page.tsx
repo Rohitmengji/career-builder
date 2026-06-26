@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuthGuard } from "@/lib/useAuthGuard";
+import { chipClass } from "../tagColors";
 
 interface Application {
   id: string;
@@ -18,6 +19,7 @@ interface Application {
   lastName: string;
   status: string;
   stageId: string | null;
+  tags?: { id: string; label: string; color: string | null }[]; // ADR-0016
   job: { title: string; department: string };
 }
 interface Column { id: string; label: string; kind?: string }
@@ -133,6 +135,15 @@ export default function ApplicationsBoardPage() {
                     >
                       <p className="text-sm font-medium text-gray-900">{a.firstName} {a.lastName}</p>
                       <p className="mt-0.5 truncate text-xs text-gray-500">{a.job.title}</p>
+                      {a.tags && a.tags.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {a.tags.map((t) => (
+                            <span key={t.id} className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${chipClass(t.color)}`}>
+                              {t.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </article>
                   ))}
                   {cards.length === 0 && <p className="px-1 py-4 text-center text-xs text-gray-400">Empty</p>}

@@ -313,6 +313,52 @@ export const jobSearchSchema = z.object({
 });
 
 /* ================================================================== */
+/*  Application tags + saved views (ADR-0016, B2b)                      */
+/* ================================================================== */
+
+// Closed tag-colour palette. MUST stay in sync with shared/tags.TAG_COLORS
+// (inlined here because @career-builder/security does not depend on /shared).
+const tagColor = z.enum([
+  "gray", "red", "orange", "amber", "green", "teal", "blue", "indigo", "purple", "pink",
+]);
+const tagLabel = z.string().min(1).max(40).transform((v) => v.replace(/\s+/g, " ").trim());
+
+export const createTagSchema = z.object({
+  label: tagLabel,
+  color: tagColor.optional(),
+}).strict();
+
+export const updateTagSchema = z.object({
+  id: cuid,
+  label: tagLabel.optional(),
+  color: tagColor.optional(),
+}).strict().refine((d) => d.label !== undefined || d.color !== undefined, {
+  message: "Provide at least one of label or color",
+});
+
+export const deleteTagSchema = z.object({ id: cuid }).strict();
+
+/** Add or remove a single tag on an application (the [id]/tags route). */
+export const applicationTagMutationSchema = z.object({ tagId: cuid }).strict();
+
+// A saved view's persisted filters — whitelisted keys only. MUST stay in sync
+// with shared/saved-view.SAVED_VIEW_FILTER_KEYS.
+const savedViewFilters = z.object({
+  status: z.string().max(40).optional(),
+  jobId: z.string().max(50).optional(),
+  department: z.string().max(100).optional(),
+  q: z.string().max(200).optional(),
+  tags: z.array(cuid).max(50).optional(),
+}).strict();
+
+export const createSavedViewSchema = z.object({
+  name: z.string().min(1).max(60).transform((v) => v.trim()),
+  filters: savedViewFilters,
+}).strict();
+
+export const deleteSavedViewSchema = z.object({ id: cuid }).strict();
+
+/* ================================================================== */
 /*  Helpers                                                            */
 /* ================================================================== */
 

@@ -192,6 +192,22 @@ const FLAG_DEFINITIONS = {
       "responsiveness, or analytics. When OFF the system uses the fixed 6 statuses " +
       "exactly as before. Unblocks the drag-drop kanban board. Off by default.",
   },
+  application_tags: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Application tags (ADR-0016): a per-tenant tag library recruiters use to " +
+      "annotate/segment candidates (e.g. 'referral', 'strong-fit') and filter the " +
+      "pipeline by tag. Internal-only (never candidate-visible); colours come from a " +
+      "closed palette. Off by default.",
+  },
+  saved_views: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Saved views (ADR-0016): named, PRIVATE filter presets on the applications " +
+      "list (status / job / department / search / tags), scoped per-user. Off by default.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",

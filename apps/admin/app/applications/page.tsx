@@ -35,6 +35,10 @@ import InterviewsDialog from "./InterviewsDialog";
 import ScorecardsDialog from "./ScorecardsDialog";
 import OffersDialog from "./OffersDialog";
 import RejectionReasonDialog from "./RejectionReasonDialog";
+import TagChips, { type Tag } from "./TagChips";
+import ManageTagsDialog, { type LibTag } from "./ManageTagsDialog";
+import SavedViews from "./SavedViews";
+import { chipClass } from "./tagColors";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 
 /* ================================================================== */
@@ -55,6 +59,7 @@ interface Application {
   notes: string | null;
   submittedAt: string;
   screeningAnswers: string | null;
+  tags?: Tag[]; // ADR-0016 — present when application_tags flag is on
   job: {
     id: string;
     title: string;
@@ -141,6 +146,12 @@ export default function AdminApplicationsPage() {
   const [appliedQuery, setAppliedQuery] = useState("");
   const [blindHiring, setBlindHiring] = useState(false);
   const [stages, setStages] = useState<{ id: string; label: string; kind: string }[]>([]);
+  // Tags + saved views (ADR-0016, B2b)
+  const tagsEnabled = isEnabled("application_tags");
+  const savedViewsEnabled = isEnabled("saved_views");
+  const [tagLibrary, setTagLibrary] = useState<LibTag[]>([]);
+  const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [manageTagsOpen, setManageTagsOpen] = useState(false);
   const { user: authUser } = useAuthGuard();
   const currentUserId = authUser?.id ?? "";
 
@@ -151,6 +162,7 @@ export default function AdminApplicationsPage() {
       const params = new URLSearchParams({ page: String(page), perPage: "20" });
       if (filterStatus) params.set("status", filterStatus);
       if (appliedQuery) params.set("q", appliedQuery);
+      if (filterTags.length) params.set("tags", filterTags.join(","));
 
       const res = await fetch(`/api/admin/applications?${params}`);
       if (!res.ok) throw new Error("Failed to load applications");
@@ -164,7 +176,18 @@ export default function AdminApplicationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, filterStatus, appliedQuery]);
+  }, [page, filterStatus, appliedQuery, filterTags]);
+
+  // The tenant tag library (ADR-0016) — for chips, the filter bar, and the manage dialog.
+  const reloadTagLibrary = useCallback(async () => {
+    if (!tagsEnabled) return;
+    try {
+      const res = await fetch("/api/admin/tags", { cache: "no-store" });
+      if (!res.ok) return;
+      const d = await res.json();
+      if (d?.enabled) setTagLibrary((d.tags ?? []) as LibTag[]);
+    } catch { /* ignore */ }
+  }, [tagsEnabled]);
 
   useEffect(() => {
     const csrfCookie = document.cookie
@@ -180,6 +203,9 @@ export default function AdminApplicationsPage() {
       .then((d) => { if (d?.enabled) setStages((d.stages || []).filter((s: { isActive: boolean }) => s.isActive)); })
       .catch(() => {});
   }, [loadApplications]);
+
+  // Load the tenant tag library once (no-op when the flag is off).
+  useEffect(() => { void reloadTagLibrary(); }, [reloadTagLibrary]);
 
   /* ─── Actions ──────────────────────────────────────────────── */
 
@@ -238,10 +264,13 @@ export default function AdminApplicationsPage() {
   /* ─── Bulk selection + actions ─────────────────────────────── */
 
   // Clear selection whenever the visible set changes (avoid acting on stale ids).
+  // MUST track every filter that changes which applications are loaded — status,
+  // page, free-text search, AND tag filter — or a bulk action could hit rows that
+  // are no longer visible (e.g. select-all, then narrow by tag).
   useEffect(() => {
     setSelected(new Set());
     setBulkNotice("");
-  }, [page, filterStatus]);
+  }, [page, filterStatus, appliedQuery, filterTags]);
 
   const allOnPageSelected = applications.length > 0 && applications.every((a) => selected.has(a.id));
 
@@ -261,23 +290,31 @@ export default function AdminApplicationsPage() {
     });
   }
 
+  // Only ever act on selected rows that are CURRENTLY visible — a last-line guard
+  // against acting on stale ids if selection somehow outlives a filter change.
+  function visibleSelectedIds(): string[] {
+    const visible = new Set(applications.map((a) => a.id));
+    return Array.from(selected).filter((id) => visible.has(id));
+  }
+
   async function bulkAct(action: "status" | "reject", status?: string) {
-    if (selected.size === 0 || bulkBusy) return;
-    if (action === "reject" && !window.confirm(`Reject ${selected.size} application(s) and email each candidate?`)) return;
+    const ids = visibleSelectedIds();
+    if (ids.length === 0 || bulkBusy) return;
+    if (action === "reject" && !window.confirm(`Reject ${ids.length} application(s) and email each candidate?`)) return;
     setBulkBusy(true);
     setBulkNotice("");
     try {
       const res = await fetch("/api/admin/applications/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-csrf-token": csrf },
-        body: JSON.stringify({ ids: Array.from(selected), action, status }),
+        body: JSON.stringify({ ids, action, status }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setBulkNotice(data.error || "Bulk action failed. Please try again.");
         return;
       }
-      setBulkNotice(`Updated ${data.updated ?? selected.size} application(s).`);
+      setBulkNotice(`Updated ${data.updated ?? ids.length} application(s).`);
       setSelected(new Set());
       await loadApplications();
     } catch {
@@ -288,14 +325,15 @@ export default function AdminApplicationsPage() {
   }
 
   async function bulkExport() {
-    if (selected.size === 0 || bulkBusy) return;
+    const ids = visibleSelectedIds();
+    if (ids.length === 0 || bulkBusy) return;
     setBulkBusy(true);
     setBulkNotice("");
     try {
       const res = await fetch("/api/admin/applications/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-csrf-token": csrf },
-        body: JSON.stringify({ ids: Array.from(selected), action: "export" }),
+        body: JSON.stringify({ ids, action: "export" }),
       });
       if (!res.ok) {
         setBulkNotice("Export failed. Please try again.");
@@ -389,6 +427,29 @@ export default function AdminApplicationsPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {savedViewsEnabled && (
+              <SavedViews
+                current={{ status: filterStatus || undefined, q: appliedQuery || undefined, tags: filterTags.length ? filterTags : undefined }}
+                csrf={csrf}
+                onApply={(f) => {
+                  setFilterStatus(f.status ?? "");
+                  const q = f.q ?? "";
+                  setSearch(q);
+                  setAppliedQuery(q);
+                  setFilterTags(f.tags ?? []);
+                  setPage(1);
+                }}
+              />
+            )}
+            {tagsEnabled && (
+              <button
+                type="button"
+                onClick={() => setManageTagsOpen(true)}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+              >
+                Manage tags
+              </button>
+            )}
             <Link href="/applications/board" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
               Board view
             </Link>
@@ -454,6 +515,35 @@ export default function AdminApplicationsPage() {
             </Button>
           )}
         </form>
+
+        {/* Tag filter (ADR-0016) — toggle chips; AND semantics (match all selected) */}
+        {tagsEnabled && tagLibrary.length > 0 && (
+          <div className="mb-6 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-xs font-medium text-gray-500">Tags:</span>
+            {tagLibrary.map((t) => {
+              const on = filterTags.includes(t.id);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => {
+                    setFilterTags((prev) => (on ? prev.filter((x) => x !== t.id) : [...prev, t.id]));
+                    setPage(1);
+                  }}
+                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium transition ${chipClass(t.color)} ${on ? "ring-2 ring-gray-900 ring-offset-1" : "opacity-70 hover:opacity-100"}`}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+            {filterTags.length > 0 && (
+              <button type="button" onClick={() => { setFilterTags([]); setPage(1); }} className="ml-1 text-xs text-gray-500 underline hover:text-gray-700">
+                clear tags
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Loading skeleton */}
         {loading && (
@@ -580,6 +670,9 @@ export default function AdminApplicationsPage() {
                           <span className="font-medium text-gray-900">{app.firstName} {app.lastName}</span>
                           <span className="mt-0.5 text-sm text-gray-600">{app.email}</span>
                           {screeningFailed(app) && <ScreeningBadge />}
+                          {tagsEnabled && !blindHiring && (
+                            <TagChips applicationId={app.id} tags={app.tags ?? []} library={tagLibrary} csrf={csrf} onLibraryStale={reloadTagLibrary} />
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 align-middle">
@@ -687,6 +780,9 @@ export default function AdminApplicationsPage() {
                         <p className="font-medium text-gray-900">{app.firstName} {app.lastName}</p>
                         <p className="mt-0.5 truncate text-sm text-gray-600">{app.email}</p>
                         {screeningFailed(app) && <ScreeningBadge />}
+                        {tagsEnabled && (
+                          <TagChips applicationId={app.id} tags={app.tags ?? []} library={tagLibrary} csrf={csrf} onLibraryStale={reloadTagLibrary} />
+                        )}
                       </div>
                     </div>
                     <Badge tone={statusMeta(app.status).tone}>
@@ -823,6 +919,14 @@ export default function AdminApplicationsPage() {
           csrf={csrf}
           disclosureEnabled={isEnabled("adverse_action_disclosure")}
           onClose={(rejected) => { setRejectingApp(null); if (rejected) loadApplications(); }}
+        />
+      )}
+      {manageTagsOpen && (
+        <ManageTagsDialog
+          tags={tagLibrary}
+          csrf={csrf}
+          onClose={() => setManageTagsOpen(false)}
+          onChanged={reloadTagLibrary}
         />
       )}
     </main>
