@@ -18,6 +18,8 @@ import { isEnabled } from "@career-builder/shared/feature-flags";
 import { candidateLabel, type AdverseCategory } from "@career-builder/shared/adverse-action";
 import { statusForStage } from "@career-builder/shared/pipeline";
 import { visibleJobIds, canAccessJob } from "@/lib/hiringTeams";
+import { decisionLedgerRepo } from "@career-builder/database";
+import { entriesFromRaw, seal as sealLedgerEntries } from "@career-builder/shared/decision-ledger";
 
 /** GET /api/admin/applications — list applications (recruiter+ only) */
 export async function GET(req: Request) {
@@ -184,9 +186,11 @@ export async function PATCH(req: Request) {
     );
 
     // Structured, candidate-visible workflow event (ADR-0005) — powers the real
-    // candidate timeline + accurate responsiveness timing. Best-effort.
+    // candidate timeline + accurate responsiveness timing. Best-effort. Captured so
+    // the Decision Ledger seal can await it (it must read the persisted terminal event).
+    let eventRecorded: Promise<unknown> | null = null;
     if (effStatus !== existing.status) {
-      eventRepo
+      eventRecorded = eventRepo
         .record({
           tenantId: session.tenantId,
           applicationId: id,
@@ -229,6 +233,21 @@ export async function PATCH(req: Request) {
       } catch (err) {
         // Record failed → do NOT disclose anything (consistency over a half-written reason).
         console.error("[applications] adverse action record failed:", err);
+      }
+    }
+
+    // Decision Ledger (ADR-0027): on a TERMINAL decision, seal the candidate-safe
+    // receipt. Must run AFTER the terminal event is persisted (await it) and AFTER the
+    // adverse upsert (so the reason is in the projection). Best-effort: a failure just
+    // leaves the receipt "unsealed", never blocks the decision.
+    if (isEnabled("decision_ledger") && effStatus !== existing.status && (effStatus === "hired" || effStatus === "rejected")) {
+      try {
+        if (eventRecorded) await eventRecorded;
+        const raw = await decisionLedgerRepo.buildInput(session.tenantId, id);
+        const digest = sealLedgerEntries(entriesFromRaw(raw));
+        await decisionLedgerRepo.storeSeal(session.tenantId, id, digest, new Date().toISOString());
+      } catch (err) {
+        console.error("[applications] decision-ledger seal failed:", err);
       }
     }
 

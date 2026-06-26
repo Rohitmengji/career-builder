@@ -15,7 +15,8 @@
 
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
-import { applicationRepo, offerRepo, eventRepo, userRepo, notificationRepo } from "@career-builder/database";
+import { applicationRepo, offerRepo, eventRepo, userRepo, notificationRepo, decisionLedgerRepo } from "@career-builder/database";
+import { entriesFromRaw, seal as sealLedgerEntries } from "@career-builder/shared/decision-ledger";
 import { createOfferSchema, updateOfferSchema, safeParse } from "@career-builder/security/validate";
 import { canAccessJob } from "@/lib/hiringTeams";
 import { sanitizeString } from "@career-builder/security/sanitize";
@@ -175,9 +176,19 @@ export async function PATCH(req: Request) {
   const syncApplicationStatus = async (fromStatus: string, toStatus: string) => {
     await applicationRepo.updateStatus(offer.applicationId, toStatus);
     await writeAuditLog(session.userId, session.email, "application_status_change", `application ${offer.applicationId.slice(-6)}: ${fromStatus} → ${toStatus}`);
-    eventRepo
+    const evRecorded = eventRepo
       .record({ tenantId: session.tenantId, applicationId: offer.applicationId, type: "status_change", fromStatus, toStatus, actorId: session.userId, actorType: "recruiter", visibility: "candidate" })
       .catch(() => {});
+    // Decision Ledger (ADR-0027): seal terminal decisions reached via the offer flow
+    // (accept → hired), mirroring the applications PATCH. Await the event first.
+    if (isEnabled("decision_ledger") && (toStatus === "hired" || toStatus === "rejected")) {
+      try {
+        await evRecorded;
+        const raw = await decisionLedgerRepo.buildInput(session.tenantId, offer.applicationId);
+        const digest = sealLedgerEntries(entriesFromRaw(raw));
+        await decisionLedgerRepo.storeSeal(session.tenantId, offer.applicationId, digest, new Date().toISOString());
+      } catch (err) { console.error("[offers] decision-ledger seal failed:", err); }
+    }
   };
 
   if (action === "send") {

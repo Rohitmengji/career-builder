@@ -41,6 +41,7 @@ export {
   requisitionRepo,
   hiringTeamRepo,
   campaignRepo,
+  decisionLedgerRepo,
 } from "./repositories";
 export type {
   CreateDomainInput,

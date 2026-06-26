@@ -133,6 +133,16 @@ const FLAG_DEFINITIONS = {
       "time-to-hire, and time-to-decision computed from the ApplicationEvent spine. " +
       "Off by default.",
   },
+  decision_ledger: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Decision Ledger (ADR-0027): at a terminal decision the server composes the " +
+      "candidate-safe signals (status timeline + screening + curated reason) into a " +
+      "sealed (SHA-256) receipt the candidate can view, with tamper-evidence if the " +
+      "record is edited after the fact. Candidate-facing transparency; per-tenant " +
+      "opt-in. Off by default.",
+  },
   ai_jd_bias_detection: {
     default: false,
     envOverrides: { development: true },

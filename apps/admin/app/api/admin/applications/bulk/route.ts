@@ -20,6 +20,9 @@ import { emailService } from "@career-builder/email";
 import { applicationsToCsv } from "@/lib/csvExport";
 import { getBlindHiringConfig, redactApplicants } from "@/lib/blindHiring";
 import { visibleJobIds } from "@/lib/hiringTeams";
+import { decisionLedgerRepo } from "@career-builder/database";
+import { isEnabled } from "@career-builder/shared/feature-flags";
+import { entriesFromRaw, seal as sealLedgerEntries } from "@career-builder/shared/decision-ledger";
 
 const WRITE_ROLES = ["super_admin", "admin", "hiring_manager", "recruiter"];
 
@@ -87,22 +90,40 @@ export async function POST(req: Request) {
   );
 
   // Structured candidate-visible events (ADR-0005) for the rows that changed.
-  Promise.allSettled(
-    owned
-      .filter((a) => a.status !== targetStatus)
-      .map((a) =>
-        eventRepo.record({
-          tenantId: session.tenantId,
-          applicationId: a.id,
-          type: "status_change",
-          fromStatus: a.status,
-          toStatus: targetStatus,
-          actorId: session.userId,
-          actorType: "recruiter",
-          visibility: "candidate",
-        }),
-      ),
-  ).catch((err) => console.error("[applications/bulk] event record failed:", err));
+  const changed = owned.filter((a) => a.status !== targetStatus);
+  const eventsRecorded = Promise.allSettled(
+    changed.map((a) =>
+      eventRepo.record({
+        tenantId: session.tenantId,
+        applicationId: a.id,
+        type: "status_change",
+        fromStatus: a.status,
+        toStatus: targetStatus,
+        actorId: session.userId,
+        actorType: "recruiter",
+        visibility: "candidate",
+      }),
+    ),
+  );
+  eventsRecorded.catch((err) => console.error("[applications/bulk] event record failed:", err));
+
+  // Decision Ledger (ADR-0027): seal a receipt for each row that reached a TERMINAL
+  // status. Bulk has no per-record reason, so these seal statuses + screening only.
+  // Best-effort, after the terminal events persist; never blocks the response.
+  if (isEnabled("decision_ledger") && (targetStatus === "hired" || targetStatus === "rejected") && changed.length > 0) {
+    void (async () => {
+      try {
+        await eventsRecorded;
+        for (const a of changed) {
+          try {
+            const raw = await decisionLedgerRepo.buildInput(session.tenantId, a.id);
+            const digest = sealLedgerEntries(entriesFromRaw(raw));
+            await decisionLedgerRepo.storeSeal(session.tenantId, a.id, digest, new Date().toISOString());
+          } catch (err) { console.error("[applications/bulk] seal failed:", a.id, err); }
+        }
+      } catch (err) { console.error("[applications/bulk] ledger seal batch failed:", err); }
+    })();
+  }
 
   // Reject: notify candidates (fire-and-forget; never block the response).
   // Bulk reject sends only the template's generic rejection copy. It has no

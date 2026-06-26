@@ -11,8 +11,9 @@
 
 import { NextResponse } from "next/server";
 import { getCandidateSession } from "@/lib/candidateAuth";
-import { offerRepo, applicationRepo, eventRepo } from "@career-builder/database";
+import { offerRepo, applicationRepo, eventRepo, decisionLedgerRepo } from "@career-builder/database";
 import { isEnabled } from "@career-builder/shared/feature-flags";
+import { entriesFromRaw, seal as sealLedgerEntries } from "@career-builder/shared/decision-ledger";
 import { isExpired, effectiveStatus } from "@career-builder/shared/offer";
 import { offerDecisionSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString } from "@career-builder/security/sanitize";
@@ -85,9 +86,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // back to "hired" if the offer was accepted out of order.
     if (app && PRE_HIRE.has(app.status)) {
       await applicationRepo.updateStatus(offer.applicationId, "hired");
-      eventRepo
+      // Await the terminal event so the Decision Ledger seal can read it.
+      await eventRepo
         .record({ tenantId: session.tenantId, applicationId: offer.applicationId, type: "status_change", fromStatus: app.status, toStatus: "hired", actorType: "candidate", visibility: "candidate" })
         .catch(() => {});
+      // Decision Ledger (ADR-0027): seal this terminal "hired" decision too — the
+      // offer-acceptance path is the dominant hire route. Best-effort.
+      if (isEnabled("decision_ledger")) {
+        try {
+          const raw = await decisionLedgerRepo.buildInput(session.tenantId, offer.applicationId);
+          const digest = sealLedgerEntries(entriesFromRaw(raw));
+          await decisionLedgerRepo.storeSeal(session.tenantId, offer.applicationId, digest, new Date().toISOString());
+        } catch (err) { console.error("[offers] decision-ledger seal failed:", err); }
+      }
     }
   }
 
