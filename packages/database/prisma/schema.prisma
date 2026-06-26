@@ -48,6 +48,7 @@ model Tenant {
   talentPools        TalentPool[]
   talentPoolMembers  TalentPoolMember[]
   requisitions       Requisition[]
+  hiringTeamMembers  HiringTeamMember[]
 }
 
 // --- DOMAIN (custom domains per tenant) ---
@@ -114,6 +115,7 @@ model User {
   offersApproved Offer[] @relation("OfferApprover")
   adverseActions AdverseAction[]
   savedViews     SavedView[]
+  hiringTeamMemberships HiringTeamMember[]
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -162,6 +164,7 @@ model Job {
   applications Application[]
   pipelineStages PipelineStage[]
   requisition Requisition? // ADR-0020: the req authorizing this job to be published
+  hiringTeam HiringTeamMember[] // ADR-0020 B6b: who may see this job's applications
 
   @@unique([slug, tenantId])
   @@index([tenantId])
@@ -758,4 +761,26 @@ model Requisition {
 
   @@index([tenantId])
   @@index([tenantId, status])
+}
+
+// --- HIRING TEAM (ADR-0020, B6b) ---
+// Who may see/act on a job's applications. When the hiring_teams flag is on, non-admin
+// roles (recruiter, hiring_manager, viewer) are scoped to applications for jobs they
+// are a member of; super_admin/admin remain org-wide. A team is just the set of
+// members on a job (no separate Team entity).
+
+model HiringTeamMember {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("member") // lead | member (informational; access is binary membership)
+  createdAt DateTime @default(now())
+
+  @@unique([jobId, userId]) // a user is on a job's team at most once
+  @@index([tenantId, jobId])
+  @@index([tenantId, userId]) // fast "jobs this user is on"
 }

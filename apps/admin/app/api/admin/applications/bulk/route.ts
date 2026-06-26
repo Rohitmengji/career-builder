@@ -19,6 +19,7 @@ import { bulkApplicationActionSchema, safeParse } from "@career-builder/security
 import { emailService } from "@career-builder/email";
 import { applicationsToCsv } from "@/lib/csvExport";
 import { getBlindHiringConfig, redactApplicants } from "@/lib/blindHiring";
+import { visibleJobIds } from "@/lib/hiringTeams";
 
 const WRITE_ROLES = ["super_admin", "admin", "hiring_manager", "recruiter"];
 
@@ -44,7 +45,11 @@ export async function POST(req: Request) {
   const { ids, action, status } = parsed.data;
 
   // Tenant-scoped fetch — foreign/unknown ids are dropped here.
-  const owned = await applicationRepo.findManyByIds(ids, session.tenantId);
+  const ownedRaw = await applicationRepo.findManyByIds(ids, session.tenantId);
+  // Hiring-team scope (ADR-0020): drop rows for jobs this user can't access, so a
+  // team-scoped recruiter can't bulk-act on applications outside their teams.
+  const vis = await visibleJobIds(session);
+  const owned = vis === null ? ownedRaw : ownedRaw.filter((a) => vis.includes(a.jobId));
   if (owned.length === 0) {
     return NextResponse.json({ error: "No matching applications." }, { status: 404 });
   }

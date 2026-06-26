@@ -17,6 +17,7 @@ import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
 import { applicationRepo, offerRepo, eventRepo, userRepo, notificationRepo } from "@career-builder/database";
 import { createOfferSchema, updateOfferSchema, safeParse } from "@career-builder/security/validate";
+import { canAccessJob } from "@/lib/hiringTeams";
 import { sanitizeString } from "@career-builder/security/sanitize";
 import { emailService } from "@career-builder/email";
 import { isEnabled } from "@career-builder/shared/feature-flags";
@@ -64,7 +65,7 @@ export async function GET(req: Request) {
   const applicationId = new URL(req.url).searchParams.get("applicationId");
   if (!applicationId) return NextResponse.json({ error: "applicationId is required" }, { status: 400, headers: NO_STORE });
   const app = await applicationRepo.findByIdScoped(applicationId, session.tenantId);
-  if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
+  if (!app || !(await canAccessJob(session, app.jobId))) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
 
   const offers = await offerRepo.listForApplication(session.tenantId, applicationId);
   // Tell the UI which actions THIS user may approve (separation of duties).
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
   const d = parsed.data;
 
   const app = await applicationRepo.findByIdScoped(d.applicationId, session.tenantId);
-  if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
+  if (!app || !(await canAccessJob(session, app.jobId))) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
 
   const activeCount = await offerRepo.countActiveForApplication(session.tenantId, d.applicationId);
 
@@ -130,6 +131,9 @@ export async function PATCH(req: Request) {
 
   const offer = await offerRepo.findByIdScoped(id, session.tenantId);
   if (!offer) return NextResponse.json({ error: "Offer not found" }, { status: 404, headers: NO_STORE });
+  // Hiring-team scope (ADR-0020): driving an offer requires access to its application's job.
+  const offerApp = await applicationRepo.findByIdScoped(offer.applicationId, session.tenantId);
+  if (!offerApp || !(await canAccessJob(session, offerApp.jobId))) return NextResponse.json({ error: "Offer not found" }, { status: 404, headers: NO_STORE });
 
   const from = offer.status as OfferStatus;
   const target = ACTION_TARGET[action];

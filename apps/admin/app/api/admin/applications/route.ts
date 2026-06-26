@@ -17,6 +17,7 @@ import { getBlindHiringConfig, redactApplicants, redactApplicant } from "@/lib/b
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import { candidateLabel, type AdverseCategory } from "@career-builder/shared/adverse-action";
 import { statusForStage } from "@career-builder/shared/pipeline";
+import { visibleJobIds, canAccessJob } from "@/lib/hiringTeams";
 
 /** GET /api/admin/applications — list applications (recruiter+ only) */
 export async function GET(req: Request) {
@@ -48,6 +49,11 @@ export async function GET(req: Request) {
   const blind = await getBlindHiringConfig(session.tenantId);
 
   const filters: ApplicationFilters = { tenantId: session.tenantId };
+
+  // Hiring-team scope (ADR-0020, B6b): non-admin roles see only their teams' jobs
+  // when the flag is on. null = no restriction; [] = no access (yields zero rows).
+  const vis = await visibleJobIds(session);
+  if (vis !== null) filters.jobIds = vis;
 
   const jobId = searchParams.get("jobId");
   if (jobId) filters.jobId = sanitizeString(jobId, 100);
@@ -139,6 +145,10 @@ export async function PATCH(req: Request) {
   // Verify application belongs to tenant
   const existing = await applicationRepo.findById(id);
   if (!existing || existing.tenantId !== session.tenantId) {
+    return NextResponse.json({ error: "Application not found" }, { status: 404 });
+  }
+  // Hiring-team scope (ADR-0020): mutating an application requires access to its job.
+  if (!(await canAccessJob(session, existing.jobId))) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 
@@ -270,6 +280,10 @@ export async function DELETE(req: Request) {
 
   const existing = await applicationRepo.findById(id);
   if (!existing || existing.tenantId !== session.tenantId) {
+    return NextResponse.json({ error: "Application not found" }, { status: 404 });
+  }
+  // Hiring-team scope (ADR-0020): deleting an application requires access to its job.
+  if (!(await canAccessJob(session, existing.jobId))) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 

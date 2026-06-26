@@ -15,6 +15,7 @@ import Link from "next/link";
 import { parseScreeningQuestions } from "@career-builder/shared/screening";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import AiJobAssistant from "@/components/jobs/AiJobAssistant";
+import HiringTeamDialog from "./HiringTeamDialog";
 import type { AiJobFormData } from "@/lib/ai/types";
 import { useAuthGuard } from "@/lib/useAuthGuard";
 import {
@@ -133,7 +134,9 @@ export default function AdminJobsPage() {
   const [biasFindings, setBiasFindings] = useState<{ phrase: string; category: string; suggestion: string }[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  useAuthGuard();
+  const { user: authUser } = useAuthGuard();
+  const [teamFor, setTeamFor] = useState<{ id: string; title: string } | null>(null);
+  const canManageTeams = isEnabled("hiring_teams") && ["super_admin", "admin"].includes(authUser?.role ?? "");
 
   /* ─── Data loading ─────────────────────────────────────────── */
 
@@ -476,6 +479,15 @@ export default function AdminJobsPage() {
                               >
                                 <ExternalLinkIcon className="h-5 w-5" />
                               </a>
+                            )}
+                            {canManageTeams && (
+                              <button
+                                onClick={() => setTeamFor({ id: job.id, title: job.title })}
+                                aria-label={`Manage hiring team for ${job.title}`}
+                                className="inline-flex h-11 items-center justify-center rounded-lg px-3 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                              >
+                                Team
+                              </button>
                             )}
                             <button
                               onClick={() => openEdit(job)}
@@ -870,6 +882,9 @@ export default function AdminJobsPage() {
           </Card>
         )}
       </div>
+      {teamFor && (
+        <HiringTeamDialog jobId={teamFor.id} jobTitle={teamFor.title} csrf={csrf} onClose={() => setTeamFor(null)} />
+      )}
     </main>
   );
 }

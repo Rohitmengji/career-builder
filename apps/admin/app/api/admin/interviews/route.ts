@@ -12,6 +12,7 @@
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
 import { applicationRepo, interviewRepo, eventRepo, userRepo } from "@career-builder/database";
+import { canAccessJob } from "@/lib/hiringTeams";
 import { createInterviewSchema, updateInterviewSchema, safeParse } from "@career-builder/security/validate";
 import { sanitizeString } from "@career-builder/security/sanitize";
 import { emailService } from "@career-builder/email";
@@ -43,7 +44,7 @@ export async function GET(req: Request) {
   const applicationId = new URL(req.url).searchParams.get("applicationId");
   if (!applicationId) return NextResponse.json({ error: "applicationId is required" }, { status: 400, headers: NO_STORE });
   const app = await applicationRepo.findByIdScoped(applicationId, session.tenantId);
-  if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
+  if (!app || !(await canAccessJob(session, app.jobId))) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
 
   const interviews = await interviewRepo.listForApplication(session.tenantId, applicationId);
   return NextResponse.json({ interviews }, { headers: NO_STORE });
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
   const d = parsed.data;
 
   const app = await applicationRepo.findByIdScoped(d.applicationId, session.tenantId);
-  if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
+  if (!app || !(await canAccessJob(session, app.jobId))) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
 
   // An assigned interviewer must belong to THIS tenant (no cross-tenant assignment).
   let interviewerId: string | null = null;
@@ -140,6 +141,9 @@ export async function PATCH(req: Request) {
 
   const existing = await interviewRepo.findByIdScoped(id, session.tenantId);
   if (!existing) return NextResponse.json({ error: "Interview not found" }, { status: 404, headers: NO_STORE });
+  // Hiring-team scope (ADR-0020): updating an interview requires access to its application's job.
+  const ivApp = await applicationRepo.findByIdScoped(existing.applicationId, session.tenantId);
+  if (!ivApp || !(await canAccessJob(session, ivApp.jobId))) return NextResponse.json({ error: "Interview not found" }, { status: 404, headers: NO_STORE });
 
   const statusByAction = { cancel: "cancelled", complete: "completed", no_show: "no_show" } as const;
   const status = statusByAction[action];

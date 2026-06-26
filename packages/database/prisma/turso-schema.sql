@@ -499,6 +499,19 @@ CREATE TABLE "Requisition" (
     CONSTRAINT "Requisition_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "Job" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
+-- CreateTable
+CREATE TABLE "HiringTeamMember" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "jobId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "role" TEXT NOT NULL DEFAULT 'member',
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "HiringTeamMember_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "HiringTeamMember_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "Job" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "HiringTeamMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "Tenant_domain_key" ON "Tenant"("domain");
 
@@ -723,4 +736,13 @@ CREATE INDEX "Requisition_tenantId_idx" ON "Requisition"("tenantId");
 
 -- CreateIndex
 CREATE INDEX "Requisition_tenantId_status_idx" ON "Requisition"("tenantId", "status");
+
+-- CreateIndex
+CREATE INDEX "HiringTeamMember_tenantId_jobId_idx" ON "HiringTeamMember"("tenantId", "jobId");
+
+-- CreateIndex
+CREATE INDEX "HiringTeamMember_tenantId_userId_idx" ON "HiringTeamMember"("tenantId", "userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "HiringTeamMember_jobId_userId_key" ON "HiringTeamMember"("jobId", "userId");
 

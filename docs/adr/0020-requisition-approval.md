@@ -20,7 +20,16 @@ Behind the default-off `req_approval` flag; routes 404 when off. Every requisiti
 
 A job can't go live without an approved requisition (when enabled). The approval workflow + RBAC reuse the proven offer-approval shape. No change to publishing when the flag is off.
 
+## B6b: Hiring teams (application-visibility scoping)
+
+When the `hiring_teams` flag is on, non-admin roles (recruiter / hiring_manager / viewer) may only read or mutate applications for jobs they are a **hiring-team member** of; super_admin/admin stay org-wide. Off → visibility unchanged.
+
+- **`HiringTeamMember { tenantId, jobId, userId, role }`** (`@@unique(jobId,userId)`) + `hiringTeamRepo` (tenant-scoped; `listJobIdsForUser` is the allow-list).
+- **Single enforcement helper** `apps/admin/lib/hiringTeams.ts` — `visibleJobIds(session)` (`null` = unrestricted; `[]` = **no access**, yields zero rows) and `canAccessJob(session, jobId)`. Because a missed call site is a leak, the rule lives in **one** place and is applied at **every** application-access path: the list GET (jobIds filter), application PATCH/DELETE, bulk, the per-application sub-routes (comments, resume, scorecards, tags), interviews + offers (incl. their entity-id PATCH paths, re-resolved to the application's job), talent-pool add-by-application, and the dashboard **recent-applications** widget (identity-bearing).
+- **`/api/admin/jobs/[id]/team`** (manager+) manages membership; `HiringTeamDialog` (admin-only UI) assigns users. Tenant-isolated (job + user verified tenant-owned).
+
+**Boundaries (deliberate):** aggregate analytics (counts / funnel / sources — non-PII numbers) stay org-wide; only the identity-bearing recent-applications widget is scoped. Comment **delete** is author-only. Candidate-facing web routes use candidate auth and are unaffected.
+
 ## Deferred
 
-- **Hiring teams (B6b)** — scope application visibility to the team on a job.
-- Configurable separation-of-duties (block self-approval), multi-step / multi-approver chains, and auto-creating a requisition when a job is drafted.
+- Configurable separation-of-duties (block self-approval), multi-step / multi-approver requisition chains, auto-creating a requisition when a job is drafted, and team-scoping aggregate analytics.

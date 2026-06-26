@@ -19,6 +19,7 @@ import { submitScorecardSchema, safeParse } from "@career-builder/security/valid
 import { sanitizeString } from "@career-builder/security/sanitize";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import { aggregateScorecards, parseScorecardCriteria, type ScorecardInput } from "@career-builder/shared/scorecard";
+import { canAccessJob } from "@/lib/hiringTeams";
 
 const WRITE_ROLES = ["super_admin", "admin", "hiring_manager", "recruiter"];
 const NO_STORE = { "Cache-Control": "no-store" } as const;
@@ -48,7 +49,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
   const app = await applicationRepo.findByIdScoped(id, session.tenantId);
-  if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
+  if (!app || !(await canAccessJob(session, app.jobId))) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
 
   const rubric = parseScorecardCriteria((app.job as { scorecardCriteria?: unknown } | null)?.scorecardCriteria);
   const scorecards = await scorecardRepo.listForApplication(session.tenantId, id);
@@ -91,7 +92,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const app = await applicationRepo.findByIdScoped(id, session.tenantId);
-  if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
+  if (!app || !(await canAccessJob(session, app.jobId))) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
 
   const releasedAt = body.action === "release" ? new Date() : null;
   await applicationRepo.setFeedbackReleased(id, session.tenantId, releasedAt);
@@ -118,7 +119,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (d.applicationId !== id) return NextResponse.json({ error: "Application id mismatch." }, { status: 400, headers: NO_STORE });
 
   const app = await applicationRepo.findByIdScoped(id, session.tenantId);
-  if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
+  if (!app || !(await canAccessJob(session, app.jobId))) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
 
   const scorecard = await scorecardRepo.submit({
     tenantId: session.tenantId,
