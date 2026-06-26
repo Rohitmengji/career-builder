@@ -1,3 +1,27 @@
+/*
+ * Full-page job application form (tenant-scoped: /[slug]/jobs/[jobId]/apply).
+ *
+ * WHAT: Candidate-facing apply form — name/contact/links/resume/cover letter —
+ * that submits via the shared useApplySubmit pipeline.
+ * WHY: The standalone-page counterpart to the in-page apply modal. It reuses the
+ * same shared validation/submit logic (lib/jobs) so both entry points behave
+ * identically; this file only owns page-specific UX (portfolio field, focus
+ * management, navigation guards).
+ * HOW:
+ *   - Submission, validation, field-error state, and the success/applicationId
+ *     all come from useApplySubmit; this component just collects values and maps
+ *     them onto the shared ApplyFormValues shape.
+ *   - allowResumeUrl:false — this page requires an uploaded resume file (no URL).
+ *   - "portfolio" has no field in the shared schema, so it is validated locally
+ *     and folded into the cover letter before submit.
+ *   - FIELD_MAP bridges this page's local field names to shared ApplyField keys
+ *     so editing a field clears its inline server error (parity with the modal).
+ *   - Two navigation guards while a submit is in flight: beforeunload (full page
+ *     unload) + a click handler on Cancel (client-side Next routing) so an
+ *     in-progress application isn't lost.
+ *   - Candidate identity is keyed by lowercased email + tenant downstream
+ *     (ADR-0001); there is no candidateId here.
+ */
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";

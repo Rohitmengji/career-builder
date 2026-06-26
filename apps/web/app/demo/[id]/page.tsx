@@ -1,3 +1,20 @@
+/*
+ * Public demo career-site preview page (server component).
+ *
+ * WHAT: Renders a read-only, AI-generated sample career site (hero, page list,
+ * job listings, CTA) for a single demo `id` — the prospect-facing teaser that a
+ * sales/marketing flow links to before anyone signs up.
+ *
+ * WHY: Lets a visitor see "what HireBase would build for my company" without a
+ * tenant/account existing yet. Every surface funnels to /landing ("Build yours free").
+ *
+ * HOW: Fetches the demo payload from the internal /api/ai/demo-site route by id
+ * (cache:"no-store" so a freshly generated demo shows immediately). This is NOT
+ * tenant-scoped data — demos are ephemeral, account-less artifacts keyed only by
+ * the opaque demo id, so none of the tenant-isolation rules apply here. Both
+ * generateMetadata and the page fetch the same endpoint; a non-ok/throw maps to
+ * Next's notFound() (404).
+ */
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -85,6 +102,7 @@ export default async function DemoPage({
     notFound();
   }
 
+  // Derive distinct team/location counts for the hero stat line (dedupe via Set).
   const teams = [...new Set(data.jobs.map((j) => j.department))].length;
   const locations = [...new Set(data.jobs.map((j) => j.location))].length;
 

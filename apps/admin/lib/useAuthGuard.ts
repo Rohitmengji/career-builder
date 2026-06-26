@@ -36,8 +36,13 @@ export function useAuthGuard(): UseAuthGuardResult {
   const retryRef = useRef(false);
 
   useEffect(() => {
+    // `cancelled` guards against setting state after unmount and against a
+    // late retry firing once the effect has been torn down (StrictMode / route
+    // change). Every async continuation below checks it before touching state.
     let cancelled = false;
 
+    // isRetry caps retries at exactly one: transient failures (429/5xx, network)
+    // schedule a single delayed re-check; a second failure stops rather than loops.
     async function checkAuth(isRetry = false) {
       try {
         const r = await fetch("/api/auth");

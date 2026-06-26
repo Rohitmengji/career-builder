@@ -1,3 +1,17 @@
+/*
+ * Registers the "job-details" GrapesJS editor block — the job-posting detail
+ * layout (title/meta header, a description placeholder, and an apply button).
+ *
+ * WHY: the canonical "single job" section recruiters drop onto a job detail page.
+ *
+ * HOW: standard block pattern (see registerBlock.ts). Only the apply button text is
+ * editable (via `data-field="applyButtonText"`, synced back to props); the job title,
+ * meta line, and description are EDITOR-ONLY placeholders ("[ Job description renders
+ * at runtime ]") — the real job content is injected from the live job record by the
+ * web renderer (apps/web/lib/renderer.tsx). GOTCHA: keep that renderer in sync with
+ * the shape here.
+ */
+
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

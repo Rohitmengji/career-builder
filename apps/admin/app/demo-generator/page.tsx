@@ -1,3 +1,21 @@
+/*
+ * Demo Site Generator — internal sales-outreach tool.
+ *
+ * WHAT: A form that takes a company name + industry and calls the AI demo
+ * endpoint to generate a throwaway career site (pages + jobs + preview URL),
+ * then renders the result plus a copy-paste outreach template.
+ *
+ * WHY: Lets the sales team spin up a tailored demo site to show a prospect
+ * "here's what your careers page could look like" in minutes, without seeding a
+ * real tenant.
+ *
+ * HOW: Client component. Note the demo API lives on the WEB app (port 3000),
+ * not this admin app (port 3001) — see handleGenerate, which rewrites the
+ * origin's port before fetching /api/ai/demo-site. The generation itself is an
+ * ai-client call on the web side; this page only renders the schema-validated
+ * result. No auth guard here (it is an internal/sales surface) and no tenant
+ * scoping — demos are ephemeral and not persisted as tenant data.
+ */
 "use client";
 
 import React, { useState } from "react";

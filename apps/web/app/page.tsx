@@ -1,3 +1,17 @@
+/*
+ * Career-site landing page (root "/") — the public marketing homepage.
+ *
+ * WHAT: Server Component that renders the hero, live job stats, department
+ * breakdown, value props, and footer for the default tenant.
+ * WHY: First touchpoint for candidates; surfaces real open-role counts and the
+ * tenant's branding (company name) so the page reflects who's actually hiring.
+ * HOW: Server-fetches three things from the admin API (tenant config, published
+ * page list, jobs) with cache:"no-store" so content is always fresh. Each fetch
+ * is wrapped in try/catch and degrades gracefully — if the admin API is down the
+ * page still renders with safe fallbacks ("Your Company", no stats/departments).
+ * Nav links to optional pages (About/Culture/Benefits) only appear when those
+ * pages are actually published. apiUrl comes from shared/env.
+ */
 import Link from "next/link";
 import { mergeTenantConfig } from "@career-builder/tenant-config";
 import {
@@ -75,6 +89,7 @@ export default async function Home() {
     const data = await res.json();
     const jobs = data.jobs || [];
     totalJobs = jobs.length;
+    // Roll jobs up into a department -> count map, then show the 6 busiest teams.
     const deptMap = new Map<string, number>();
     for (const job of jobs) {
       const dept = job.department || "General";

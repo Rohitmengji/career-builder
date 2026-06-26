@@ -1,3 +1,17 @@
+/*
+ * Unit tests for the custom-domain helpers (domains.ts).
+ *
+ * Covers the four pure pieces of custom-domain onboarding:
+ *   - planAllowsCustomDomain: gated to pro/enterprise (free/null/undefined deny),
+ *   - isValidPublicHostname: accepts real FQDNs; rejects localhost/IPs/bare or
+ *     numeric TLDs/empty; normalizes scheme+path off the host first,
+ *   - verifyTxtHost + dnsInstructions: TXT record lives under `_cb-verify.<host>`,
+ *     and we hand back the CNAME + TXT records to set,
+ *   - verifyDomainTxt: ownership check — true on a matching token, true even when
+ *     the resolver CHUNKS the TXT value across array entries, false on no match,
+ *     and false (never throws) when the DNS lookup fails (ENOTFOUND).
+ * node:dns/promises.resolveTxt is mocked so tests never hit real DNS.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the DNS resolver before importing the module under test.

@@ -1,3 +1,24 @@
+/*
+ * Unit tests for computeResponsiveness (./responsiveness) — the public
+ * Employer Responsiveness Score (the candidate-facing anti-ghosting badge).
+ *
+ * WHY: this score is shown publicly, so its definitions and fairness/robustness
+ * guards are deliberate and load-bearing. These tests are the contract for
+ * those definitions; changing them changes a public trust signal. Pure +
+ * DB-free, computed from each application's current status + submittedAt.
+ *
+ * Key behaviors asserted:
+ *  - min-sample suppression: unavailable below MIN_SETTLED settled apps, becomes
+ *    available exactly at MIN_SETTLED;
+ *  - within-SLA "applied" apps are PENDING (excluded from the rate), not ghosted;
+ *  - "responded" = moved past "applied" (a human acted); "ghosted" = still
+ *    "applied" AND strictly older than GHOST_SLA_DAYS (boundary = still pending);
+ *  - a timely rejection counts as an ANSWER, not ghosting (ADR-0003 — courteous
+ *    fast-rejecters must not be punished); ghostRate is the complement of
+ *    responseRate; grade thresholds (excellent/good/fair/low);
+ *  - robustness: unknown statuses and unparseable dates are dropped (neither
+ *    inflate nor deflate), and Date / ISO-string / epoch-ms inputs are accepted.
+ */
 import { describe, it, expect } from "vitest";
 import {
   computeResponsiveness,

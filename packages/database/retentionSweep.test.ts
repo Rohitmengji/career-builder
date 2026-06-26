@@ -1,3 +1,25 @@
+/*
+ * Unit tests for dataRightsRepo.retentionSweepForTenant — the scheduled data-retention sweep
+ * that anonymizes stale terminal applications (Prisma mocked via ./client; ADR-0011).
+ *
+ * WHY: Retention is per-tenant and policy-driven; the sweep must touch only rows that are
+ * genuinely past their cutoff, never under legal hold, and must be race-safe against a row
+ * being reopened/held between the candidate query and the write. These tests pin all three.
+ *
+ * Key behaviors asserted:
+ *   - No-op when retention is disabled (both cutoffs null): returns zero work, never queries.
+ *   - The candidate query selects terminal, non-held, not-yet-anonymized rows past the cutoff
+ *     (rejectedBefore / hiredBefore become an OR of status+age conditions), tenant-scoped.
+ *   - Each row's anonymizing updateMany RE-CHECKS the full guard in its WHERE (id+tenant+
+ *     legalHold:false+anonymizedAt:null AND status+age). So a row that raced (got reopened or
+ *     held) matches 0 and is skipped — only rows whose guarded update actually applied are
+ *     counted, and only their résumé blob keys are returned (for the caller to delete from
+ *     object storage).
+ *
+ * NOTE: here $transaction is mocked in its ARRAY form — it resolves to the array of per-op
+ * results ([{count}, ...]) the repo's batched ops produce. (The callback form is exercised in
+ * dataRights.test.ts.)
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const appFindMany = vi.fn();

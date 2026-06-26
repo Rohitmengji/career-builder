@@ -1,3 +1,22 @@
+/*
+ * Unit tests for the data-retention policy helpers (./retention) — the pure
+ * logic that decides when a terminal application is due to be purged.
+ *
+ * WHY: retention drives destructive deletion, so the policy parser must be
+ * defensive (default OFF, conservative windows, no crash on bad input) and the
+ * purge predicate must only ever fire for terminal statuses past their window.
+ * Pure + DB-free; the actual purge job applies these decisions elsewhere.
+ *
+ * Key behaviors asserted:
+ *  - parseRetention defaults to DEFAULT_RETENTION (enabled:false) on undefined /
+ *    invalid JSON; reads from settings.retention or the raw object; and clamps
+ *    negative / non-numeric / absurd day values to the fallback or the cap (36_500);
+ *  - cutoffFor returns null when disabled or for non-terminal statuses, and the
+ *    per-status (rejectedDays / hiredDays) cutoff date otherwise;
+ *  - isDueForPurge is true ONLY strictly past the window for a terminal status —
+ *    the exactly-at-window boundary is KEPT — and never fires for non-terminal
+ *    statuses or when the policy is disabled.
+ */
 import { describe, it, expect } from "vitest";
 import { parseRetention, cutoffFor, isDueForPurge, DEFAULT_RETENTION } from "./retention";
 

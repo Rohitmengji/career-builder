@@ -1,3 +1,20 @@
+/*
+ * Registers the "process-steps" GrapesJS editor block — a numbered
+ * "how our hiring process works" section (title + subtitle + a row of
+ * numbered step cards).
+ *
+ * WHY: gives recruiters a drag-drop way to explain their hiring funnel on
+ * the public career site without touching code.
+ *
+ * HOW: follows the standard block pattern (see registerBlock.ts). buildComponents
+ * turns the block's props into the GrapesJS canvas tree; rebuildComponents lets the
+ * canvas live-update as props change in the sidebar. Editable text carries a
+ * `data-field` attribute so inline RTE edits sync back to props — list-item fields
+ * are addressed as `item-<idx>-<key>` (see registerBlock's rte:disable handler).
+ * Defaults come from blockSchemas["process-steps"]. GOTCHA: any change here must be
+ * mirrored in the web renderer (apps/web/lib/renderer.tsx) or the published page diverges.
+ */
+
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

@@ -1,3 +1,24 @@
+/*
+ * Unit tests for the shared job-application submission pipeline (applyForm.ts) —
+ * the single source of truth both apply UIs use for validation and submit.
+ *
+ * WHY: client-side checks must mirror what the server enforces (so users see the
+ * real limits before submitting) AND server errors must never leak internals to
+ * the applicant. These tests pin both halves of that contract.
+ *
+ * Behaviours asserted:
+ *   - validateApplyForm: required name/email, malformed email, first-error-field
+ *     reported in form order; resume is required unless a resume URL is allowed,
+ *     and a non-http resume URL is rejected; LinkedIn host allow-list matches the
+ *     server (only linkedin.com / www.linkedin.com);
+ *   - validateResumeFile / fileExtension: 5MB cap and extension allow-list (parity
+ *     with the server resume preset), empty-file rejection, case-insensitive ext;
+ *   - messageForResponse: known HTTP statuses map to actionable copy; the safe
+ *     server message is surfaced for 400; raw 5xx bodies are never echoed;
+ *   - submitApplication: ok on 201, 409 -> "already applied", a 2xx success:false
+ *     does NOT leak the server error, non-JSON bodies don't throw, and the
+ *     Idempotency-Key header is forwarded when provided.
+ */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   validateApplyForm,

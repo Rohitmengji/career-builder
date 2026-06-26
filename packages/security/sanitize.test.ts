@@ -1,3 +1,18 @@
+/*
+ * Unit tests for the output/input sanitizers in ./sanitize.
+ *
+ * WHAT: Exercises the package/security sanitization primitives — escapeHtml,
+ * stripHtml, sanitizeRichText, sanitizeEmail, sanitizeTenantId.
+ * WHY: These are the last line of defense against stored/reflected XSS in
+ * tenant-supplied content (rich text, emails, tenant ids) and against ATS
+ * input that flows into HTML or identifiers; a regression here is a security bug.
+ * HOW: Asserts the security-relevant behaviors that are NOT obvious from the
+ * function names — e.g. `/` is escaped to defend `</script>` breakouts, comments
+ * and CDATA can't smuggle payloads past sanitizeRichText, only http(s) hrefs
+ * survive (and gain rel="noopener noreferrer"), emails normalize to lowercase
+ * (ties into ADR-0001 email-as-identity), and tenant ids reduce to the safe
+ * [a-z0-9-] charset (null when nothing valid remains).
+ */
 import { describe, it, expect } from "vitest";
 import { escapeHtml, stripHtml, sanitizeRichText, sanitizeEmail, sanitizeTenantId } from "./sanitize";
 

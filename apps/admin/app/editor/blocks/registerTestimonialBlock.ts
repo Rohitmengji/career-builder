@@ -1,3 +1,17 @@
+/*
+ * Registers the "testimonial" GrapesJS editor block (quote + author + role).
+ *
+ * WHY: a drag-drop block for recruiter pages to show a single customer/candidate
+ * quote, editable inline on the canvas and from the props sidebar.
+ *
+ * HOW: buildComponents() turns props (quote/author/role from
+ * getDefaultProps("testimonial")) into the canvas tree; the shared registerBlock()
+ * helper handles palette registration, live rebuild on prop change, and RTE sync.
+ * Each text node carries a `data-field` so inline edits map back to the matching
+ * prop key. The centred grey panel styling is applied as the root <section> style.
+ * GOTCHA: the public web renderer (apps/web/lib/renderer.tsx) must MIRROR this
+ * markup/field shape so saved pages match the editor preview.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

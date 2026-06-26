@@ -1,3 +1,17 @@
+/*
+ * Unit tests for the zod request schemas in ./validate.
+ *
+ * WHAT: Covers loginSchema, createApplicationSchema, saveTenantSchema,
+ * bulkApplicationActionSchema and the safeParse() wrapper.
+ * WHY: These schemas are the validation half of the package/security contract
+ * (zod .strict + sanitize); every admin/public write parses through one of them,
+ * so their shape and rejection behavior is security-critical.
+ * HOW: Asserts required-field enforcement (login, application core fields) plus
+ * the non-obvious guarantees: saveTenantSchema is .strict so unknown keys like
+ * `evil`/`__proto__` are stripped (prototype-pollution / mass-assignment guard),
+ * and bulkApplicationActionSchema bounds the id list (1..100), validates the
+ * action enum, and rejects empty/oversized batches (anti-DoS on bulk ops).
+ */
 import { describe, it, expect } from "vitest";
 import { loginSchema, createApplicationSchema, saveTenantSchema, bulkApplicationActionSchema, safeParse } from "./validate";
 

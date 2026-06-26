@@ -1,3 +1,21 @@
+/*
+ * Unit (contract) tests for adverseActionRepo — the repo behind rejection /
+ * adverse-action records (ADR-0010). Prisma is mocked (./client), so these
+ * assert the SHAPE of the query the repo builds, not real DB behavior.
+ *
+ * WHY: adverse-action rows hold internal-only fields (freeText, decidedBy)
+ * alongside candidate-facing ones. Two invariants must never regress, so they
+ * are pinned here:
+ *   - tenant isolation: EVERY query carries `where.tenantId` (no RLS — app code
+ *     is the only guard).
+ *   - candidate projection: findCandidateVisible returns only sharedWithCandidate
+ *     rows and selects ONLY {applicationId, category, candidateMessage,
+ *     sharedWithCandidate} — internal freeText/decidedBy must stay unselected.
+ *
+ * Also covers: upsert keyed on the unique applicationId (create carries tenantId
+ * + defaults), the empty-input short-circuit (no DB hit), and the tenant-scoped
+ * count-only category aggregation.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const upsert = vi.fn();

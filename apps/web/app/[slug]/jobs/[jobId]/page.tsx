@@ -1,3 +1,24 @@
+/*
+ * Tenant-scoped job detail page (/[slug]/jobs/[jobId]).
+ *
+ * WHAT: Server Component that renders a single job posting — header, description,
+ * requirements, nice-to-haves, benefits, and apply CTAs — themed per tenant.
+ * WHY: The candidate-facing detail view a job link points to; the entry point
+ * into the apply flow.
+ * HOW:
+ *   - Loads the real job via getJobProvider().getById(jobId, tenantId). The
+ *     tenantId argument is the tenant-isolation boundary — isolation is enforced
+ *     in app code, NOT by the DB (no RLS), so the scoping MUST stay on this call.
+ *     A missing job triggers notFound() (renders this route's not-found.tsx).
+ *   - tenantId comes from env (TENANT_ID, default "default"); the [slug] in the
+ *     URL is only used for branding lookup + building links, not as the security
+ *     boundary.
+ *   - Tenant theme/branding loaded in parallel via loadTenantConfig, which tries
+ *     the slug's tenant then falls back to the "default" tenant, then to built-in
+ *     DEFAULT_THEME/DEFAULT_BRANDING — so the page always renders even if the
+ *     admin API is unreachable.
+ *   - force-dynamic + cache:"no-store" keep job data fresh (no stale postings).
+ */
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getJobProvider } from "@/lib/jobs/provider";
@@ -47,6 +68,9 @@ function formatPosted(iso: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+// Resolve tenant theme/branding with graceful degradation: try the slug's own
+// tenant, fall back to the "default" tenant, and return null (-> built-in
+// defaults at the call site) if both lookups fail or the admin API is down.
 async function loadTenantConfig(slug: string): Promise<TenantConfig | null> {
   const apiUrl = getAdminApiUrl();
   const fetchWithTimeout = (url: string, timeoutMs = 5000) => {
@@ -77,11 +101,14 @@ export default async function JobPage({
   const { slug, jobId } = await params;
 
   // Read the real, tenant-scoped job from the database provider (no mock data).
+  // tenantId is the isolation boundary (enforced in app code, no DB RLS); passing
+  // it to getById guarantees a job from another tenant can never be returned here.
   const tenantId = process.env.TENANT_ID || "default";
   const [{ job }, tenantConfig] = await Promise.all([
     getJobProvider().getById(jobId, tenantId),
     loadTenantConfig(slug),
   ]);
+  // Unknown / cross-tenant / removed job -> route's not-found.tsx.
   if (!job) notFound();
 
   const theme = tenantConfig?.theme || DEFAULT_THEME;

@@ -1,3 +1,17 @@
+/*
+ * Unit tests for ./tenant-context — the AsyncLocalStorage-backed per-request
+ * tenant scope that the whole isolation model leans on.
+ *
+ * WHY: these tests pin the contract that tenant-scoped code depends on, so a
+ * refactor of the ALS plumbing can't silently weaken isolation. The key
+ * behaviors asserted:
+ *   - inside runWithTenant the bound tenant is visible to all accessors;
+ *   - getTenantId() THROWS outside any context (the isolation backstop — a
+ *     missing context is a bug, never a silent default tenant), while
+ *     getTenantIdOrNull() returns null for the "absence is valid" case;
+ *   - the context survives `await` boundaries (real handlers are async);
+ *   - the context does NOT leak after the run completes (no cross-request bleed).
+ */
 import { describe, it, expect } from "vitest";
 import {
   runWithTenant,

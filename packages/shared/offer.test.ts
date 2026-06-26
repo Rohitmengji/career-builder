@@ -1,3 +1,24 @@
+/*
+ * Unit tests for ./offer — the offer lifecycle state machine (pure logic, no DB).
+ *
+ * WHY: an offer's status governs real-world money/legal commitments, so the
+ * allowed transitions are a contract, not a suggestion. These tests pin that
+ * contract down so a refactor can't silently open an unsafe path.
+ *
+ * Key behaviors asserted:
+ *  - the 8 statuses exist in lifecycle order (draft → … → terminal);
+ *  - canTransition enforces the directed graph: notably the ONLY way to reach
+ *    `sent` is from `approved` (no skipping approval, no sending an unapproved
+ *    offer, no backwards moves, no self-loops);
+ *  - the four terminal states (accepted/declined/expired/rescinded) have no exits;
+ *  - ACTION_TARGET maps each UI action to a reachable target status;
+ *  - time-based expiry: only a `sent` offer expires, expiry is strictly-after the
+ *    deadline (the deadline instant is still acceptable), null = never, and
+ *    effectiveStatus collapses an un-swept past-expiry offer to `expired` for reads;
+ *  - isReadyForApproval validates salary shape (positive amount, 3-letter
+ *    UPPERCASE currency, known period) before approval is allowed;
+ *  - isOfferStatus is the type guard and offerStatusLabel humanizes for display.
+ */
 import { describe, it, expect } from "vitest";
 import {
   OFFER_STATUSES,

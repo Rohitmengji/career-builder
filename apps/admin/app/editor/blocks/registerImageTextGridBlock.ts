@@ -1,3 +1,21 @@
+/*
+ * Registers the "image-text-grid" GrapesJS editor block: image + title + blurb cards.
+ *
+ * WHY: a drag-drop responsive grid (heading + N feature cards) for career pages,
+ * editable inline on the canvas and from the props sidebar.
+ *
+ * HOW: buildComponents() reads props from getDefaultProps("image-text-grid") and
+ * builds the canvas tree; the shared registerBlock() helper handles palette, live
+ * rebuild on prop change, and inline-RTE -> props sync. Notable details:
+ *   - Cards wrap via flex (min-width 220px) rather than a fixed grid, so column
+ *     count is responsive to container width.
+ *   - Cards with no image fall back to a rotating Unsplash placeholder so the
+ *     preview is never empty.
+ *   - Title/desc use the `item-<idx>-title` / `item-<idx>-desc` data-field
+ *     convention so RTE edits route into props.items[idx] via registerBlock.
+ * GOTCHA: the public web renderer (apps/web/lib/renderer.tsx) must MIRROR this
+ * markup/field shape so saved pages match the editor preview.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

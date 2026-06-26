@@ -1,3 +1,22 @@
+/*
+ * Observability dashboard — live operational metrics & security view for operators.
+ *
+ * WHAT: A read-mostly admin dashboard that renders the platform's runtime
+ * telemetry: request/error/latency counters, CSS sparkline trends from recent
+ * history, anomaly stats (mean/stdDev/latest), performance-budget violations,
+ * an alert feed, and the blocked-IP list (with an unblock action).
+ *
+ * WHY: Gives operators a single pane to spot incidents (error spikes, latency
+ * regressions, login-failure bursts, bot/rate-limit activity) without a full
+ * external monitoring stack. Surfaces data from packages/observability.
+ *
+ * HOW: Client component guarded by useAuthGuard(); polls GET /api/admin/metrics
+ * (range=60) every 10s while auto-refresh is on. The only mutation — unblocking
+ * an IP — POSTs to the same route with the x-csrf-token header (validateCsrf
+ * server-side). All numbers are computed from the API snapshot; nothing is
+ * persisted client-side. The metric names below (e.g. http_requests_total) must
+ * match the emitters in packages/observability.
+ */
 "use client";
 
 import { useEffect, useState, useCallback } from "react";

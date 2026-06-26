@@ -1,3 +1,24 @@
+/*
+ * Theme Editor page — per-tenant branding & theme configuration.
+ *
+ * WHAT: A split-pane editor. Left: form controls for branding, colors,
+ * typography, layout, components, and color mode; plus a tenant selector and a
+ * "create tenant" box. Right: a live preview that re-renders from the in-memory
+ * config as you edit.
+ *
+ * WHY: Lets operators style each tenant's public career site without code. The
+ * preview mirrors the web renderer's theming so what you see here approximates
+ * the live site.
+ *
+ * HOW: Client component guarded by useAuthGuard(); reads/writes via /api/tenants.
+ * GOTCHA — tenant selection is a security boundary: the tenant is derived from
+ * the authenticated session, NOT trusted from the ?tenant query string. Only
+ * super_admin may switch tenants via ?tenant=; everyone else is pinned to their
+ * own user.tenantId (see the tenantId useMemo below, and the matching server-side
+ * check in /api/tenants). Config edits are merged through mergeTenantConfig from
+ * @career-builder/tenant-config so partial configs always resolve to a full theme.
+ * Saves POST the whole config with the x-csrf-token header (validateCsrf server-side).
+ */
 "use client";
 
 import * as React from "react";

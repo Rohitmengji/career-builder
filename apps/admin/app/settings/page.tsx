@@ -1,3 +1,22 @@
+/*
+ * Settings page — the recruiter-app account & administration surface.
+ *
+ * WHAT: A single client page with three tabs — Profile (any user), Users and
+ * Audit Log (admins only). Profile lets a user edit their own name/password;
+ * Users lets admins create/delete users and change roles; Audit Log shows the
+ * activity feed.
+ *
+ * WHY: Centralizes self-service account management and tenant administration so
+ * recruiters/admins never touch the DB directly. Role gating here is UX only —
+ * the real authorization is enforced server-side by /api/users and /api/audit.
+ *
+ * HOW: Client component guarded by useAuthGuard(); all reads/writes go through
+ * the admin API routes. Every mutating fetch (PUT/POST/DELETE) sends the CSRF
+ * token via the x-csrf-token header (validateCsrf on the server) — see getCsrfToken
+ * below, which reads the cb_csrf cookie. Role-management rules (who can edit whom)
+ * are mirrored client-side to disable controls, but the server is the source of
+ * truth. Protected accounts (admin@/superadmin@company.com) are special-cased.
+ */
 "use client";
 
 import * as React from "react";

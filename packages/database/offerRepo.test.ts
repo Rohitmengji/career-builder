@@ -1,3 +1,21 @@
+/*
+ * Unit tests for offerRepo — job-offer lifecycle reads/writes (Prisma mocked via ./client).
+ *
+ * WHY: Offers carry money and a status machine (draft -> approved -> sent -> accepted/declined),
+ * so transitions must be atomic and every query tenant- and ownership-scoped. These tests pin
+ * the defaults, the scoping, and the race-safety of state changes.
+ *
+ * Key behaviors asserted:
+ *   - create starts in `draft` with USD/yearly salary defaults.
+ *   - Recruiter reads (findByIdScoped, listForApplication) and countActiveForApplication
+ *     (non-terminal statuses only) are tenant-scoped.
+ *   - Candidate-facing reads resolve ownership by lowercased application email + tenantId
+ *     (no candidateId FK — ADR-0001).
+ *   - Compare-and-swap transitions: `transition` puts the EXPECTED current status in the WHERE
+ *     (so a lost race / wrong state simply matches 0 rows); `decideAsCandidate` additionally
+ *     requires status=sent, owned by email, and unexpired — all in one updateMany WHERE, so
+ *     there is no check-then-write TOCTOU window. A 0 count is the signal, not an exception.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const create = vi.fn();

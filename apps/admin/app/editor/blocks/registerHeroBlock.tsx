@@ -1,3 +1,22 @@
+/*
+ * Registers the "hero" GrapesJS editor block — a large headline + subtitle + CTA
+ * over a configurable background image/alignment.
+ *
+ * WHY: the top-of-page hero is the most-used career-site section; this gives
+ * recruiters a drag-drop, fully editable hero without code.
+ *
+ * HOW: buildComponents builds the editable text/CTA tree (data-field attrs route
+ * RTE edits back to props) and buildStyle computes the root <section> style from
+ * props. Both seed from getDefaultProps("hero") (schema in lib/blockSchemas.ts)
+ * and are passed to the shared registerBlock helper.
+ *
+ * GOTCHA: backgroundImage and textAlign are ROOT-level styles, not part of the
+ * child component tree, so rebuildComponents alone won't repaint them. The extra
+ * syncHeroStyle listener on component:update / :props patches the root style in
+ * place (adding/removing background-image, updating text-align) so the canvas
+ * reflects sidebar changes live. The public site mirrors this block in
+ * apps/web/lib/renderer.tsx — keep markup, fields, and style derivation in sync.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

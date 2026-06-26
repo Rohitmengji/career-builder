@@ -1,3 +1,23 @@
+/*
+ * Registers the "content-cards" GrapesJS editor block — a centred heading +
+ * subtitle over a responsive flex-wrap row of cards (image + title + desc +
+ * link text), one card per props.items entry.
+ *
+ * WHY: gives recruiters a drag-drop "card grid" section for the career site.
+ * One register*Block file per block type.
+ *
+ * HOW: builds the canvas tree from the block's default props
+ * (getDefaultProps("content-cards"), backed by lib/blockSchemas.ts) and hands
+ * it to the shared registerBlock helper, which wires up the palette entry,
+ * live prop->canvas rebuild (rebuildComponents), and inline-RTE->props sync.
+ * Editable text nodes carry data-field attributes so RTE edits route back to
+ * props; per-card fields use the `item-<idx>-<key>` convention (see
+ * registerBlock) so edits land in props.items[idx]. GOTCHA: when a card has no
+ * image, a rotating Unsplash placeholder (dummyImg) is shown so the editor is
+ * never blank. This defines only the EDITOR preview — the public site
+ * re-renders the same type+props in apps/web/lib/renderer.tsx, so any
+ * markup/field change here must be mirrored there.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 
@@ -7,6 +27,8 @@ const DUMMY_IMAGES = [
   "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=300&fit=crop&q=80",
   "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=400&h=300&fit=crop&q=80",
 ];
+// Cycle through the placeholder pool by card index so adjacent cards don't all
+// show the same stock photo when no real image is set.
 const dummyImg = (i: number) => DUMMY_IMAGES[i % DUMMY_IMAGES.length];
 
 function buildCards(cards: any[]) {
@@ -28,6 +50,7 @@ function buildCards(cards: any[]) {
           {
             tagName: "img" as const,
             type: "image",
+            // Use the card's own image only if it's a non-empty string; otherwise fall back to a placeholder.
             attributes: { src: (typeof card.image === "string" && card.image.trim()) ? card.image : dummyImg(idx), alt: card.title || "" },
             style: { width: "100%", height: "100%", "object-fit": "cover", display: "block" },
           },

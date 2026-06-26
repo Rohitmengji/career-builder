@@ -1,3 +1,25 @@
+/*
+ * Unit tests for the pipeline-stage model (./pipeline) — the bridge between
+ * configurable hiring stages and the canonical 6-value application status.
+ *
+ * WHY: custom stages are being layered on top of the legacy hardcoded
+ * applied/screening/interview/offer/hired/rejected statuses. Everything
+ * downstream (metrics, responsiveness, blind-hiring) reasons over the canonical
+ * status, so this module classifies any stage by its `kind` and collapses it
+ * back to a canonical status. These tests are the NO-REGRESSION proof that the
+ * new kind-based helpers reproduce today's hardcoded behavior exactly.
+ *
+ * Key behaviors asserted:
+ *  - DEFAULT_STAGES map 1:1 to the 6 legacy statuses, in order, with the right
+ *    terminal flags and kinds;
+ *  - isPreOffer/isPreHire/isTerminal/isResponded agree with the legacy sets for
+ *    every legacy status (table-driven), where only "applied" is not-yet-responded;
+ *  - isStageKind validates the kind enum; the synthetic "custom" kind is
+ *    mid-funnel (pre-offer/pre-hire, responded, non-terminal);
+ *  - statusForStage keeps a default stage's exact key but collapses any custom
+ *    stage to its kind's canonical status, and ONLY ever emits a canonical value
+ *    (so downstream reasoners never see a non-canonical status).
+ */
 import { describe, it, expect } from "vitest";
 import {
   DEFAULT_STAGES,

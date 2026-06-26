@@ -1,3 +1,17 @@
+/*
+ * Open Graph share image for the (marketing) route group (Next.js file convention).
+ *
+ * WHAT: Next auto-detects `opengraph-image.tsx` and serves the rendered JSX as a
+ * 1200x630 PNG used when marketing pages are shared on social/Slack/etc. The
+ * exported `alt`, `size`, and `contentType` are consumed by Next to populate the
+ * og:image meta tags.
+ *
+ * WHY: Gives marketing links a branded preview card instead of a blank/unfurled URL.
+ *
+ * HOW: Static HireBase-branded design (no per-tenant data) rendered server-side via
+ * next/og's ImageResponse. runtime="edge" is required by next/og's Satori renderer;
+ * styles must be inline because there is no CSS/Tailwind pipeline in this context.
+ */
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";

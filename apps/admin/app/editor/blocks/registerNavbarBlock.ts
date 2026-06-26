@@ -1,3 +1,23 @@
+/*
+ * Registers the "navbar" GrapesJS editor block: top site navigation bar.
+ *
+ * WHY: a drag-drop header (company name + nav links + optional CTA) for career
+ * pages, configured from the props sidebar with inline-editable text.
+ *
+ * HOW: buildComponents() reads props from getDefaultProps("navbar") and emits the
+ * canvas tree; the shared registerBlock() helper handles palette, live rebuild on
+ * prop change, and inline-RTE -> props sync. Notable details:
+ *   - `showCta` defaults to true: only an explicit `false` hides the CTA button
+ *     (so undefined/legacy props still render it).
+ *   - `variant` ("light"/"dark"/"transparent") selects a NAVBAR_VARIANTS bg/border
+ *     palette applied to the root <section>, defaulting to light.
+ *   - Variant styling lives on the root <section> (not the child tree), so this
+ *     file adds its own component:update listeners (rebuildNavbar) to re-apply the
+ *     bg/border live AND to re-tint the company-name child's text colour for the
+ *     dark variant — registerBlock's rebuild alone wouldn't touch the root style.
+ * GOTCHA: the public web renderer (apps/web/lib/renderer.tsx) must MIRROR this
+ * markup, the showCta default, and the variant palette/text colours.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 
@@ -32,6 +52,7 @@ function buildNavLinks(links: any[], ctaText: string, showCta: boolean) {
 
 function buildComponents(props: any) {
   const links = Array.isArray(props.links) ? props.links : [];
+  // Default-on: CTA is hidden only when showCta is explicitly false.
   const showCta = props.showCta !== false;
   return [
     {

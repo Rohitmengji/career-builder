@@ -1,3 +1,16 @@
+/*
+ * Unit tests for the CSV export helpers (csvExport.ts).
+ *
+ * The load-bearing behavior here is security, not formatting:
+ *   - csvField: RFC-4180 quoting (comma/quote/newline) AND a CSV/formula-injection
+ *     guard that prefixes a leading = + - @ with `'` so a candidate-controlled
+ *     field can't execute as a spreadsheet formula in Excel/Sheets. One test pins
+ *     the both-at-once case (=1,2 → quoted *and* prefixed), and null/undefined → "".
+ *   - toCsv: header + rows joined with CRLF line endings.
+ *   - applicationsToCsv: emits the expected columns and runs every
+ *     candidate-controlled field through csvField (e.g. firstName "=cmd" is
+ *     neutralized, a comma in the job title forces quoting).
+ */
 import { describe, it, expect } from "vitest";
 import { csvField, toCsv, applicationsToCsv } from "./csvExport";
 

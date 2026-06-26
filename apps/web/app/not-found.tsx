@@ -1,8 +1,16 @@
 import { ButtonLink, EmptyState, SearchIcon } from "@/components/ui";
 
 /**
- * Not Found page for the web app.
- * Shows when a tenant/page/job is not found.
+ * Global 404 page for the career site.
+ *
+ * WHAT: The site-wide not-found UI shown for any unmatched route, or when a page
+ * calls notFound() without a closer route-level not-found.tsx (e.g. unknown
+ * tenant/page/job).
+ * WHY: Gives candidates a branded dead end with a path back home instead of a
+ * raw error.
+ * HOW: Next App Router renders this automatically as the root fallback. Purely
+ * presentational — no data fetching. More specific routes (e.g. jobs/[id]) can
+ * override it with their own not-found.tsx.
  */
 export default function NotFound() {
   return (

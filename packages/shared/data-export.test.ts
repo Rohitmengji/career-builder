@@ -1,3 +1,22 @@
+/*
+ * Unit tests for buildCandidateExport (./data-export) — the candidate
+ * data-rights (DSAR) export projection (ADR-0011, §15 export boundary).
+ *
+ * WHY: when a candidate requests their own data, we must return ONLY their
+ * personal data and never internal/recruiter-only fields. The export is a
+ * strict allow-LIST (whitelist), not a deny-list, so that adding a new column
+ * to a row fails closed (it is excluded until explicitly whitelisted). These
+ * tests are the contract that enforces that boundary.
+ *
+ * Key behaviors asserted:
+ *  - includes the subject email + the candidate's own whitelisted fields across
+ *    profile / applications / interviews / offers / consents;
+ *  - NEVER leaks internal or sensitive fields even when present on the input
+ *    rows — passwordHash, resetTokenHash, recruiter notes, rating, resumeText,
+ *    adverse-action free text, internalNotes, approverId, offer approval notes,
+ *    and the consent ipAddress (internal-audit only, not part of the payload);
+ *  - missing sections degrade to null/[] rather than throwing.
+ */
 import { describe, it, expect } from "vitest";
 import { buildCandidateExport } from "./data-export";
 

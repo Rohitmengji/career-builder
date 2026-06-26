@@ -1,3 +1,22 @@
+/*
+ * Registers the "carousel" GrapesJS editor block: a horizontal slide strip.
+ *
+ * WHY: gives recruiters a drag-drop image carousel (title + N captioned slides)
+ * for career pages, editable inline and from the props sidebar.
+ *
+ * HOW: buildComponents() reads props from getDefaultProps("carousel") and builds
+ * the canvas tree; the shared registerBlock() helper wires palette, live rebuild
+ * on prop change, and inline-RTE -> props sync. Notable details:
+ *   - In the EDITOR this is a static flex strip (each slide fixed at ~1/3 width,
+ *     overflow hidden) — there is no live sliding behaviour here; any real
+ *     carousel interaction is the web renderer's responsibility.
+ *   - Slides with no image fall back to a rotating Unsplash placeholder so the
+ *     preview is never empty.
+ *   - Captions use the `slide-<idx>-caption` data-field convention so RTE edits
+ *     route back into props.slides[idx].caption via registerBlock.
+ * GOTCHA: the public web renderer (apps/web/lib/renderer.tsx) must MIRROR this
+ * markup/field shape (and implement the actual sliding behaviour).
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

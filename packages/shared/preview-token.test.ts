@@ -1,3 +1,17 @@
+/*
+ * Unit tests for the signed preview-token (./preview-token) create/verify pair.
+ *
+ * WHY: unpublished career-site pages are previewable via a short-lived,
+ * tenant+slug-bound token instead of a session. The token is the only thing
+ * gating that preview, so forgery/expiry handling is a security boundary —
+ * these tests are the contract for "what verifyPreviewToken must reject".
+ *
+ * Key behaviors asserted (fail-closed): a valid token round-trips to its exact
+ * claims { tenantId, slug }; a tampered signature is rejected; a forged payload
+ * (e.g. a different tenant) without a matching signature is rejected; expired
+ * tokens are rejected; malformed/empty/null/wrong-shape inputs return null; and
+ * the slug is bound into the signature (not a free parameter).
+ */
 import { describe, it, expect } from "vitest";
 import { createPreviewToken, verifyPreviewToken } from "./preview-token";
 

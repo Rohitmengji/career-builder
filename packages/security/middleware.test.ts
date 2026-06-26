@@ -1,3 +1,17 @@
+/*
+ * Unit tests for validateCsrf in ./middleware.
+ *
+ * WHAT: Contract tests for the CSRF guard that every admin write goes through
+ * (getSession() + validateCsrf, per the repo invariant).
+ * WHY: CSRF protection is enforced in app code, so this guard's accept/reject
+ * decisions are load-bearing; the assertions pin down exactly which signals
+ * count as same-origin vs. forged.
+ * HOW: Builds bare POST Requests with hand-set headers and asserts the layered
+ * checks — Origin host must match Host; Sec-Fetch-Site: cross-site is rejected
+ * when no Origin is present; otherwise a double-submit cookie/header pair
+ * (cb_csrf cookie === x-csrf-token) must match. A request with no same-origin
+ * signal AND no token is rejected (fail-closed default).
+ */
 import { describe, it, expect } from "vitest";
 import { validateCsrf } from "./middleware";
 

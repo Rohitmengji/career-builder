@@ -1,3 +1,19 @@
+/*
+ * Candidate self-registration page (client component).
+ *
+ * WHAT: A controlled sign-up form (name/email/phone/password) for job seekers on
+ * the public career site. On success it routes to /profile.
+ *
+ * WHY: Lets candidates create an account so applications pre-fill and they can
+ * track status. Candidate identity in this system is keyed by lowercased email +
+ * tenantId (no candidateId FK — ADR-0001); the email captured here is that anchor,
+ * so the server normalizes/owns it (this form just collects it).
+ *
+ * HOW: Posts JSON to /api/auth/register, which does the real validation, hashing,
+ * tenant scoping, and session creation. Client-side we only do a cheap UX guard
+ * (password >= 8 chars) — never the source of truth. router.refresh() after push
+ * re-runs server components so the new session is picked up.
+ */
 "use client";
 
 import { useState } from "react";
@@ -16,6 +32,7 @@ export default function RegisterPage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Client-side UX guard only; the server re-validates and is the source of truth.
     if (form.password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;

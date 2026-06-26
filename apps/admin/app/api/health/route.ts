@@ -6,8 +6,16 @@ import { checkDbHealth } from "@career-builder/database/resilience";
 const startTime = Date.now();
 
 /**
- * GET /api/health — Admin app health check.
- * Returns system status, DB health, and service configuration status.
+ * GET /api/health — Admin app health check (verbose diagnostics).
+ *
+ * WHY: A human/operator-facing status endpoint. Unlike /api/ready (a minimal
+ * pass/fail probe for orchestrators), this returns rich detail: uptime, version/gitSha,
+ * environment, DB health + latency + provider, and whether Stripe/AI are configured.
+ *
+ * HOW: Returns 200 when the DB is healthy, 503 ("degraded") otherwise, always NO_STORE.
+ * It exposes only the DB *provider type*, never the connection string. The
+ * __REAL_DATABASE_URL global is read because client.ts swaps process.env.DATABASE_URL
+ * for Prisma 6 compatibility (see inline note below).
  */
 export async function GET() {
   const dbHealth = await checkDbHealth(prisma);

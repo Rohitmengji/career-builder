@@ -1,3 +1,17 @@
+/*
+ * Unit tests for the @mention parser (mentions.ts) used in application comments.
+ *
+ * Mentions are encoded inline as `@[Display Name](userId)`; the userId in the
+ * token is authoritative (server re-validates it against the tenant before
+ * notifying), so the parser's job is to pull ids out reliably and safely:
+ *   - extractMentions / extractMentionIds: parse well-formed tokens, dedupe by
+ *     userId, ignore malformed tokens (no id) and plain text,
+ *   - renderSegments: split a body into ordered text + mention segments (used to
+ *     render highlighted mentions), including the mention-only case,
+ *   - mentionToken: build a token while stripping bracket/paren chars from the
+ *     name so a crafted display name can't break out of the token grammar, and
+ *     fall back to "user" when nothing survives sanitizing.
+ */
 import { describe, it, expect } from "vitest";
 import { extractMentions, extractMentionIds, renderSegments, mentionToken } from "./mentions";
 

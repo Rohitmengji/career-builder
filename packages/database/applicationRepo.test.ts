@@ -1,3 +1,20 @@
+/*
+ * Unit (contract) tests for applicationRepo.findByTenant — the recruiter
+ * candidate-search/list query. Prisma is mocked (./client), so these assert the
+ * `where`/`omit` shape the repo builds, not DB behavior.
+ *
+ * WHY: this is the main list endpoint, so its filter must be both correct and
+ * safe — tenant-scoped, the free-text search must span the right columns, and
+ * the heavy résumé text must stay out of the list payload.
+ *
+ * Key behaviors pinned:
+ *   - q builds an OR over firstName/lastName/email/resumeText (contains), and
+ *     the SAME OR drives count() so pagination totals stay accurate.
+ *   - blank/absent q omits the OR entirely (no empty-match filter).
+ *   - tenant isolation: where.tenantId is always set (no RLS — app code guards).
+ *   - projection: omit: { resumeText: true } keeps résumé bodies off the list.
+ *   - q + status compose as tenant AND status AND the OR group.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the Prisma client before importing the repo (hoisted).

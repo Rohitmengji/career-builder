@@ -1,3 +1,11 @@
+/*
+ * FinalCta — the closing call-to-action banner at the bottom of the marketing page.
+ *
+ * WHAT: a gradient card with a headline and two buttons — "Start Free" (links to
+ * the admin LOGIN_URL) and "See Preview" (anchors to the #demo section above).
+ * Pure presentational server component; the grid overlay and glow are decorative
+ * and aria-hidden.
+ */
 import React from "react";
 import { LOGIN_URL } from "@/lib/marketing-config";
 import { Section, ArrowRightIcon } from "@/components/ui";

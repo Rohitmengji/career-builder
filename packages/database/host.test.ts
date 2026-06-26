@@ -1,3 +1,12 @@
+/*
+ * Unit tests for normalizeHostname — canonicalizes a raw host string before it's used
+ * to resolve a tenant by custom domain.
+ *
+ * WHY: Custom-domain lookups key on the hostname, so two spellings of the same host must
+ * collapse to one value or domain routing breaks / mis-resolves the tenant. Asserts it
+ * lowercases and strips scheme/path/port/trailing dots, and is idempotent (re-normalizing
+ * an already-normalized host is a no-op).
+ */
 import { describe, it, expect } from "vitest";
 import { normalizeHostname } from "./host";
 

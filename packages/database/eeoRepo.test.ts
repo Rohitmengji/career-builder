@@ -1,3 +1,19 @@
+/*
+ * Unit tests for eeoRepo — the EEO/voluntary self-ID store (Prisma mocked via ./client).
+ *
+ * WHY: EEO demographic data is legally sensitive and must NEVER be linkable back to an
+ * individual candidate (ADR-0013). These tests pin the repo's intentionally narrow API and
+ * its anti-linkage projection so a well-meaning refactor can't accidentally expose it.
+ *
+ * Key behaviors asserted:
+ *   - Isolation surface: the repo exposes ONLY record / listForAggregate / deleteForApplications
+ *     — there is deliberately no "read one row" method.
+ *   - record upserts exactly one row per application (keyed on applicationId).
+ *   - listForAggregate is UNLINKABLE: select returns demographic columns only — never id or
+ *     applicationId — so aggregates can't be joined back to a person; and it's tenant-scoped.
+ *   - deleteForApplications is tenant + applicationId scoped, and no-ops (returns 0, skips the
+ *     query) on an empty id list.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const upsert = vi.fn();

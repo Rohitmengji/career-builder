@@ -3,8 +3,17 @@
 import { Button, ButtonLink, EmptyState } from "@/components/ui";
 
 /**
- * Error boundary for the public web app.
- * Prevents blank screens when page rendering fails.
+ * Route-segment error boundary for the public career site (Next.js `error.tsx`
+ * convention). Catches errors thrown while rendering a page below it and shows a
+ * friendly fallback instead of a blank screen.
+ *
+ * WHY: Career-site visitors are candidates, not operators — a crash should degrade
+ * gracefully with a retry, not expose a stack trace.
+ *
+ * HOW: Next requires error boundaries to be client components (hence "use client"),
+ * and passes `error` plus a `reset()` callback that re-renders the failed segment.
+ * The "Try again" button calls reset(); we don't surface error.message/digest to
+ * the user.
  */
 export default function Error({
   reset,

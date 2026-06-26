@@ -1,3 +1,17 @@
+/*
+ * Registers the "cta-button" GrapesJS editor block — a centered
+ * title/subtitle + a single call-to-action link button.
+ *
+ * WHY: the generic "drive the visitor somewhere" section (apply now, view openings,
+ * contact us), droppable anywhere on a career page.
+ *
+ * HOW: standard block pattern (see registerBlock.ts). buildComponents maps props to
+ * the canvas tree; rebuildComponents drives live preview. Editable text (title,
+ * subtitle, buttonText) carries a `data-field` so inline RTE edits sync back to props.
+ * The button is an <a> whose href comes from props.buttonLink (defaults to "#").
+ * GOTCHA: keep in sync with apps/web/lib/renderer.tsx.
+ */
+
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

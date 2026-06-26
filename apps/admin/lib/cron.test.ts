@@ -1,3 +1,14 @@
+/*
+ * Unit tests for assertCron — the cron auth guard (ADR-0021).
+ *
+ * Pins the contract that lets a scheduled job through and nothing else:
+ *   - accepts only the exact `Bearer $CRON_SECRET` value,
+ *   - rejects wrong / missing tokens,
+ *   - rejects a length-mismatched token WITHOUT throwing (the length guard
+ *     in front of crypto.timingSafeEqual, which throws on unequal lengths),
+ *   - fails CLOSED when CRON_SECRET is unset (deny, never accept).
+ * beforeEach/afterEach set and restore CRON_SECRET so tests don't leak env state.
+ */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { assertCron } from "./cron";
 

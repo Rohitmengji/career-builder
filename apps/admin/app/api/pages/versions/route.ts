@@ -1,3 +1,22 @@
+/*
+ * /api/pages/versions — version history + restore for career-site pages (page builder).
+ *
+ * WHAT: GET lists a page's version history (paginated); POST restores the page to a
+ * chosen prior version's block content.
+ *
+ * WHY: The GrapesJS editor saves snapshots so editors can audit and roll back page edits.
+ *
+ * HOW it fits in:
+ *   - GET reads → getSessionReadOnly(); POST mutates → getSession() + validateCsrf(),
+ *     and is blocked for the "viewer" role (read-only).
+ *   - TENANT ISOLATION: every repo call (findBySlug / listByPage / countByPage /
+ *     findByVersion / upsert) takes session.tenantId, so a caller can only see/restore
+ *     pages in their own tenant (enforced in app code, no DB RLS).
+ *   - Restore is non-destructive: it re-saves the old blocks as a NEW version via
+ *     pageRepo.upsert rather than rewriting history. The conflict-check arg is passed
+ *     undefined to skip optimistic-concurrency on restores.
+ *   - Slugs are run through sanitizeSlug before any lookup.
+ */
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
 import { pageRepo, pageVersionRepo } from "@career-builder/database";

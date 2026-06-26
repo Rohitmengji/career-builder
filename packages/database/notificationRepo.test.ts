@@ -1,3 +1,19 @@
+/*
+ * Unit tests for notificationRepo — in-app notifications for both recruiters and candidates
+ * (Prisma mocked via ./client).
+ *
+ * WHY: A notification's recipient is polymorphic — either a `user` (recruiter id) or a
+ * `candidate` (identified by email, no FK — ADR-0001). Candidate emails must be lowercased
+ * on write AND on every lookup so a recipient sees their own notifications and only their own.
+ * These tests pin that normalization and the recipient+tenant scoping.
+ *
+ * Key behaviors asserted:
+ *   - create lowercases a candidate recipientId (email) but leaves a user id case-intact.
+ *   - listForRecipient is scoped by tenant + recipientType + normalized recipientId, newest
+ *     first, and caps `take` (a caller asking for 999 is clamped to 30).
+ *   - countUnread / markAllRead / markRead are recipient-scoped (and markRead also id-scoped),
+ *     so one recipient can never read or clear another's notifications.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const create = vi.fn();

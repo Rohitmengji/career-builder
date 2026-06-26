@@ -1,3 +1,24 @@
+/*
+ * Unit tests for extractResumeText() — the SERVER-ONLY, fail-safe resume parser.
+ *
+ * WHY: parsing untrusted uploads is a DoS surface, so the contract is that the
+ * function NEVER throws and NEVER blocks an application — it returns null on any
+ * problem. These tests pin every guard described in extract.ts so a refactor
+ * can't silently weaken them. The unpdf parser is mocked (see below) so the
+ * guard logic is exercised without real PDF fixtures.
+ *
+ * Behaviours asserted:
+ *   - type allow-list: only application/pdf and text/plain are parsed (txt skips
+ *     the PDF parser entirely); mime parameters like charset are tolerated;
+ *     unsupported types return null without invoking the parser;
+ *   - fail-safe: parser throw, timeout (parser never resolves), empty input,
+ *     oversize input (> MAX_BYTES), and whitespace-only output all yield null;
+ *   - concurrency cap: once MAX_CONCURRENT_EXTRACTIONS in-flight, the next call
+ *     is skipped without invoking the parser (the held slots are released at the
+ *     end so the module-level counter doesn't leak into later tests);
+ *   - normalization + output cap: runaway whitespace collapses, multi-page arrays
+ *     join, and output is truncated to MAX_TEXT_CHARS.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the PDF parser so the guard logic is testable without a real PDF fixture.

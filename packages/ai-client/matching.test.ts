@@ -1,3 +1,28 @@
+/*
+ * Contract tests for matching.ts — the candidate↔role match-scoring engine
+ * behind the "Right-to-Explanation" feature.
+ *
+ * WHY: scoreMatch() drives a candidate-facing explanation, so its AI-provider
+ * contract must be locked down. These tests pin the four standards from the
+ * Honest Hiring brief §3.4 so a regression in the prompt/parse layer can't ship.
+ *
+ * HOW: callAi (from ./index, the server-only provider caller) is mocked so we
+ * exercise the prompt-build + parse + validate pipeline without a real network
+ * call. Behaviors asserted:
+ *  - Schema-validated happy path: well-formed JSON → validated result, score
+ *    banded (>=80 strong / 60–79 good), citations resolved to requirement text.
+ *  - Tolerant parse: strips code-fences / surrounding prose before JSON.parse.
+ *  - FAIL-CLOSED: non-JSON, out-of-range/wrong-type/missing fields, or a thrown
+ *    AI call all yield available:false with nulls — raw model text is NEVER
+ *    surfaced to a candidate.
+ *  - Anti-hallucination: gaps/strengths citing a reqIndex outside the real
+ *    (requirements + niceToHave) list are dropped (gaps) or kept text-only
+ *    (strengths); index maps across the combined list.
+ *  - Fairness/input guards: no identity fields reach the model, contact PII is
+ *    stripped first, temperature 0 (deterministic), and empty background or a
+ *    role with no requirements short-circuits with NO AI call.
+ *  - Versioned prompt embeds requirements as a numbered, citable 0-based list.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the AI caller before importing the scoring service (hoisted by vitest).

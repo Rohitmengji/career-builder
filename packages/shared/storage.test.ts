@@ -1,3 +1,23 @@
+/*
+ * Unit tests for ./storage — the file-storage abstraction (local-disk driver +
+ * cloud object-key namespacing).
+ *
+ * WHY: uploads (resumes, logos, media) must land in the right place in dev and,
+ * critically, must NOT collide or leak across tenants in cloud object storage.
+ * The tenant prefix in the object key is the isolation boundary here (tenant
+ * isolation is enforced in app code, not by the store — see CLAUDE.md), so it
+ * gets its own test.
+ *
+ * Behaviors asserted:
+ *  - createStorage defaults to the `local` driver when STORAGE_DRIVER is unset;
+ *  - the local driver writes the bytes to disk and returns a public URL + key,
+ *    and delete is idempotent (no throw when the file is already gone);
+ *  - objectKeyFor namespaces every key under `t/<tenantId>/…` so two tenants'
+ *    "cv.pdf" can't collide, omits the tenant segment for back-compat when no
+ *    tenantId is given, and normalizes stray slashes in the prefix.
+ *
+ * Uses a per-PID tmp dir cleaned up in afterAll so concurrent test runs don't clash.
+ */
 import { describe, it, expect, afterAll } from "vitest";
 import { promises as fs } from "fs";
 import os from "os";

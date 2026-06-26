@@ -1,3 +1,18 @@
+/*
+ * ProblemSolution.tsx — the "Why HireBase" section of the public landing page (apps/web).
+ *
+ * WHAT: A two-column marketing block contrasting the hiring problems HireBase
+ * targets (left, red) against the features that solve them (right, green).
+ * Pure static presentation — no props, no state, no DB/tenant data.
+ *
+ * WHY: Standard problem/solution sales narrative for the marketing site. Copy
+ * lives in the PROBLEMS / SOLUTIONS arrays (text + subtext + inline SVG icon) so
+ * messaging can be edited without restructuring the JSX.
+ *
+ * HOW: Each array is mapped into matching card rows; the only difference between
+ * the columns is the color theme. Wrapped in the shared Section/Container layout
+ * primitives used across landing-page sections.
+ */
 import React from "react";
 import { Container, Section, SectionHeader } from "@/components/ui";
 

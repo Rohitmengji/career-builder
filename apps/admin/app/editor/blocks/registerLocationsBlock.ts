@@ -1,6 +1,24 @@
+/*
+ * Registers the "locations" GrapesJS editor block — a heading/subtitle over a
+ * flex-wrap row of location cards (photo + city + address).
+ *
+ * WHY: lets recruiters showcase office/site locations on the career site without
+ * code.
+ *
+ * HOW: buildComponents seeds from getDefaultProps("locations") (schema in
+ * lib/blockSchemas.ts) and is registered via the shared registerBlock helper;
+ * rebuildComponents repaints on prop change. City/address text carry data-field
+ * attrs using the `item-<idx>-<key>` convention so RTE edits route into
+ * props.items[idx] (see registerBlock's RTE handler). GOTCHA: cards with no/blank
+ * image fall back to a rotating Unsplash placeholder (dummyImg) purely for an
+ * appealing editor preview — the public site renders real props in
+ * apps/web/lib/renderer.tsx, which this must stay in sync with.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 
+// Editor-only placeholder photos so empty location cards still look intentional;
+// real images come from props at runtime in the web renderer.
 const DUMMY_IMAGES = [
   "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop&q=80",
   "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=400&h=300&fit=crop&q=80",

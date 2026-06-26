@@ -1,3 +1,20 @@
+/*
+ * Unit tests for computeHiringMetrics + median (./hiring-metrics) — the
+ * time-to-X funnel metrics computed from per-application status timelines.
+ *
+ * WHY: these are aggregate analytics (median time-to-first-response /
+ * time-to-hire / time-to-decision) derived purely from each application's
+ * submittedAt plus its ordered status events. Pure + DB-free so the date math
+ * and the milestone-selection rules are testable in isolation.
+ *
+ * Key behaviors asserted:
+ *  - median handles odd / even (averages the two middle values) / empty (null);
+ *  - all durations are anchored at submittedAt and reported in whole days;
+ *  - time-to-hire only counts apps that actually reached "hired"; decision uses
+ *    the FIRST terminal event; per-metric `samples` count contributing apps;
+ *  - a milestone with no qualifying app yields a null median with sample 0;
+ *  - events dated BEFORE submittedAt (clock skew) are ignored, not negative.
+ */
 import { describe, it, expect } from "vitest";
 import { computeHiringMetrics, median, type AppTimeline } from "./hiring-metrics";
 

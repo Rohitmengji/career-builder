@@ -1,3 +1,18 @@
+/*
+ * Unit tests for the crypto primitives in ./crypto.
+ *
+ * WHAT: Covers hashPassword/verifyPassword (scrypt), timingSafeEqual,
+ * generateToken, sha256, and hmacSign/hmacVerify.
+ * WHY: These back auth (password storage), token issuance, and signed-payload
+ * verification; subtle regressions here are silent security failures, so the
+ * tests assert the non-obvious safety properties, not just happy paths.
+ * HOW: Verifies the scrypt round-trip and "$scrypt$" envelope; critically, that
+ * verifyPassword rejects a crafted hash whose embedded cost params (N/r/p) fall
+ * outside the allowed envelope (N <= 2^17) WITHOUT running scrypt — an anti-DoS
+ * guard against attacker-chosen parameters. Also: timingSafeEqual returns false
+ * on differing length/content, generateToken yields unique >=32-char tokens,
+ * sha256 is deterministic, and hmac verify rejects wrong-key/tampered payloads.
+ */
 import { describe, it, expect } from "vitest";
 import { hashPassword, verifyPassword, timingSafeEqual, generateToken, sha256, hmacSign, hmacVerify } from "./crypto";
 

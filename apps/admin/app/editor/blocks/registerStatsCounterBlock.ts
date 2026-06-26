@@ -1,7 +1,23 @@
+/*
+ * Registers the "stats-counter" GrapesJS editor block — a dark section showing a
+ * heading/subtitle above a row of big value+label metric cells.
+ *
+ * WHY: a quick "by the numbers" credibility section (e.g. headcount, offices) for
+ * career sites, editable without code.
+ *
+ * HOW: buildComponents seeds from getDefaultProps("stats-counter") (schema in
+ * lib/blockSchemas.ts) and is registered via the shared registerBlock helper;
+ * rebuildComponents repaints on prop change. The title/subtitle carry data-field
+ * attrs for RTE->props sync; the metric values/labels are display-only here.
+ * GOTCHA: the grid is capped at 4 columns (Math.min(items.length || 4, 4)) so
+ * adding many stats won't blow out the layout. Mirror markup/fields in
+ * apps/web/lib/renderer.tsx — the public site re-renders the same type+props.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 
 function buildComponents(props: any) {
+  // GrapesJS may pass props with no items array (freshly dragged) — default to []
   const items = Array.isArray(props.items) ? props.items : [];
   return [
     {

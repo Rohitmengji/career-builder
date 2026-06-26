@@ -1,3 +1,22 @@
+/*
+ * API route: media library — upload (POST) and list (GET) uploaded files.
+ *
+ * WHAT: POST accepts a multipart file upload and stores it; GET lists files in
+ *   the local media library. The companion route ./file/[filename] serves them
+ *   publicly.
+ * WHY: backs the image picker in the GrapesJS editor so recruiters can upload
+ *   logos/photos for their career site.
+ * HOW: writes require getSession() + non-viewer role + validateCsrf(); reads
+ *   use getSessionReadOnly(). Uploads are additionally rate-limited per
+ *   user+IP. SECURITY: validateUpload() (security pkg) checks extension, MIME,
+ *   magic bytes, size, and SVG scripts, and returns a crypto-safe filename we
+ *   trust over the client's; isPathSafe() then guards against traversal.
+ *   STORAGE GOTCHA: createStorage() picks a durable driver (blob/s3) in
+ *   production but a local-filesystem driver in dev. The GET listing reads the
+ *   local dir directly, so in cloud mode uploaded URLs still work (persisted in
+ *   page blocks) but this library listing reflects local files only — see the
+ *   inline note on mediaStorage().
+ */
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
 import fs from "fs";

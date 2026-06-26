@@ -1,3 +1,19 @@
+/*
+ * Comparison — the "Built different" feature-comparison table (HireBase vs.
+ * Workable vs. Lever) on the marketing page.
+ *
+ * WHAT: renders the static FEATURES rows into an accessible <table>. Each row
+ * value is either a boolean (rendered as a check/cross icon) or a string
+ * (rendered as text, e.g. "Minutes", "Free", "$299/mo"). Pure presentational
+ * server component.
+ *
+ * HOW / a11y notes:
+ *   - The table is horizontally scrollable on mobile (overflow-x-auto + min-width).
+ *   - Header cells and the leftmost feature column use <th scope> so screen
+ *     readers announce row/column context.
+ *   - The check/cross SVGs are aria-hidden but carry an sr-only "Included" /
+ *     "Not available" label so the boolean state is still conveyed.
+ */
 import React from "react";
 import { Container, Section, SectionHeader, Card } from "@/components/ui";
 
@@ -31,6 +47,8 @@ const FEATURES = [
   { name: "Starting price", us: "Free", workable: "$299/mo", lever: "Custom" },
 ];
 
+// Render one comparison cell: booleans become a check/cross icon; strings render
+// as text. `accent` styles the HireBase ("us") column to stand out from rivals.
 function cell(value: boolean | string, accent = false) {
   if (typeof value === "boolean") return value ? CHECK : CROSS;
   return (

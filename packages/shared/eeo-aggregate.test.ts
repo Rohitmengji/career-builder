@@ -1,3 +1,26 @@
+/*
+ * Unit tests for computeEeoAggregate (./eeo-aggregate) — k-anonymity suppression
+ * of EEO self-ID demographics for aggregate reporting (ADR-0013).
+ *
+ * WHY: EEO demographics exist ONLY for aggregate reporting and must never be
+ * re-identifiable. This module enforces small-cell suppression (hide any value
+ * with < EEO_MIN_CELL respondents) PLUS complementary/secondary suppression so a
+ * hidden cell can't be recovered from `total − shown`. Because these are privacy
+ * guards, the tests double as the spec for the suppression algorithm.
+ *
+ * Key behaviors asserted:
+ *  - the whole dimension is hidden when respondents < minCell;
+ *  - a legit >= minCell cell is shown only when the residual hidden mass is
+ *    itself >= minCell (no over-suppression, but no derivable leak either);
+ *  - no raw sub-threshold count is ever returned;
+ *  - complementary suppression never leaves exactly one cell hidden (it would be
+ *    derivable), and keeps hiding until the hidden residual >= minCell — even
+ *    when that means hiding an otherwise-showable cell;
+ *  - `suppressed` is a BOOLEAN, never the hidden-cell count (so an attacker can't
+ *    reconstruct a unique 1+1+...+1 partition);
+ *  - each dimension aggregates independently, blank/null answers are ignored,
+ *    and a dimension nobody answered is marked unavailable.
+ */
 import { describe, it, expect } from "vitest";
 import { computeEeoAggregate, EEO_MIN_CELL, type EeoRow } from "./eeo-aggregate";
 

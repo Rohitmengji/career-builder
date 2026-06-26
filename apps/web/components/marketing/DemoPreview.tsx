@@ -1,3 +1,19 @@
+/*
+ * DemoPreview — the "See it in action" tabbed showcase on the marketing page.
+ *
+ * WHAT: a tab switcher (Career Site / Visual Editor / Job Listings) that swaps
+ * between three illustrative mock panes rendered inside a fake browser chrome,
+ * with a CTA to the admin LOGIN_URL below.
+ *
+ * WHY client: it owns the active-tab selection state and keyboard interaction.
+ *
+ * HOW / gotchas:
+ *   - Accessible tablist: arrows/Home/End move selection via onKeyDown (using the
+ *     shared `keys` map), only the active tab is in the tab order (roving
+ *     tabindex), and each panel is tied to its tab via aria-controls/labelledby.
+ *   - CareerSiteMock / EditorMock / JobsMock are hard-coded skeleton mockups —
+ *     NOT real tenant data, so no tenant scoping or redaction applies here.
+ */
 "use client";
 
 import React, { useRef, useState } from "react";

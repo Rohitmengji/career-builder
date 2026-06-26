@@ -1,3 +1,24 @@
+/*
+ * Contract tests for resume.ts — structureResume(), which turns free-text
+ * resume paste into a schema-validated structured profile (skills/titles/
+ * years/education) via the AI provider.
+ *
+ * WHY: the parsed profile feeds blind-hiring screens, so its provider contract
+ * must be deterministic, validated, and fail-closed — never leak identity.
+ *
+ * HOW: callAi (./index) is mocked to exercise prompt-build + parse + validate
+ * without a network call. Behaviors asserted:
+ *  - Schema-validated happy path → available:true with normalized fields.
+ *  - Tolerant parse: strips a ```json code-fence before JSON.parse.
+ *  - FAIL-CLOSED: non-JSON, out-of-range (totalYearsExperience > 60), missing
+ *    fields, or a thrown AI call all yield available:false.
+ *  - Too-short input short-circuits with NO AI call.
+ *  - Privacy/hygiene: contact PII (email/phone) is stripped before the text
+ *    reaches the model, the system prompt tells it to omit identity, scoring is
+ *    deterministic (temperature 0), and skills/titles are de-duped
+ *    case-insensitively (first-seen casing wins).
+ *  - Versioned prompt is exposed (RESUME_PROMPT.version).
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const callAi = vi.fn();

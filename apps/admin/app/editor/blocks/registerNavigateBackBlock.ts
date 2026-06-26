@@ -1,3 +1,16 @@
+/*
+ * Registers the "navigate-back" GrapesJS editor block — a single styled
+ * "back" link (e.g. "← Back to all jobs").
+ *
+ * WHY: gives a one-click way to drop a contextual back-link onto a career page,
+ * typically above job detail content.
+ *
+ * HOW: standard block pattern (see registerBlock.ts). The label is editable via the
+ * `data-field="label"` attribute (inline RTE edits sync back to props); the link
+ * target comes from props.link, defaulting to "/jobs". rebuildComponents drives live
+ * preview. GOTCHA: keep in sync with apps/web/lib/renderer.tsx.
+ */
+
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

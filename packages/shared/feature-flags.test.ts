@@ -1,3 +1,25 @@
+/*
+ * Unit tests for isEnabled in ./feature-flags — the flag-gating helper every
+ * new feature ships behind (default-OFF; see CLAUDE.md / packages/shared
+ * feature-flags pattern).
+ *
+ * WHY: features must be off by default and only turned on deliberately, and a
+ * per-tenant setting must be able to override the global env. Getting the
+ * resolution order wrong would either leak unfinished features or make a tenant
+ * opt-in silently ineffective.
+ *
+ * Behaviors asserted (resolution precedence: tenant override > env var > default):
+ *  - flags are OFF by default (multi_tenant_web cutover is opt-in);
+ *  - a FEATURE_FLAG_* env var overrides the default ("true" on, "0" off);
+ *  - a per-tenant override beats both env and default, but env still applies to
+ *    flags the tenant didn't override;
+ *  - a non-boolean tenant override is ignored (a malformed settings blob can't
+ *    flip a flag);
+ *  - unknown flag keys resolve to disabled (defensive default).
+ *
+ * beforeEach/afterEach snapshot and restore process.env so env-driven cases are
+ * deterministic and isolated from the real environment.
+ */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { isEnabled } from "./feature-flags";
 

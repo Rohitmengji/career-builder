@@ -1,3 +1,19 @@
+/*
+ * Unit tests for stageRepo — the configurable hiring-pipeline stages (Prisma mocked via ./client).
+ *
+ * WHY: Stages drive how applications move through the funnel, so every read/write must stay
+ * tenant-scoped, and ordering must be mutated atomically. These tests pin both.
+ *
+ * Key behaviors asserted:
+ *   - listForTenant targets the tenant's DEFAULT pipeline (jobId: null), ordered by `order`,
+ *     with an optional isActive filter.
+ *   - findByIdScoped / update / countActiveByKind are all scoped by tenant (and id where
+ *     relevant) — never global.
+ *   - create derives isTerminal from `kind` (a "rejected" stage is terminal, "in_process" is
+ *     not) and defaults to the tenant pipeline (jobId: null).
+ *   - reorder writes every id's new order inside a single $transaction, each updateMany
+ *     scoped by id + tenant.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const findMany = vi.fn();
