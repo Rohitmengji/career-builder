@@ -11,6 +11,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { parseScreeningQuestions } from "@career-builder/shared/screening";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import AiJobAssistant from "@/components/jobs/AiJobAssistant";
@@ -365,6 +366,11 @@ export default function AdminJobsPage() {
                 <ArrowLeftIcon className="h-4 w-4" />
                 Back to list
               </Button>
+            )}
+            {view === "list" && isEnabled("req_approval") && (
+              <Link href="/requisitions" className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+                Requisitions
+              </Link>
             )}
             {view === "list" && (
               <Button onClick={openCreate}>

@@ -47,6 +47,7 @@ model Tenant {
   savedViews          SavedView[]
   talentPools        TalentPool[]
   talentPoolMembers  TalentPoolMember[]
+  requisitions       Requisition[]
 }
 
 // --- DOMAIN (custom domains per tenant) ---
@@ -160,6 +161,7 @@ model Job {
   // Relations
   applications Application[]
   pipelineStages PipelineStage[]
+  requisition Requisition? // ADR-0020: the req authorizing this job to be published
 
   @@unique([slug, tenantId])
   @@index([tenantId])
@@ -729,4 +731,31 @@ model TalentPoolMember {
   @@unique([poolId, candidateEmail]) // a candidate is in a pool at most once
   @@index([tenantId, poolId])
   @@index([tenantId, candidateEmail]) // fast erasure delete-by-email (ADR-0011)
+}
+
+// --- REQUISITION (ADR-0020, B6a) ---
+// Authorizes a job to be posted: a job may be published only once its requisition is
+// `approved` (when the req_approval flag is on). State machine in shared/requisition.ts;
+// approval is mandatory + RBAC-gated in the route (mirrors the offer workflow).
+
+model Requisition {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobId         String?  @unique // one requisition per job (the job it authorizes)
+  job           Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  title         String
+  department    String?
+  headcount     Int      @default(1)
+  justification String?
+  status        String   @default("draft") // draft | pending_approval | approved | rejected
+  createdById   String?  // who raised it (no FK — survives user deletion)
+  approverId    String?  // who decided (no FK)
+  decisionNote  String?  // approver's note on approve/reject
+  decidedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
 }

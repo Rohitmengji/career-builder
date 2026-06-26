@@ -38,6 +38,7 @@ export {
   tagRepo,
   savedViewRepo,
   talentPoolRepo,
+  requisitionRepo,
 } from "./repositories";
 export type {
   CreateDomainInput,
@@ -64,6 +65,7 @@ export type {
   CreateTagInput,
   CreateSavedViewInput,
   CreateTalentPoolInput,
+  CreateRequisitionInput,
 } from "./repositories";
 
 // Re-export all domain types and constants
