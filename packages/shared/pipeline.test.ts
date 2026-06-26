@@ -9,6 +9,8 @@ import {
   isResponded,
   isPreOffer,
   isPreHire,
+  statusForStage,
+  CANONICAL_STATUSES,
   type StageKind,
 } from "./pipeline";
 
@@ -72,5 +74,27 @@ describe("custom-stage semantics (no legacy equivalent)", () => {
     expect(isPreHire("custom")).toBe(true);
     expect(isResponded("custom")).toBe(true);
     expect(isTerminal("custom")).toBe(false);
+  });
+});
+
+describe("statusForStage — keeps the canonical 6-value status valid for custom stages", () => {
+  it("a default stage keeps its exact key", () => {
+    expect(statusForStage({ key: "screening", kind: "in_process" })).toBe("screening");
+    expect(statusForStage({ key: "interview", kind: "in_process" })).toBe("interview");
+    expect(statusForStage({ key: "offer", kind: "offer" })).toBe("offer");
+    expect(statusForStage({ key: "hired", kind: "hired" })).toBe("hired");
+    expect(statusForStage({ key: "rejected", kind: "rejected" })).toBe("rejected");
+    expect(statusForStage({ key: "applied", kind: "applied" })).toBe("applied");
+  });
+  it("a custom stage collapses to its kind's canonical status", () => {
+    expect(statusForStage({ key: "take_home", kind: "in_process" })).toBe("interview");
+    expect(statusForStage({ key: "final_round", kind: "custom" })).toBe("interview");
+    expect(statusForStage({ key: "verbal_offer", kind: "offer" })).toBe("offer");
+    expect(statusForStage({ key: "talent_pool", kind: "rejected" })).toBe("rejected");
+  });
+  it("only produces canonical statuses (reasoners never see a non-canonical value)", () => {
+    for (const k of STAGE_KINDS) {
+      expect(CANONICAL_STATUSES).toContain(statusForStage({ key: "custom_" + k, kind: k }));
+    }
   });
 });

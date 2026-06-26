@@ -178,6 +178,12 @@ export const applicationRepo = {
     });
   },
 
+  /** Assign a pipeline stage (ADR-0015) + the derived canonical status, tenant-scoped. Returns rows changed. */
+  async setStage(id: string, tenantId: string, stageId: string, status: string) {
+    const res = await prisma.application.updateMany({ where: { id, tenantId }, data: { stageId, status } });
+    return res.count;
+  },
+
   /** Release / un-release anonymized interview feedback to the candidate (ADR-0012). Tenant-scoped; returns rows changed. */
   async setFeedbackReleased(id: string, tenantId: string, releasedAt: Date | null) {
     const res = await prisma.application.updateMany({ where: { id, tenantId }, data: { feedbackReleasedAt: releasedAt } });

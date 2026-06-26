@@ -49,6 +49,7 @@ interface Application {
   resumeUrl: string | null;
   linkedinUrl: string | null;
   status: string;
+  stageId: string | null;
   rating: number | null;
   notes: string | null;
   submittedAt: string;
@@ -138,6 +139,7 @@ export default function AdminApplicationsPage() {
   const [search, setSearch] = useState("");
   const [appliedQuery, setAppliedQuery] = useState("");
   const [blindHiring, setBlindHiring] = useState(false);
+  const [stages, setStages] = useState<{ id: string; label: string; kind: string }[]>([]);
   const { user: authUser } = useAuthGuard();
   const currentUserId = authUser?.id ?? "";
 
@@ -170,9 +172,28 @@ export default function AdminApplicationsPage() {
     if (csrfCookie) setCsrf(csrfCookie.split("=")[1]);
 
     loadApplications();
+    // Custom pipeline stages (ADR-0015) — fetch the tenant pipeline once. Empty when
+    // the flag is off, so the status dropdown stays the standard 6 statuses.
+    fetch("/api/admin/pipeline-stages", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.enabled) setStages((d.stages || []).filter((s: { isActive: boolean }) => s.isActive)); })
+      .catch(() => {});
   }, [loadApplications]);
 
   /* ─── Actions ──────────────────────────────────────────────── */
+
+  async function handleStageChange(appId: string, stageId: string) {
+    try {
+      await fetch("/api/admin/applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-csrf-token": csrf },
+        body: JSON.stringify({ id: appId, stageId }),
+      });
+      loadApplications();
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   async function handleStatusChange(appId: string, newStatus: string) {
     // Rejecting opens a dialog to (optionally) capture a structured reason (ADR-0010).
@@ -300,20 +321,26 @@ export default function AdminApplicationsPage() {
 
   function StatusSelect({ app }: { app: Application }) {
     const meta = statusMeta(app.status);
+    // Custom pipeline (ADR-0015): when the tenant has stages, the dropdown drives
+    // the specific stage (value = stageId); otherwise it's the standard 6 statuses.
+    const useStages = stages.length > 0;
     return (
       <span className="relative inline-flex items-center">
         <span className="pointer-events-none absolute left-2.5 flex items-center" aria-hidden="true">
           <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[app.status] ?? "bg-gray-400"}`} />
         </span>
         <select
-          value={app.status}
-          onChange={(e) => handleStatusChange(app.id, e.target.value)}
-          aria-label={`Change status for ${app.firstName} ${app.lastName} (currently ${meta.label})`}
+          value={useStages ? (app.stageId ?? "") : app.status}
+          onChange={(e) => (useStages ? handleStageChange(app.id, e.target.value) : handleStatusChange(app.id, e.target.value))}
+          aria-label={`Change ${useStages ? "stage" : "status"} for ${app.firstName} ${app.lastName} (currently ${meta.label})`}
           className="cursor-pointer appearance-none rounded-full border border-gray-300 bg-white py-1.5 pl-6 pr-7 text-xs font-medium text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
         >
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
+          {useStages
+            ? [
+                ...(app.stageId ? [] : [<option key="" value="">— Set stage —</option>]),
+                ...stages.map((s) => <option key={s.id} value={s.id}>{s.label}</option>),
+              ]
+            : STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
         <span className="pointer-events-none absolute right-2 flex items-center text-gray-500" aria-hidden="true">
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
