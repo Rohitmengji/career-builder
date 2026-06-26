@@ -11,6 +11,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import { Alert, EmptyState, ButtonLink, Button } from "@/components/ui";
+import { isEnabled } from "@career-builder/shared/feature-flags";
+import DecisionLedgerPanel from "./DecisionLedgerPanel";
 
 interface TimelineEvent {
   type: string;
@@ -388,6 +390,9 @@ export default function MyApplicationsPage() {
                     </div>
                   )}
                   {app.feedbackReleased && <InterviewFeedback applicationId={app.id} />}
+                  {isEnabled("decision_ledger") && (app.status === "rejected" || app.status === "hired") && (
+                    <DecisionLedgerPanel applicationId={app.id} />
+                  )}
                   {app.timeline && app.timeline.length > 0 && (
                     <ol className="mt-3 space-y-2 border-t border-gray-100 pt-3" aria-label="Status history">
                       {app.timeline.map((ev, i) => (
