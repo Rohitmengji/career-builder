@@ -1,3 +1,22 @@
+/*
+ * Unit (contract) tests for eventRepo — the application-event timeline. Prisma
+ * is mocked (./client), so these assert the query shape + projection the repo
+ * builds, not DB behavior.
+ *
+ * WHY: events carry an internal/candidate visibility split and free-form
+ * metadata. The candidate-facing read must leak nothing identifying, and writes
+ * must default safely (system actor, internal visibility).
+ *
+ * Key behaviors pinned:
+ *   - record() stores a tenant-scoped row with metadata JSON-stringified;
+ *     defaults actorType=system, visibility=internal, and nulls optional fields.
+ *   - listCandidateVisible scopes to tenantId + visibility:"candidate" + the
+ *     candidate's OWN app ids, short-circuits to [] (no DB hit) on empty input,
+ *     and projects to ONLY {applicationId, type, toStatus, createdAt→at} —
+ *     never actorId/metadata/visibility.
+ *   - listStatusChanges filters tenant + type:"status_change", projects to a
+ *     narrow shape, and respects the `take` cap.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the Prisma client before importing the repo (hoisted).

@@ -1,3 +1,19 @@
+/*
+ * Root layout for the public career site (apps/web).
+ *
+ * WHAT: The top-level <html>/<body> shell wrapping every public page. Loads fonts,
+ * global CSS, the a11y SkipLink, and derives per-tenant SEO metadata.
+ *
+ * WHY: The career site is tenant-branded — title/OG come from the resolved tenant's
+ * branding, not a fixed product name (contrast app/(marketing)/layout.tsx, which is
+ * the HireBase product site with static metadata).
+ *
+ * HOW: generateMetadata calls fetchTenantConfig() (lib/tenant resolves the tenant
+ * from the request host/headers) and falls back to "Our Company" if branding is
+ * absent. validateEnv() runs once at module load to fail fast on misconfiguration
+ * (warns in dev, throws in prod). Note: this layout is a server component with no
+ * tenant data leaking client-side beyond the rendered metadata.
+ */
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";

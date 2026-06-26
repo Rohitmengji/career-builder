@@ -1,3 +1,17 @@
+/*
+ * Unit tests for safeUrl() — the render-time XSS guard in the design system.
+ *
+ * WHY: safeUrl() sanitizes any URL before it reaches an href/src in tenant- or
+ * editor-authored content. new URL() alone would happily accept "javascript:"
+ * and "data:" schemes, so these tests pin the allow-list behaviour that keeps a
+ * crafted link from executing script.
+ *
+ * Behaviours asserted: dangerous schemes (javascript/data/vbscript) and
+ * non-http(s) absolute schemes (ftp/file) are rejected even when obfuscated with
+ * whitespace, control chars, or Unicode (NBSP / bidi override / zero-width);
+ * safe forms (http(s), relative, anchor, mailto, tel) pass through unchanged; and
+ * empty/non-string input returns the caller-supplied fallback.
+ */
 import { describe, it, expect } from "vitest";
 import { safeUrl } from "./design-system";
 

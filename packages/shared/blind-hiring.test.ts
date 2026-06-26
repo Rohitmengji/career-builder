@@ -1,3 +1,25 @@
+/*
+ * Unit tests for ./blind-hiring — config parsing + server-enforced applicant
+ * redaction (pure logic, the core of the blind-hiring invariant).
+ *
+ * WHY: blind hiring removes identifying PII from applicants before reviewers see
+ * them, to reduce bias. Redaction MUST happen server-side and must be total — a
+ * single surviving identifier (a name buried in resumeText, a tenant-scoped
+ * resumePath) defeats the purpose. The "mandatory" test serializes the output and
+ * asserts no PII string appears anywhere.
+ *
+ * Behaviors asserted:
+ *  - parseBlindHiring: defaults to disabled-with-all-fields when unset/malformed,
+ *    parses the enabled config from string or object form, drops unknown field
+ *    names, falls back to ALL redactable fields when the list is empty, and treats
+ *    any non-`true` `enabled` as disabled;
+ *  - redactApplicant: no-op (returns same ref) when disabled; when enabled masks
+ *    every configured field so NO PII value survives in the JSON (incl.
+ *    resumeText and the tenant-scoped resumePath), sets redacted:true, keeps
+ *    non-identifying fields (job/status/rating) intact, honors a partial field
+ *    selection, and never mutates the input;
+ *  - redactApplicants: applies the same redaction across a list.
+ */
 import { describe, it, expect } from "vitest";
 import {
   parseBlindHiring,

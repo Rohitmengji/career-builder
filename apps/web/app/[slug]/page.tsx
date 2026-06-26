@@ -1,3 +1,22 @@
+/*
+ * Dynamic career page renderer (/[slug]) for editor-built pages.
+ *
+ * WHAT: Server Component that fetches a published page's blocks for the given
+ * slug and renders them through the web-side block renderer, themed per tenant.
+ * WHY: The public counterpart to the GrapesJS admin page editor — recruiters
+ * design pages (about/culture/benefits/etc.) in admin, candidates view them here.
+ * The renderer must mirror the blocks registered in the editor (see editor block
+ * system memory): every register*Block in admin needs a matching renderer here.
+ * HOW:
+ *   - Fetches blocks (/api/pages?slug=) and tenant config from the admin API with
+ *     a 5s AbortController timeout so SSR never hangs when admin is down.
+ *   - Tenant config resolution falls back slug -> "default" -> built-in
+ *     DEFAULT_THEME/DEFAULT_BRANDING, so the page renders even with no config.
+ *   - No blocks -> a "not published yet" empty state (still themed).
+ *   - LiveReloader is mounted so edits in the admin editor hot-refresh this page
+ *     in preview.
+ *   - cache:"no-store" everywhere keeps published content fresh.
+ */
 import { RenderPage } from "@/lib/renderer";
 import LiveReloader from "@/components/LiveReloader";
 import { ThemeProvider } from "@/lib/ThemeProvider";

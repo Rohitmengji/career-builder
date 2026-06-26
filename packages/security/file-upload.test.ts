@@ -1,3 +1,18 @@
+/*
+ * Unit tests for validateUpload + UPLOAD_PRESETS in ./file-upload.
+ *
+ * WHAT: Tests the upload validator that gates every file accepted into the
+ * system (logos, media), using the `media` preset here.
+ * WHY: The declared MIME type / extension can't be trusted, so uploads are
+ * verified by content; this test pins the anti-spoofing and anti-XSS behavior
+ * that protects tenant storage and anyone who later views the asset.
+ * HOW: Helpers build real binary headers (PNG/JPEG magic bytes; a RIFF
+ * container + fourCC for WEBP) and assert that detection is by magic bytes not
+ * extension (png-named jpeg is rejected), the RIFF fourCC must be WEBP (WAVE/AVI
+ * rejected), SVGs containing <script>/event handlers are rejected, the size cap
+ * is enforced, and a valid upload yields a sanitized safeFilename with no path
+ * traversal ("../"/"/" stripped).
+ */
 import { describe, it, expect } from "vitest";
 import { validateUpload, UPLOAD_PRESETS } from "./file-upload";
 

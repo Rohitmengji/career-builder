@@ -1,3 +1,29 @@
+/*
+ * Unit tests for ./scorecard — interview-scorecard parsing, aggregation, and the
+ * candidate-facing projection (pure logic).
+ *
+ * WHY: interviewer feedback is sensitive. Internally we aggregate scores/
+ * recommendations to support a hiring decision; externally (candidate data
+ * rights, ADR-0012) candidates may see their feedback but must NEVER see who said
+ * what, the raw recommendation labels, or private comments. The projection test
+ * is the load-bearing one — it asserts that PII/identity simply isn't present in
+ * the serialized output.
+ *
+ * Behaviors asserted:
+ *  - parseScorecardCriteria: accepts a JSON string or array, trims, drops blanks,
+ *    dedupes case-insensitively (keeps first), caps at MAX_CRITERIA, truncates
+ *    over-long labels, and returns [] for malformed/non-array input;
+ *  - clampScore: clamps into [1,5] and rounds; null for non-finite input;
+ *  - isRecommendation: type guard for the recommendation enum;
+ *  - aggregateScorecards: per-criterion averages computed only over cards that
+ *    rated that criterion; rubric criteria always appear (null avg when unrated);
+ *    criteria rated but no longer in the rubric (after a rubric edit) are appended
+ *    so feedback is never hidden; net recommendation lean; needsMoreFeedback clears
+ *    at MIN_SCORECARDS_FOR_DECISION; garbage scores are clamped;
+ *  - candidateFeedbackProjection (ADR-0012): exposes per-criterion + overall
+ *    averages and interviewer COUNT, omits unrated criteria, and leaks NO
+ *    interviewer ids, recommendation labels, or comments.
+ */
 import { describe, it, expect } from "vitest";
 import {
   parseScorecardCriteria,

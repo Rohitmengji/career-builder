@@ -1,3 +1,20 @@
+/*
+ * Unit (contract) tests for scorecardRepo — interview scorecards. Prisma is
+ * mocked (./client), so these assert the query shape the repo builds, not DB
+ * behavior.
+ *
+ * WHY: scorecards are uniquely keyed per (tenant, application, interviewer), and
+ * submit() must be atomic (ratings are replaced wholesale, not merged).
+ *
+ * Key behaviors pinned:
+ *   - submit() upserts on the compound unique key
+ *     tenantId_applicationId_interviewerId; create path carries tenantId, update
+ *     path swaps ratings via { deleteMany: {}, create: [...] } (full replace).
+ *   - submit() runs inside prisma.$transaction (the mock proxies the tx back to
+ *     the same upsert spy so we can inspect the call).
+ *   - tenant isolation: listForApplication / findForInterviewer always include
+ *     tenantId in `where` (no RLS — app code enforces it).
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const upsert = vi.fn();

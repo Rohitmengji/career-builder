@@ -1,3 +1,21 @@
+/*
+ * Registers the "content" GrapesJS editor block — a simple heading + rich-text
+ * body section with configurable alignment and named background color.
+ *
+ * WHY: the workhorse "text section" recruiters reach for on career pages; named
+ * colors keep editor choices on-brand rather than free-form hex pickers.
+ *
+ * HOW: buildComponents builds the editable title/body (data-field attrs route
+ * RTE edits to props); the root <section> style derives text-align and a
+ * background color looked up from COLOR_MAP (a friendly-name -> hex palette).
+ * Seeds from getDefaultProps("content") (schema in lib/blockSchemas.ts) and uses
+ * the shared registerBlock helper.
+ *
+ * GOTCHA: textAlign and color are ROOT-level styles, not child components, so
+ * rebuildComponents won't repaint them. The extra rebuildContent listener patches
+ * the root style on prop change (unknown colors fall back to white). Mirror this
+ * block's markup/fields/color map in apps/web/lib/renderer.tsx.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

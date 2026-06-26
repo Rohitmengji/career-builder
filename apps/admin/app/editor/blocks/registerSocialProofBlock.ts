@@ -1,3 +1,21 @@
+/*
+ * Registers the "social-proof" GrapesJS editor block: a logo / brand strip.
+ *
+ * WHY: a drag-drop "trusted by" row (title + N customer logos) for career pages,
+ * configured from the props sidebar.
+ *
+ * HOW: buildComponents() reads props from getDefaultProps("social-proof") and emits
+ * the canvas tree; the shared registerBlock() helper handles palette, live rebuild
+ * on prop change, and inline-RTE -> props sync. Notable details:
+ *   - Each logo renders as an <img> when it has an imageUrl, otherwise falls back
+ *     to a faded text <span> of its name — so a logo entry always shows something.
+ *   - `variant` ("dark"/"light") drives both text colour (inside buildComponents)
+ *     and the root <section> background. Since the background lives on the root
+ *     style (not the child tree), this file adds its own component:update listeners
+ *     (rebuildSp) to re-set the section background live when variant changes.
+ * GOTCHA: the public web renderer (apps/web/lib/renderer.tsx) must MIRROR this
+ * markup, the img/text fallback, and the variant colours.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

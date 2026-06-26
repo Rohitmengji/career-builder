@@ -1,3 +1,19 @@
+/*
+ * API route: per-tenant "AI site context" — the free-form facts about a
+ * tenant's company/site that get injected into AI prompts (e.g. copy/page
+ * generation in packages/ai-client).
+ *
+ * WHAT: GET loads the saved context for the current tenant; POST saves it.
+ * WHY: AI features need stable, tenant-specific grounding that survives
+ *   restarts/deploys, so we persist it rather than passing it per-request.
+ * HOW: stored inside the tenant row's `settings` JSON blob under the key
+ *   "aiSiteContext" (no dedicated table). Tenant isolation is by session
+ *   .tenantId. SECURITY: because this text is later fed into LLM prompts, all
+ *   input is treated as hostile — sanitizeContext() coerces it to a flat
+ *   object of HTML-stripped, length-capped strings, and POST rejects oversized
+ *   payloads up front (MAX_CONTEXT_BYTES). Writes require getSession() +
+ *   non-viewer role + validateCsrf(); reads use getSessionReadOnly().
+ */
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf } from "@/lib/auth";
 import { tenantRepo } from "@career-builder/database";

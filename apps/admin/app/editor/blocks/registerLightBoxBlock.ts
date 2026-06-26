@@ -1,3 +1,21 @@
+/*
+ * Registers the "light-box" GrapesJS editor block: a captioned image grid.
+ *
+ * WHY: lets recruiters drop a responsive gallery (title + subtitle + N square
+ * image cards) onto a page, editable inline and from the props sidebar.
+ *
+ * HOW: buildComponents() reads props from getDefaultProps("light-box") and emits
+ * the canvas tree; the shared registerBlock() helper handles palette, live rebuild
+ * on prop change, and inline-RTE -> props sync. Notable details:
+ *   - The `columns` prop ("2"/"3"/"4") is coerced into a grid-template-columns
+ *     count, defaulting to 3 for any unrecognised value.
+ *   - Cards with no image fall back to a rotating Unsplash placeholder
+ *     (dummyImg) purely so the editor preview is never empty.
+ *   - Captions use the `img-<idx>-caption` data-field convention so RTE edits
+ *     route back into props.images[idx].caption via registerBlock.
+ * GOTCHA: the public web renderer (apps/web/lib/renderer.tsx) must MIRROR this
+ * markup/field shape, including the same column-count mapping.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 
@@ -61,6 +79,7 @@ function buildImageCards(images: any[]) {
 function buildComponents(props: any) {
   const images = Array.isArray(props.images) ? props.images : [];
   const cols = String(props.columns || "3");
+  // Only 2/3/4 are valid; anything else (incl. undefined) falls back to 3 columns.
   const colCount = cols === "2" ? 2 : cols === "4" ? 4 : 3;
   return [
     {

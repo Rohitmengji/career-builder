@@ -1,3 +1,18 @@
+/*
+ * Registers the "join-talent-network" GrapesJS editor block — a centered
+ * title/subtitle + email-capture form to sign candidates up for a talent pool.
+ *
+ * WHY: lets recruiters add a "stay in touch / join our talent network" CTA to a
+ * career page without code.
+ *
+ * HOW: standard block pattern (see registerBlock.ts). buildComponents maps props to
+ * the canvas tree; rebuildComponents drives live preview. Editable text (title,
+ * subtitle, buttonText) carries a `data-field` so inline RTE edits sync back to props.
+ * The email input shown here is a STATIC canvas placeholder; the working submit
+ * (which writes the candidate by lowercased email + tenantId, per ADR-0001) is the
+ * web renderer's responsibility. GOTCHA: keep in sync with apps/web/lib/renderer.tsx.
+ */
+
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

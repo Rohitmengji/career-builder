@@ -1,3 +1,23 @@
+/*
+ * Registers the "notification-banner" GrapesJS editor block — a full-width
+ * single-line banner (info / success / warning / error variant) with optional
+ * inline link.
+ *
+ * WHY: lets recruiters post a site-wide notice (e.g. "We're hiring!", "Applications
+ * close Friday") on a career page without code.
+ *
+ * HOW: standard block pattern (see registerBlock.ts). buildComponents builds the
+ * editable text (`data-field="text"`); when props.linkText is set it appends a raw
+ * <a> built into the content string (so the link rides along inside one RTE-editable
+ * text node rather than as a separate component).
+ *
+ * GOTCHA — unlike the other blocks, the root background/border comes from VARIANT_STYLES
+ * keyed by props.variant, NOT from rebuildComponents (which only rebuilds children).
+ * So this file adds its OWN extra listener (rebuildVariant) on component:update /
+ * component:update:props to re-apply the variant style on the root model when the
+ * variant prop changes. Keep VARIANT_STYLES and link markup in sync with apps/web/lib/renderer.tsx.
+ */
+
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 
@@ -12,6 +32,8 @@ function buildComponents(props: any) {
   const text = String(props.text || "");
   const linkText = String(props.linkText || "");
   const linkUrl = String(props.linkUrl || "#");
+  // Embed the optional link as raw HTML inside the single text node so the whole
+  // banner stays one RTE-editable component (rather than a text node + separate link).
   const content = linkText
     ? `${text} <a href="${linkUrl}" style="margin-left:0.5rem;text-decoration:underline;font-weight:600;">${linkText}</a>`
     : text;

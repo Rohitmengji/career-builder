@@ -1,3 +1,23 @@
+/*
+ * Hero — the top fold of the public marketing/landing page.
+ *
+ * WHAT: headline + email-capture CTA on the left, and an animated, purely
+ * decorative "product preview" (browser chrome with cycling Career Site / Editor /
+ * Jobs tabs) on the right.
+ *
+ * WHY: first-impression conversion surface. The email form is the primary CTA —
+ * it redirects to the admin LOGIN_URL with the email prefilled as a query param,
+ * so signup feels like it started here.
+ *
+ * HOW / gotchas:
+ *   - Client component: it owns mouse-glow + tab-cycling animation state.
+ *   - Accessibility/perf: both animations (mouse-following glow via rAF, and the
+ *     4s auto-cycling preview) bail out when useReducedMotion() is true.
+ *   - The preview panes (PreviewCareerSite / PreviewEditor / PreviewJobs) are
+ *     hard-coded skeleton mocks — NOT real tenant data — and are aria-hidden.
+ *   - Tablist keyboard nav (arrows/Home/End) is wired through onTabKeyDown using
+ *     the shared `keys` map; selected tab is the only one in the tab order.
+ */
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -119,6 +139,8 @@ export default function Hero() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
+                  // Hand off to the admin signup/login flow with the email prefilled
+                  // via query param — full-page nav (not router) since LOGIN_URL is the other app.
                   const email = (e.currentTarget.elements.namedItem("email") as HTMLInputElement).value;
                   window.location.href = `${LOGIN_URL}?email=${encodeURIComponent(email)}`;
                 }}

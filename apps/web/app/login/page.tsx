@@ -1,3 +1,16 @@
+/*
+ * Candidate sign-in page (career site).
+ *
+ * WHAT: Email/password login form for candidate accounts; POSTs to
+ * /api/auth/login and, on success, redirects to returnTo (default /profile).
+ * WHY: Authentication entry point for the public career site's candidate accounts
+ * (separate from the recruiter/admin app).
+ * HOW: Client component. useSearchParams() requires a <Suspense> boundary in the
+ * App Router, hence the LoginForm/LoginFallback split. Open-redirect guard: the
+ * returnTo param is only honored when it starts with "/" (same-origin path),
+ * otherwise we fall back to /profile. router.refresh() after login re-fetches
+ * Server Components so they see the new auth cookie.
+ */
 "use client";
 
 import { useState, Suspense } from "react";
@@ -27,6 +40,8 @@ function LoginForm() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
+        // Open-redirect guard: only follow same-origin paths ("/..."), never an
+        // absolute/external URL an attacker could plant in ?returnTo.
         router.push(returnTo.startsWith("/") ? returnTo : "/profile");
         router.refresh();
       } else {

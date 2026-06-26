@@ -1,3 +1,19 @@
+/*
+ * API route: publish / unpublish status for editor pages.
+ *
+ * WHAT: POST promotes a page's current draft blocks to the live published
+ *   version (copy draft -> publishedBlocks); GET reports publish status
+ *   (current vs published version, whether there are unpublished changes).
+ * WHY: the GrapesJS editor saves drafts continuously, but visitors must only
+ *   ever see explicitly-published content. Publishing is the gate between the
+ *   two, and "go live" must be an auditable, permissioned action.
+ * HOW: standard admin-route shape — getSession() + role check + validateCsrf()
+ *   on the write (publish), session-only on the read. Every store call is
+ *   tenant-scoped via session.tenantId (tenant isolation is enforced in app
+ *   code, not the DB). After a successful publish we fan out to in-process SSE
+ *   listeners (globalThis.__previewListeners) so any open preview reloads —
+ *   this is the exact moment changes become visible to the public web app.
+ */
 import { NextResponse } from "next/server";
 import { publishPage, getPublishStatus } from "@/lib/store";
 import { getSession, validateCsrf, writeAuditLog } from "@/lib/auth";
@@ -101,6 +117,8 @@ export const POST = withRequestLogging(async (req: Request) => {
  * GET /api/pages/publish?slug=xxx — Get publish status for a page
  */
 export const GET = withRequestLogging(async (req: Request) => {
+  // Read-only status lookup: any authenticated session may view publish state
+  // (no role gate or CSRF — those guard the mutating POST above).
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

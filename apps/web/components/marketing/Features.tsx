@@ -1,3 +1,17 @@
+/*
+ * Features — the "what you get" grid on the marketing page.
+ *
+ * WHAT: renders a static, hard-coded list of product features (FEATURES) as a
+ * responsive card grid. Pure presentational server component — no client state,
+ * no data fetching.
+ *
+ * HOW / note: each feature carries a `color` key that's mapped through COLOR_MAP
+ * to a fixed set of Tailwind classes. The map is required because Tailwind can't
+ * see dynamically-built class strings, so the full class names must appear
+ * literally (do not template-string them) for the JIT compiler to keep them.
+ * Falls back to the blue palette for any unknown color. Layout primitives
+ * (Section/Container/SectionHeader/Card) come from the shared web UI kit.
+ */
 import React from "react";
 import { Container, Section, SectionHeader, Card } from "@/components/ui";
 

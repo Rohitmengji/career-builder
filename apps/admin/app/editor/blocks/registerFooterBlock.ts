@@ -1,3 +1,23 @@
+/*
+ * Registers the "footer" GrapesJS editor block: site footer (company info + links).
+ *
+ * WHY: a drag-drop page footer for career sites — company name, blurb, a link
+ * column, and a copyright line, editable inline and from the props sidebar.
+ *
+ * HOW: buildComponents() reads props from getDefaultProps("footer") and emits the
+ * canvas tree; the shared registerBlock() helper handles palette, live rebuild on
+ * prop change, and inline-RTE -> props sync. Notable details:
+ *   - `variant` ("dark"/"light") selects a FOOTER_VARIANTS bg/text palette,
+ *     applied to the root <section> at registration (defaulting to dark).
+ *   - Because variant only changes the root <section> style (not the child tree),
+ *     registerBlock's rebuildComponents won't reapply it; so this file ALSO adds
+ *     its own component:update / component:update:props listeners (rebuildFooter)
+ *     to re-set the section background live when the variant prop changes.
+ *   - buildFooterLinks() shows three placeholder spans when props.links is empty
+ *     so the editor preview is never blank.
+ * GOTCHA: the public web renderer (apps/web/lib/renderer.tsx) must MIRROR this
+ * markup, the variant palette, and the empty-links fallback.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

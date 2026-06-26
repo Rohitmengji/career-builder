@@ -1,3 +1,20 @@
+/*
+ * Registers the "accordion" GrapesJS editor block (FAQ-style collapse list).
+ *
+ * WHY: gives recruiters a drag-drop FAQ block in the GrapesJS page editor whose
+ * questions/answers are editable inline on the canvas and via the props sidebar.
+ *
+ * HOW: builds the canvas component tree from props and hands it to the shared
+ * registerBlock() helper, which wires up the palette entry, the live-rebuild on
+ * prop changes, and the inline-RTE -> props sync. Props come from
+ * getDefaultProps("accordion") (see lib/blockSchemas).
+ *   - Uses native <details>/<summary> for collapse behaviour (no JS).
+ *   - Each editable node carries a `data-field` attribute; list items use the
+ *     `item-<idx>-<key>` convention that registerBlock routes back into
+ *     props.items[idx][key] on RTE edits.
+ * GOTCHA: the public web renderer (apps/web/lib/renderer.tsx) must MIRROR this
+ * markup/field shape, or saved pages render differently than the editor preview.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

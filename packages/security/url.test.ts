@@ -1,3 +1,15 @@
+/*
+ * Unit tests for validateUrl in ./url (SSRF + scheme guard).
+ *
+ * WHAT: Tests the URL validator used to vet any externally-supplied/outbound
+ * URL (e.g. candidate profile links, resume URLs).
+ * WHY: Untrusted URLs are an XSS (javascript:/data:) and SSRF (internal hosts)
+ * vector; this guard is fail-closed, so the rejection cases are the point.
+ * HOW: Asserts dangerous schemes (javascript:, data:) are rejected, https is
+ * allowed by default, allowedProtocols can pin https-only (rejecting http),
+ * an allowedHosts allowlist restricts the host, internal hostnames like
+ * localhost are blocked, and malformed/empty input is rejected.
+ */
 import { describe, it, expect } from "vitest";
 import { validateUrl } from "./url";
 

@@ -1,3 +1,26 @@
+/*
+ * API route: CRUD for editor pages (the GrapesJS page-builder content).
+ *
+ * WHAT: POST saves draft blocks, GET reads a page or lists pages, DELETE
+ *   removes one. A page is a slug + an array of "blocks" (the editor's
+ *   serialized component tree).
+ * WHY: this is the backing store the GrapesJS admin editor talks to, and also
+ *   the source the public web app reads published content from. One route
+ *   serves both audiences, which is why GET branches on auth (see below).
+ * HOW:
+ *   - Writes (POST/DELETE): getSession() + role gate (viewers are read-only) +
+ *     validateCsrf(). Block props are run through sanitizeBlockProps to strip
+ *     XSS before persisting GrapesJS data.
+ *   - GET is dual-mode: an authenticated admin editor gets DRAFT blocks +
+ *     publish status; an unauthenticated/public caller (the web app) gets
+ *     PUBLISHED blocks only. This is why GET uses getSessionReadOnly() in a
+ *     try/catch and treats "no session" as legitimate public access rather
+ *     than 401, and why bot detection is disabled on it.
+ *   - Tenant isolation is in app code: every store/repo call is scoped by
+ *     session.tenantId; public reads fall back to TENANT_ID/"default".
+ *   - Optimistic concurrency: POST honors expectedVersion and returns 409 on
+ *     conflict so a stale editor can't clobber another user's save.
+ */
 import { NextResponse } from "next/server";
 import { savePage, loadPage, listPages, deletePage, getPublishStatus } from "@/lib/store";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";

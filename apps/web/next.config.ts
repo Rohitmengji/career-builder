@@ -1,3 +1,21 @@
+/*
+ * Next.js config for the public career site (apps/web).
+ *
+ * WHAT: Build/runtime config — workspace transpilation, image optimizer policy,
+ *       compression, and the response-header (security + cache) policy.
+ * WHY:  This is the public, unauthenticated surface, so the defaults lean hard
+ *       toward security: security headers are sourced from packages/security
+ *       (single source of truth, shared with apps/admin via getSecurityHeaders),
+ *       and the image optimizer is locked down so it can't be abused as an open
+ *       proxy.
+ * HOW:  - getSecurityHeaders({ isAdmin: false }) yields the web variant of the
+ *         baseline headers; toNextHeaders() adapts them to Next's header shape.
+ *       - transpilePackages: this monorepo ships internal @career-builder/*
+ *         packages as TS source (not pre-built), so Next must transpile them.
+ *       - headers(): order matters — broad "/(.*)" rules apply site-wide, then
+ *         more specific source patterns add per-path Cache-Control. API routes
+ *         get no-store, mirroring the NO_STORE invariant used on admin handlers.
+ */
 import type { NextConfig } from "next";
 import { getSecurityHeaders, toNextHeaders } from "@career-builder/security/headers";
 

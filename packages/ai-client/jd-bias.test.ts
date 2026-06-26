@@ -1,3 +1,22 @@
+/*
+ * Contract tests for jd-bias.ts — detectJdBias(), which flags biased phrasing
+ * (age/gendered/etc.) in a job description via the AI provider.
+ *
+ * WHY: findings are shown to recruiters editing a JD, so the provider contract
+ * must be validated against a closed category enum and fail closed on garbage.
+ *
+ * HOW: callAi (./index) is mocked to exercise prompt-build + parse + validate
+ * without a network call. Behaviors asserted:
+ *  - Schema-validated happy path → available:true with the findings array.
+ *  - Tolerant parse: strips a ```json code-fence before JSON.parse.
+ *  - FAIL-CLOSED: non-JSON, an out-of-enum `category`, or a thrown AI call all
+ *    yield available:false.
+ *  - Short/empty input is a no-op SUCCESS (available:true, findings:[]) with NO
+ *    AI call — note this differs from the other engines, which return
+ *    unavailable on empty input.
+ *  - The prompt scopes fairness: instructs the model NOT to flag legitimate
+ *    requirements and to target protected-group bias.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const callAi = vi.fn();

@@ -1,3 +1,12 @@
+/*
+ * SocialProof — trust strip on the marketing page: a "trusted by" line, a 5-star
+ * rating, and a row of grayscale company wordmarks.
+ *
+ * WHAT/WHY: pure static server component used purely for conversion credibility.
+ * The logos (LOGOS) and rating are illustrative placeholder copy, not real
+ * customer data. The star row is decorative SVG with an aria-label conveying the
+ * rating to screen readers.
+ */
 import React from "react";
 
 const LOGOS = [

@@ -1,7 +1,18 @@
 import Link from "next/link";
 
 /**
- * Not Found page for the admin app.
+ * 404 page for the admin (recruiter) app.
+ *
+ * WHAT: The fallback UI Next.js App Router renders for any unmatched route in
+ * apps/admin (and when a route calls notFound()).
+ *
+ * WHY: Gives an unknown admin URL a branded, recruiter-facing dead end with a
+ * way back to the dashboard, instead of Next's bare default.
+ *
+ * HOW: Special App Router file convention — the export must be named NotFound.
+ * It is a server component (no "use client", no hooks/auth guard) and uses inline
+ * styles rather than the app's UI kit so it renders correctly even outside the
+ * normal authenticated layout chrome. "Back to Dashboard" links to "/".
  */
 export default function NotFound() {
   return (

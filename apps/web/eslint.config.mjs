@@ -1,3 +1,16 @@
+/*
+ * ESLint flat config for the public career site (apps/web).
+ *
+ * WHAT: Composes Next.js's core-web-vitals + TypeScript rule sets, then layers
+ *       this app's lint policy on top.
+ * WHY:  This is the lint gate for apps/web (CI + local). It encodes two
+ *       deliberate, codebase-wide decisions so the rest of the gate can stay
+ *       strict and green — see the inline rationale on each rule.
+ * HOW:  Flat config (ESLint 9 `defineConfig`): spread the shared Next presets,
+ *       add a rules override block, then re-declare the build-output ignores
+ *       (globalIgnores REPLACES eslint-config-next's defaults, so they must be
+ *       restated here or they'd be lost). apps/admin has a parallel config.
+ */
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";

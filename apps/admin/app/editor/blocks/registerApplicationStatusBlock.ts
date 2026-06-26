@@ -1,3 +1,18 @@
+/*
+ * Registers the "application-status" GrapesJS editor block — a section where a
+ * candidate can enter their email to check application status, plus an optional
+ * progress tracker (numbered steps from props.steps).
+ *
+ * WHY: lets recruiters drop a self-service status lookup onto the career site.
+ *
+ * HOW: standard block pattern (see registerBlock.ts) — buildComponents maps props
+ * to the GrapesJS canvas tree; rebuildComponents drives live preview on prop change.
+ * Editable text uses `data-field` so inline RTE edits sync back to props. The email
+ * input + "Check Status" button here are STATIC canvas previews; the live lookup
+ * behavior is wired up by the web renderer at runtime.
+ * GOTCHA: keep this in sync with apps/web/lib/renderer.tsx or the published page diverges.
+ */
+
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 
@@ -36,6 +51,8 @@ function buildComponents(props: any) {
         },
       ],
     },
+    // Only emit the progress tracker when steps exist; the first step (i === 0)
+    // renders as the "active" state and every step but the last gets a connector line.
     ...(steps.length > 0 ? [{
       tagName: "div" as const,
       style: { display: "flex", gap: "0.5rem", "align-items": "center", "justify-content": "center" },

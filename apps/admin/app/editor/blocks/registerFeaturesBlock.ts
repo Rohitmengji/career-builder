@@ -1,3 +1,21 @@
+/*
+ * Registers the "features" GrapesJS editor block — a centred heading/subtitle
+ * over a responsive flex-wrap row of feature cards (icon + title + desc).
+ *
+ * WHY: gives recruiters a drag-drop "feature grid" section for the career site
+ * without touching code. One register*Block file per block type.
+ *
+ * HOW: builds the canvas component tree from the block's default props
+ * (getDefaultProps("features"), backed by lib/blockSchemas.ts) and hands it to
+ * the shared registerBlock helper, which wires up the palette entry, live
+ * prop->canvas rebuild, and inline-RTE->props sync. `rebuildComponents` lets
+ * GrapesJS re-render the whole tree when sidebar props change. Editable text
+ * nodes carry data-field attributes so RTE edits route back to props; list
+ * items use the `item-<idx>-<key>` convention (see registerBlock) so edits land
+ * in props.items[idx]. GOTCHA: this only defines the EDITOR preview — the public
+ * site re-renders the same type+props in apps/web/lib/renderer.tsx, so any
+ * markup/field change here must be mirrored there.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

@@ -1,3 +1,37 @@
+/*
+ * Editor page — the GrapesJS visual page builder for the recruiter (admin) app.
+ *
+ * WHAT: The full-screen career-site editor. Boots a GrapesJS instance, registers
+ * every page block (registerXBlock imports above), renders the canvas + left
+ * Blocks/Pages panel + right inspector (Sidebar), and wires the toolbar
+ * (save / publish / preview / undo-redo / device switch / AI generation).
+ *
+ * WHY: This is where tenants compose their public career site. Pages are stored
+ * as an ordered list of typed blocks ({ type, props }) rather than raw HTML — the
+ * public web app (apps/web) re-renders the same block types, so the editor and the
+ * renderer must agree on block schemas (see @/lib/blockSchemas and each block's
+ * web mirror). Editing happens on a "draft"; Publish copies draft -> published.
+ *
+ * HOW / gotchas a newcomer must know:
+ *  - Client component (note the "use client" directive below). Auth is checked at
+ *    runtime via GET /api/auth on mount; unauthenticated users are pushed to /login.
+ *    Server-side tenant isolation is enforced by the /api/* routes this calls — this
+ *    UI never trusts/derives the tenant itself.
+ *  - All mutating fetches (POST/DELETE to /api/pages, /api/pages/publish, /api/ai,
+ *    /api/stripe/sync) send the x-csrf-token header read from the non-httpOnly
+ *    cb_csrf cookie via getCsrfToken(). Reads (GET) do not.
+ *  - Role gating is belt-and-suspenders in the UI ("viewer" cannot save/delete;
+ *    "viewer"/"recruiter" cannot publish) but the server is the real authority.
+ *  - Saves use optimistic locking: we send expectedVersion and reload on a 409
+ *    conflict. Auto-save is debounced 5s and omits expectedVersion to avoid false
+ *    conflicts.
+ *  - GrapesJS quirk: clicking the edge of full-width blocks (navbar/footer) can
+ *    select the wrapper, so component:selected uses findParentBlock() with a model
+ *    walk + DOM fallback to resolve the block the user actually meant.
+ *  - Block schemas in @/lib/blockSchemas (KNOWN set) define which component types
+ *    are real "blocks"; text/textnode/default and unknown types are filtered out on
+ *    save. navbar/footer are LOCKED regions and cannot be deleted.
+ */
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";

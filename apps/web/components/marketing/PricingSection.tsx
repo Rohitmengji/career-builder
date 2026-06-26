@@ -1,3 +1,21 @@
+/*
+ * PricingSection.tsx — the "#pricing" section of the public landing page (apps/web).
+ *
+ * WHAT: Renders the Free / Pro / Enterprise plan cards with prices localized to
+ * the visitor's region (currency + amount). Pure marketing display; no DB, no
+ * tenant scoping — this is the unauthenticated career-site, not the admin app.
+ *
+ * WHY: Pricing must show in the visitor's local currency to convert better, but
+ * we have no server-side geo lookup here. So we detect region client-side from
+ * the browser timezone and pick a hardcoded price table (PRICING).
+ *
+ * HOW: A "use client" component — region detection (detectRegion) reads
+ * Intl timezone, a browser-only API, so it runs in useEffect AFTER mount. To
+ * avoid an SSR/client hydration flash of the wrong (default "OTHER") prices, the
+ * plans grid stays opacity-0 until `ready` flips true post-detection.
+ * NOTE: the PRICING / region logic is intentionally MIRRORED from the admin
+ * app's useGeoPricing hook — keep the two tables in sync if either changes.
+ */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -35,6 +53,8 @@ const TZ_TO_REGION: Record<string, PricingRegion> = {
 
 function detectRegion(): PricingRegion {
   try {
+    // Browser timezone is our only signal here (no server geo/IP lookup on the
+    // public site). Unrecognized zones fall through to the "OTHER" default.
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (tz && TZ_TO_REGION[tz]) return TZ_TO_REGION[tz];
   } catch { /* ignore */ }

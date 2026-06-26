@@ -1,3 +1,21 @@
+/*
+ * Unit tests for ./adverse-action — the pure rejection-reason logic (ADR-0010).
+ *
+ * WHY: candidateProjection() is the disclosure boundary between what a recruiter
+ * records internally and what a candidate is ever allowed to see. These tests
+ * lock that boundary so a future edit can't accidentally widen it. Behaviors
+ * asserted:
+ *   - ADVERSE_CATEGORIES is a CLOSED vocabulary (a category can't structurally
+ *     carry another candidate's identity), and the type guard rejects non-members
+ *     and non-strings;
+ *   - every category has both a recruiter-facing and a candidate-facing label;
+ *   - projection returns null unless the recruiter explicitly shared it (default
+ *     not-shared);
+ *   - when shared it prefers the curated, trimmed candidateMessage, else a safe
+ *     generic label;
+ *   - freeText (internal-only) is NEVER present in the projected output;
+ *   - an unknown stored category coerces to "other" rather than leaking through.
+ */
 import { describe, it, expect } from "vitest";
 import {
   ADVERSE_CATEGORIES,

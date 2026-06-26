@@ -1,3 +1,28 @@
+/*
+ * Unit tests for computeSalaryBenchmark in ./salary-benchmark — the
+ * privacy-preserving "is this offer competitive?" calculation (pure logic).
+ *
+ * WHY: this shows a subject posting against an aggregate market drawn from OTHER
+ * tenants' salary data. That is cross-tenant data, so it MUST never let anyone
+ * reverse-engineer an individual competitor's figures. The k-anonymity rules are
+ * a hard privacy requirement, not a nicety — hence the "MANDATORY" suites.
+ *
+ * Behaviors asserted:
+ *  - SUPPRESSION (returns available:false, null market): fewer than K_ANON_MIN
+ *    comparable jobs; all data from a single tenant (even if >= k jobs); fewer
+ *    than MIN_TENANTS distinct tenants; or one tenant dominating (>50% share).
+ *    Becomes available exactly at the floor (k jobs, balanced across >= MIN_TENANTS).
+ *  - NO LEAKS: p25/p50/p75 are rounded to the period step (roundStepFor) so no
+ *    exact competitor figure is recoverable, ordering p25<=p50<=p75 holds, and
+ *    hourly wages round to whole dollars (a flat 1000-step would collapse them to $0).
+ *  - CURRENCY/PERIOD SAFETY: only rows matching the subject's currency AND pay
+ *    period count toward k; mismatched rows are excluded (and can drop the pool
+ *    below the threshold).
+ *  - PERCENTILE: the subject's percentile within the market midpoints; a
+ *    top-of-market posting is 100th; when the employer hides pay (null/null) the
+ *    market range is still shown (the "honest" part) but posted/percentile are null;
+ *    a posting needs BOTH range ends to be counted.
+ */
 import { describe, it, expect } from "vitest";
 import {
   computeSalaryBenchmark,

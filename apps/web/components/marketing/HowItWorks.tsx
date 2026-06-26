@@ -1,3 +1,14 @@
+/*
+ * HowItWorks — the "Live in 4 steps" section of the marketing page.
+ *
+ * WHAT: renders the static STEPS array as an ordered list of numbered cards
+ * (template -> AI generate -> customize -> publish). Pure presentational server
+ * component; no state or data fetching.
+ *
+ * HOW / note: on large screens a decorative connector line is drawn between
+ * adjacent steps — it's suppressed after the last step (i < STEPS.length - 1)
+ * and is aria-hidden since it carries no meaning.
+ */
 import React from "react";
 import { Container, Section, SectionHeader } from "@/components/ui";
 

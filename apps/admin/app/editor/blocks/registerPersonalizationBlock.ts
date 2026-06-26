@@ -1,3 +1,18 @@
+/*
+ * Registers the "personalization" GrapesJS editor block — a heading over three
+ * placeholder cards (Recent Searches / Recommended Jobs / Trending Searches).
+ *
+ * WHY: reserves a section where the public site shows per-visitor personalized
+ * content. That content is computed at request time from visitor signals, so it
+ * cannot exist in the editor — the cards are static "[ Personalized at runtime ]"
+ * stand-ins for layout only.
+ *
+ * HOW: buildComponents seeds from getDefaultProps("personalization") (schema in
+ * lib/blockSchemas.ts) and registers via the shared registerBlock helper. Only
+ * the title carries a data-field for RTE->props sync; the card bodies are fixed
+ * placeholders. The real personalization is rendered by apps/web/lib/renderer.tsx,
+ * which must stay in sync with this block's type+props contract.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

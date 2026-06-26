@@ -1,3 +1,16 @@
+/*
+ * Candidate "set a new password" page (career site).
+ *
+ * WHAT: Reads a one-time reset `token` from the URL query and lets the candidate
+ * pick a new password, POSTing to /api/auth/reset-password.
+ * WHY: Completes the forgot-password flow for candidate accounts on the public
+ * career site (distinct from recruiter/admin auth).
+ * HOW: Client component. useSearchParams() forces it under a <Suspense> boundary
+ * (Next App Router requirement), hence the ResetForm/ResetFallback split. On
+ * success the API also signs the candidate in, so the "done" state routes
+ * straight to /profile. Validation here is UX-only — the API re-validates the
+ * token + password server-side (never trust the client).
+ */
 "use client";
 
 import { useState, Suspense } from "react";
@@ -15,6 +28,7 @@ function ResetForm() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Client-side guards for fast feedback only; the API enforces the real rules.
     if (password.length < 8) return setError("Password must be at least 8 characters.");
     if (password !== confirm) return setError("Passwords do not match.");
     setStatus("submitting");

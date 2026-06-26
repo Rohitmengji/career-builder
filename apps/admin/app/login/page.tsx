@@ -1,3 +1,19 @@
+/*
+ * Login page — the admin console sign-in.
+ *
+ * WHAT: Email + password form (with a "forgot password" hint panel) for the
+ * recruiter app. On success, redirects to /editor.
+ *
+ * WHY: The unauthenticated entry point; getSessionReadOnly() on protected pages
+ * redirects here when there is no session.
+ *
+ * HOW: Client component. Submits to POST /api/auth, which sets the session
+ * cookie server-side; on res.ok we just router.push("/editor"). There is no
+ * self-serve password reset — users ask an admin (Settings → Users → Reset
+ * Password), which is why the forgot-password panel only shows guidance. Field
+ * `required`/noValidate let the browser submit so the server can return its own
+ * generic "Invalid credentials" message (we avoid leaking which field was wrong).
+ */
 "use client";
 
 import { useState, type FormEvent } from "react";

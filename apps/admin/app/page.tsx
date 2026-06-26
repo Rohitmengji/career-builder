@@ -1,3 +1,19 @@
+/*
+ * Admin home — the landing/navigation hub for the recruiter app.
+ *
+ * WHAT: A server-rendered grid of links to the main tools (Dashboard, Jobs,
+ * Applications, Page Editor, Theme Editor; Settings for admins) plus a list of
+ * the operator's tenants.
+ *
+ * WHY: First page after login; routes users to the right surface and gives
+ * admins a quick jump into per-tenant theming.
+ *
+ * HOW: Async server component. It is a READ, so it uses getSessionReadOnly()
+ * (not getSession()) per the auth convention — redirecting to /login when there
+ * is no session. The Settings card is appended only for admin/super_admin roles
+ * (UX gating; each target route re-checks authz server-side). listTenants()
+ * supplies the tenant chips.
+ */
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSessionReadOnly } from "@/lib/auth";

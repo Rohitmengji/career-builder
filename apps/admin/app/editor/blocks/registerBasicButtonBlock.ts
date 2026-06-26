@@ -1,3 +1,18 @@
+/*
+ * Registers the "basic-button" GrapesJS editor block: a single styled link/button.
+ *
+ * WHY: a drag-drop CTA the recruiter can label, link, colour, and restyle from the
+ * props sidebar; the button text is also editable inline on the canvas.
+ *
+ * HOW: buildComponents() reads props from getDefaultProps("basic-button") and emits
+ * an <a> whose visual style is derived from two props by getButtonStyle():
+ *   - `color`  -> looked up in COLOR_HEX (named palette), defaulting to blue.
+ *   - `variant`-> "solid" (default), "outline", or "ghost" change fill/border.
+ * The shared registerBlock() helper handles palette registration, live rebuild on
+ * prop change, and inline-RTE -> props sync (the `text` data-field).
+ * GOTCHA: the public web renderer (apps/web/lib/renderer.tsx) must MIRROR this
+ * markup and the color/variant style mapping so pages match the editor preview.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

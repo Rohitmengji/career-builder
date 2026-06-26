@@ -1,3 +1,19 @@
+/*
+ * Registers the "video-and-text" GrapesJS editor block — a two-column section
+ * pairing an embedded video with a heading/body and optional CTA, with the video
+ * placeable on the left or right.
+ *
+ * WHY: a common "explainer" layout for career sites (e.g. a culture video beside
+ * copy), editable without code.
+ *
+ * HOW: buildComponents seeds from getDefaultProps("video-and-text") (schema in
+ * lib/blockSchemas.ts) and registers via the shared registerBlock helper;
+ * rebuildComponents repaints on prop change. Title/body/CTA carry data-field
+ * attrs for RTE->props sync. The video URL is normalised by toEmbedUrl into a
+ * YouTube/Vimeo embed src; if empty, a "paste a URL" placeholder shows instead of
+ * an iframe. videoPosition === "right" flips the flex row via row-reverse.
+ * Mirror markup, fields, and the embed-URL logic in apps/web/lib/renderer.tsx.
+ */
     import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 
@@ -102,6 +118,8 @@ function buildComponents(props: any) {
     });
   }
 
+  // "right" keeps source order (video first) but flips it visually via row-reverse,
+  // so the text stays first in the DOM for accessibility/reading order.
   const isRight = String(props.videoPosition || "left") === "right";
 
   return [

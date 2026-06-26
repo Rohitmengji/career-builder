@@ -1,3 +1,17 @@
+/*
+ * Registers the "job-alert" GrapesJS editor block — a centered title/subtitle +
+ * a "create a job alert" CTA, on an amber background.
+ *
+ * WHY: lets recruiters add a "get notified about new openings" sign-up section to a
+ * career page without code.
+ *
+ * HOW: standard block pattern (see registerBlock.ts). buildComponents maps props to
+ * the canvas tree; rebuildComponents drives live preview. Editable text (title,
+ * subtitle, buttonText) carries a `data-field` so inline RTE edits sync back to props.
+ * The CTA here is a static canvas preview; the working alert sign-up is the web
+ * renderer's job. GOTCHA: keep in sync with apps/web/lib/renderer.tsx.
+ */
+
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

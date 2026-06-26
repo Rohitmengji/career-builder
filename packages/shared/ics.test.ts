@@ -1,3 +1,20 @@
+/*
+ * Unit tests for ./ics — builds RFC 5545 iCalendar (.ics) invites for interviews
+ * (pure logic).
+ *
+ * WHY: calendar clients are strict — the wrong line endings, an unescaped comma,
+ * or a non-UTC timestamp can make an invite silently fail to import. These tests
+ * pin the wire format so a tweak to the builder can't break real invites.
+ *
+ * Behaviors asserted:
+ *  - toIcsUtc formats an instant as the basic UTC form YYYYMMDDTHHMMSSZ;
+ *  - escapeIcsText escapes the RFC-special chars (backslash, semicolon, comma) and
+ *    newline → literal \n;
+ *  - buildIcs wraps one VEVENT in a VCALENDAR using CRLF line endings, emits UID
+ *    and UTC DTSTAMP/DTSTART, derives DTEND = start + duration, escapes text
+ *    fields, includes URL/ORGANIZER/ATTENDEE when provided and omits those lines
+ *    when not, and clamps a 0-minute duration up to >= 1 min.
+ */
 import { describe, it, expect } from "vitest";
 import { buildIcs, toIcsUtc, escapeIcsText } from "./ics";
 

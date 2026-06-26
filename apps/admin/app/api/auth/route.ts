@@ -1,3 +1,21 @@
+/*
+ * /api/auth — admin/recruiter authentication endpoint (login / logout / session check).
+ *
+ * WHY: This is the front door to the admin app. Every recruiter session starts here,
+ * so it concentrates the auth-critical concerns: credential verification, brute-force
+ * lockout, session cookie issuance, and audit logging.
+ *
+ * HOW it fits in:
+ *   - POST   = login (email + password), DELETE = logout, GET = read-only session check.
+ *   - Mutating handlers (POST/DELETE) use setSession()/clearSession(); GET uses
+ *     getSessionReadOnly() so it never writes a cookie (safe for caching/preflight).
+ *   - All handlers are wrapped in withRequestLogging() for structured logs + metrics.
+ *   - Rate limiting is keyed on the *trusted* client IP (see getClientIp) and is
+ *     consistent with the edge limiter so lockout keys match across layers.
+ *   - Failure responses are deliberately uniform ("Invalid email or password") to avoid
+ *     account enumeration; the specific reason is only recorded in metrics/logs.
+ *   - Tenant scoping rides along on the user/session (user.tenantId), not via a query param.
+ */
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import {
@@ -87,6 +105,8 @@ export const POST = withRequestLogging(async (req: Request) => {
     );
   }
 
+  // Bad-credentials path is intentionally identical for "no such user" and "wrong
+  // password" (same response + metric reason) to prevent account enumeration.
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash, user.id))) {
     recordFailedAttempt(ip);
     recordLoginFailure();

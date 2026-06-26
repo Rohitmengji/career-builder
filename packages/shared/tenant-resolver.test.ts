@@ -1,3 +1,25 @@
+/*
+ * Unit tests for the tenant resolver (./tenant-resolver) — how an inbound
+ * request (slug / subdomain / custom domain) is mapped to a Tenant.
+ *
+ * WHY: tenant resolution is the front door of multi-tenancy. Every downstream
+ * query is tenant-scoped in app code (no Postgres RLS), so resolving to the
+ * WRONG tenant — or routing a tenant that is inactive or under-plan — is a
+ * cross-tenant isolation failure. Prisma is mocked (hoisted by vitest) so this
+ * exercises the routing/priority/caching/fail-closed logic without a DB.
+ *
+ * Key behaviors asserted:
+ *  - tenantCacheKey namespaces per tenant + segments (no cross-tenant collision);
+ *  - resolveFromSlug caches a hit (second call skips the DB), queries by id only
+ *    (no fuzzy domain OR), returns null for an INACTIVE tenant, and fails closed
+ *    (returns null, never throws) on a DB error;
+ *  - resolveFromDomain prefers an ACTIVE managed Domain row, refuses a domain
+ *    whose tenant downgraded below the required plan, and falls back to the
+ *    legacy Tenant.domain column;
+ *  - resolveFromSubdomain skips reserved subdomains / apex hosts without a DB hit;
+ *  - resolveTenant priority: explicit slug beats subdomain, and an all-miss
+ *    falls through to the env source.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the Prisma client BEFORE importing the resolver (hoisted by vitest).

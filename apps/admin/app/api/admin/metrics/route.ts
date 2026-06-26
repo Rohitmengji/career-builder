@@ -1,3 +1,23 @@
+/*
+ * /api/admin/metrics — backing API for the in-app observability dashboard.
+ *
+ * WHAT: Aggregates everything the ops/monitoring UI needs into one payload —
+ * current metrics snapshot + history, anomaly-detector stats, recent alerts,
+ * currently blocked IPs, and performance-budget violations.
+ *
+ * WHY: Keeps observability self-hosted inside the admin app (no external tool needed)
+ * and gives admins a single place to inspect/act on system health.
+ *
+ * HOW it fits in:
+ *   - Admin-only: both handlers require an admin or super_admin session and reject
+ *     everyone else with 401 (note: a 403-style check folded into the 401 here).
+ *   - GET is a read → getSessionReadOnly() (no cookie write); POST mutates state
+ *     (e.g. unblock an IP) → getSession() + validateCsrf().
+ *   - The side-effect import "@/lib/observability-init" wires DB alert persistence on
+ *     first import of this route — keep it; removing it silently drops alert storage.
+ *   - Data is read from in-process observability singletons (metrics/alertManager/etc.),
+ *     not the tenant DB, so these counters are process/instance-wide, not tenant-scoped.
+ */
 import { NextResponse } from "next/server";
 import { metrics, metricsHistory } from "@career-builder/observability/metrics";
 import { alertManager } from "@career-builder/observability/alerts";

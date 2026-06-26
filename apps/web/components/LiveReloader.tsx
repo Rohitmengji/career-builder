@@ -1,3 +1,22 @@
+/*
+ * LiveReloader — invisible client component that gives the public career site a
+ * true live-preview experience while editing in the admin app.
+ *
+ * WHY: when a recruiter saves a page in the GrapesJS admin editor, the public
+ * site (a separate Next.js app) won't see the change until it re-fetches. This
+ * subscribes to the admin's SSE endpoint and triggers a soft router.refresh()
+ * the moment a save lands for THIS page, so the preview tracks edits in real time.
+ *
+ * HOW IT FITS:
+ *   - Connects to the admin app's `/api/preview` Server-Sent Events stream
+ *     (cross-origin; URL resolved via NEXT_PUBLIC_APP_URL / NEXT_PUBLIC_ADMIN_API_URL,
+ *     falling back to same-origin in prod or localhost:3001 in dev).
+ *   - Filters events by `slug` so an edit to page A doesn't refresh page B.
+ *   - Renders nothing — it is purely a side-effect hook. Mount it only in
+ *     preview/editor contexts, not on production-facing renders.
+ *   - Fails closed: if the admin app isn't reachable, the try/catch lets the
+ *     public site degrade gracefully (no preview, no crash).
+ */
 "use client";
 
 import { useEffect } from "react";

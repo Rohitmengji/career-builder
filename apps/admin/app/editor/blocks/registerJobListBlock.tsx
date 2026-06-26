@@ -1,3 +1,18 @@
+/*
+ * Registers the "search-results" GrapesJS editor block (the job-listings list).
+ *
+ * WHY: lets recruiters place a job-listings section on a page. The actual jobs
+ * are tenant-scoped data fetched at request time, so they cannot be shown in the
+ * editor — only a heading/subtitle and a non-droppable placeholder are rendered.
+ *
+ * HOW: builds the canvas tree from getDefaultProps("search-results") (schema in
+ * lib/blockSchemas.ts) and delegates wiring to the shared registerBlock helper.
+ * The "[ Job listings render here at runtime ]" box is purely a design-time
+ * stand-in: the public site (apps/web/lib/renderer.tsx) replaces this block with
+ * real, tenant-scoped listings. Keep the type/props contract in sync with that
+ * renderer. NOTE: the placeholder is droppable:false so editors can't nest
+ * content inside the runtime-managed region.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

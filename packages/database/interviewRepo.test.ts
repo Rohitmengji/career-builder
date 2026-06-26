@@ -1,3 +1,16 @@
+/*
+ * Unit tests for interviewRepo — interview scheduling reads/writes (Prisma mocked via ./client).
+ *
+ * WHY: Pins the repo's defaults and, more importantly, its tenant- and candidate-ownership
+ * scoping so a refactor can't widen a query and leak across tenants/candidates.
+ *
+ * Key behaviors asserted:
+ *   - create applies sane defaults (round 1, video, scheduled, 45min, UTC, no interviewer).
+ *   - Candidate-facing reads resolve ownership by lowercased application email + tenantId
+ *     (no candidateId FK — ADR-0001), e.g. "Jane@Example.com" -> "jane@example.com".
+ *   - findByIdScoped / update are scoped by id + tenant; update goes through updateMany
+ *     (a tenant-scoped WHERE) and returns the affected count, never a blind update-by-id.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const create = vi.fn();

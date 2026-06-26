@@ -1,3 +1,18 @@
+/*
+ * Registers the "team-grid" GrapesJS editor block — a heading/subtitle over a
+ * 4-column grid of team members (photo + name + role).
+ *
+ * WHY: a "meet the team" section for career sites, editable without code.
+ *
+ * HOW: buildComponents seeds from getDefaultProps("team-grid") (schema in
+ * lib/blockSchemas.ts) and registers via the shared registerBlock helper;
+ * rebuildComponents repaints on prop change. Only the title/subtitle carry
+ * data-field attrs (RTE->props); member name/role are display-only here and edited
+ * via the sidebar. GOTCHA: members without an image render a circular avatar
+ * showing the uppercased first letter of their name instead of an <img>. Mirror
+ * markup/fields in apps/web/lib/renderer.tsx — the public site re-renders the same
+ * type+props.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

@@ -1,3 +1,22 @@
+/*
+ * Navbar — fixed top navigation for the public marketing site.
+ *
+ * WHAT: a transparent-on-top bar that turns into a frosted/bordered bar once the
+ * user scrolls (>10px), plus a mobile slide-in drawer with a backdrop. Section
+ * links are in-page anchors (#features, #pricing, ...); CTAs go to the admin
+ * LOGIN_URL.
+ *
+ * WHY: client component because every behavior here is interactive browser state
+ * — scroll detection, drawer open/close, body scroll lock, ESC-to-close, and a
+ * focus trap for the modal drawer.
+ *
+ * HOW / gotchas:
+ *   - The drawer is an accessible dialog (role="dialog" aria-modal): focus is
+ *     trapped inside it while open, ESC closes and returns focus to the hamburger.
+ *   - Z-index ordering is load-bearing: backdrop is z-40, drawer z-50 (above it).
+ *   - The drawer auto-closes on route change by syncing local state to `pathname`
+ *     (hence the deliberate set-state-in-effect eslint suppression).
+ */
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";

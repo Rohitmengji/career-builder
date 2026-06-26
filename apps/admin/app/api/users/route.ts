@@ -1,3 +1,26 @@
+/*
+ * /api/users — admin user management (CRUD for recruiter accounts within a tenant).
+ *
+ * WHAT: GET lists users; POST creates; PUT updates name/role/password; DELETE removes.
+ *
+ * WHY: Admins provision and manage their team's accounts. Because this hands out
+ * privileges, it is the most privilege-sensitive route in the app and encodes a layered
+ * authorization model on top of plain role checks.
+ *
+ * HOW it fits in / the model a newcomer MUST learn:
+ *   - Reads → getSessionReadOnly(); all mutations → getSession() + validateCsrf().
+ *   - TENANT ISOLATION: list/create/delete pass session.tenantId so a user only ever
+ *     sees/touches accounts in their own tenant (enforced in app code, not DB RLS).
+ *   - Role escalation guard: ANY admin-level user can manage *lower* roles, but ONLY
+ *     super_admin may create/assign/delete admin or super_admin accounts.
+ *   - Two protection lists guard built-in accounts:
+ *       PROTECTED_ACCOUNTS       → can never be deleted by anyone;
+ *       ROLE_IMMUTABLE_ACCOUNTS  → role can never change (not even by super_admin).
+ *     ROOT_ADMIN_EMAIL's role is changeable only by super_admin.
+ *   - Self-service carve-outs: a non-admin may update only their own name/password;
+ *     an admin's password can only be reset by that admin themselves (see PUT).
+ *   - All mutations writeAuditLog() so privilege changes are traceable.
+ */
 import { NextResponse } from "next/server";
 import {
   getSession,
@@ -180,6 +203,9 @@ export async function PUT(req: Request) {
   if (parsed.data.password) {
     updates.password = parsed.data.password;
   }
+  // Final belt-and-suspenders: a role change is only applied for admin-level sessions.
+  // A non-admin who slipped a `role` into the body silently has it dropped (not 403'd),
+  // since their self-service update of name/password should still succeed.
   if (parsed.data.role && isAdminRole(session.role)) updates.role = parsed.data.role as UserRole;
 
   const updated = await updateUser(id, updates);

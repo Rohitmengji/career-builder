@@ -1,3 +1,22 @@
+/*
+ * Unit tests for ./screening — knockout screening question parsing + evaluation
+ * (pure logic).
+ *
+ * WHY: screening questions are yes/no "gates" that decide whether an applicant
+ * passes an automated knockout. Parsing comes from untrusted/stored JSON so it
+ * must be defensive, and evaluation has to fail safe: an unanswered gate must
+ * count as a FAIL so a candidate can never pass by simply omitting an answer.
+ *
+ * Behaviors asserted:
+ *  - parseScreeningQuestions: parses JSON string or array, defaults requiredAnswer
+ *    to "yes", drops malformed entries, trims + caps label length, caps the number
+ *    of questions at MAX_SCREENING_QUESTIONS, and returns [] for garbage input;
+ *  - parseScreeningAnswers: keeps only index-keyed entries with yes/no values
+ *    (rejects extra keys, arrays, bad JSON);
+ *  - evaluateScreening: passes only when every answer matches its requiredAnswer
+ *    (mismatch in either direction fails), a missing answer is a failed gate, and
+ *    an empty question set passes vacuously. `failed` lists the question text.
+ */
 import { describe, it, expect } from "vitest";
 import {
   parseScreeningQuestions,

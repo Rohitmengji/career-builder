@@ -1,3 +1,20 @@
+/*
+ * Candidate profile page (client component).
+ *
+ * WHAT: Lets a signed-in candidate view/edit their profile, plus two trust-feature
+ * sections defined below in this file: PrivacyAndData (GDPR export + account
+ * deletion, ADR-0011) and WhoViewedMe (application-view transparency).
+ *
+ * WHY: Self-service profile management for the candidate side of the ATS. The
+ * profile data pre-fills job applications, so keeping it current matters.
+ *
+ * HOW: All persistence goes through tenant-scoped API routes (/api/profile,
+ * /api/profile/{export,delete,views}); this component never touches the DB. The
+ * candidate is identified server-side by session (lowercased email + tenantId,
+ * ADR-0001) — note Email is rendered disabled/readOnly because it is the identity
+ * anchor and cannot be changed. A 401 from /api/profile redirects to /login with
+ * a returnTo. Fetches use a `cancelled` flag to avoid setState after unmount.
+ */
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -188,8 +205,11 @@ function PrivacyAndData() {
         body: JSON.stringify({ confirm: true }),
       });
       const data = await res.json().catch(() => ({}));
+      // 404 = deletion feature flag-gated off (default-off, see feature-flags.ts).
       if (res.status === 404) { setMsg("Account deletion isn't available right now."); return; }
       if (!res.ok) { setMsg(data.error || "We couldn't process your request."); return; }
+      // `deferred` = erasure can't run immediately (e.g. legal hold / pending app);
+      // the server queued it, so we stay logged in and just inform the user.
       if (data.deferred) { setMsg(data.message || "Your request is on hold and will be completed soon."); return; }
       // Erased — log out and return home.
       await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
@@ -209,6 +229,7 @@ function PrivacyAndData() {
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
+          // Navigate (not fetch) so the browser handles the JSON file download directly.
           onClick={() => { window.location.href = "/api/profile/export"; }}
           className="inline-flex items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
         >

@@ -1,3 +1,18 @@
+/*
+ * Registers the "show-hide-tab" GrapesJS editor block — a titled stack of
+ * expandable label/content cards (tabs/accordion) built from props.tabs.
+ *
+ * WHY: lets recruiters add a grouped FAQ / collapsible-content section to a
+ * career page via drag-drop.
+ *
+ * HOW: standard block pattern (see registerBlock.ts). buildComponents maps props
+ * to the canvas tree; rebuildComponents drives live preview. Each tab's editable
+ * label/content carries a `data-field` of `tab-<idx>-label` / `tab-<idx>-content`
+ * so inline RTE edits sync back into props. The canvas renders the first tab as
+ * "active" (highlighted) — actual show/hide interactivity is the web renderer's job.
+ * GOTCHA: keep in sync with apps/web/lib/renderer.tsx.
+ */
+
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 

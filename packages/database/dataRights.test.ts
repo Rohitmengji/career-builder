@@ -1,3 +1,26 @@
+/*
+ * Unit tests for candidate data-rights erasure + consent (dataRightsRepo.deleteCandidateData,
+ * anonymizedApplicationData, consentRepo) — Prisma mocked via ./client; ADR-0011.
+ *
+ * WHY: This is the GDPR/CCPA "right to erasure" path. It must irreversibly de-identify a
+ * candidate without violating retention/legal-hold or losing audit integrity, and it spans
+ * many tables — so it runs in one transaction and is full of subtle rules these tests lock down.
+ * All identity is keyed by lowercased email + tenantId (no candidateId FK — ADR-0001).
+ *
+ * Key behaviors asserted:
+ *   - anonymizedApplicationData nulls PII and pseudonymizes the email IRREVERSIBLY
+ *     (anon-<hex>@redacted.invalid — no trace of the original local-part) and stamps anonymizedAt.
+ *   - deleteCandidateData DEFERS the entire erasure if ANY of the candidate's applications is
+ *     under legal hold — and that check happens INSIDE the transaction (authoritative), so
+ *     nothing is written when a hold exists.
+ *   - On the happy path it: anonymizes apps (WHERE carries legalHold:false + anonymizedAt:null
+ *     as the race guard), KEEPS adverse-action + offer rows but nulls their free-text/candidate-
+ *     authored fields (records of the decision survive, the candidate's words don't), deletes
+ *     the candidate row + notifications (matched by email, no FK), pseudonymizes consent, and
+ *     writes a PII-FREE audit entry. Returns the résumé blob keys for the caller to purge.
+ *   - consentRepo.record lowercases the subject email and is append-only; currentFor reduces the
+ *     append-only log to the latest grant state per consent type.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const appFindMany = vi.fn();

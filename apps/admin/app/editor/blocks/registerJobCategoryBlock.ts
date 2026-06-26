@@ -1,3 +1,22 @@
+/*
+ * Registers the "job-category" GrapesJS editor block — a centred heading +
+ * subtitle over a responsive flex-wrap row of category tiles, each showing a
+ * category name and an open-role count.
+ *
+ * WHY: gives recruiters a drag-drop "browse by category" section for the
+ * career site. One register*Block file per block type.
+ *
+ * HOW: builds the canvas tree from the block's default props
+ * (getDefaultProps("job-category"), backed by lib/blockSchemas.ts) and hands
+ * it to the shared registerBlock helper, which wires up the palette entry,
+ * live prop->canvas rebuild (rebuildComponents), and inline-RTE->props sync.
+ * Heading/subtitle carry data-field attributes so RTE edits route back to
+ * props; the tiles render from props.categories. GOTCHA: this is a STATIC
+ * editor preview — the tile name/count are author-typed copy and the hardcoded
+ * fallback list is placeholder only; live open-role counts are resolved by the
+ * public site, which re-renders the same type+props in apps/web/lib/renderer.tsx,
+ * so keep markup/fields in sync there.
+ */
 import { getDefaultProps } from "@/lib/blockSchemas";
 import { registerBlock } from "./registerBlock";
 
@@ -21,6 +40,8 @@ function buildCategoryTiles(items: any[]) {
 }
 
 function buildComponents(props: any) {
+  // Fall back to a sample category list when none are configured, so a freshly
+  // dragged block isn't empty in the editor.
   const items = Array.isArray(props.categories)
     ? props.categories
     : [

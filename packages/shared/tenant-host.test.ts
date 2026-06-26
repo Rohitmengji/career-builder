@@ -1,3 +1,20 @@
+/*
+ * Unit tests for parseHostTenant (./tenant-host) — the host → tenant-hint parser.
+ *
+ * WHY: tenant resolution begins by deciding what an incoming Host header points
+ * at (a platform subdomain like `acme.hirebase.dev`, a custom domain, or no
+ * tenant at all). This is pure string logic, so it is tested in isolation from
+ * the DB-backed resolver; getting it wrong is a cross-tenant routing bug.
+ *
+ * Key behaviors asserted:
+ *  - subdomain extraction under an explicit platform root, with the :port stripped;
+ *  - the platform apex (and `www`) resolve to NO tenant;
+ *  - reserved subdomains (www/api/admin/app) are never treated as tenants;
+ *  - hosts outside the root are flagged isCustomDomain (no slug guess);
+ *  - <sub>.localhost dev convention and bare-localhost handling;
+ *  - the no-root heuristic (first label when 3+ labels) and the 2-label apex
+ *    custom-domain fallback; plus null/empty host safety.
+ */
 import { describe, it, expect } from "vitest";
 import { parseHostTenant } from "./tenant-host";
 

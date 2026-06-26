@@ -1,3 +1,22 @@
+/*
+ * ErrorBoundary — top-level React error boundary for the admin app.
+ *
+ * WHAT: Wraps a subtree and, when a render/lifecycle error bubbles up from any
+ * descendant, swaps the broken UI for a recovery panel ("Try Again" / "Reload")
+ * instead of letting React unmount the whole tree into a blank screen.
+ *
+ * WHY: Recruiter workflows are long-lived and stateful; an uncaught render error
+ * shouldn't dump the user to a white page with no path forward. A boundary keeps
+ * the app shell alive and gives a way to recover or reload.
+ *
+ * HOW: Error boundaries are a class-only React feature — there is no hooks
+ * equivalent for getDerivedStateFromError / componentDidCatch, so this must stay
+ * a class component. getDerivedStateFromError flips state to render the fallback;
+ * componentDidCatch logs the error. Callers can pass a custom `fallback`; absent
+ * that, the default panel renders. Note: it catches errors thrown during render,
+ * not async/event-handler errors (those never reach a boundary). Place high in the
+ * tree (layout) to cover the most surface.
+ */
 "use client";
 
 import { Component, type ReactNode } from "react";
@@ -27,9 +46,15 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
+    // Log-only side effect; the actual fallback render is driven by state set in
+    // getDerivedStateFromError. componentStack gives the React tree path, which a
+    // raw JS stack does not.
     console.error("[ErrorBoundary]", error, info.componentStack);
   }
 
+  // Clears the error state to re-attempt rendering the original children. This
+  // only recovers transient errors (e.g. a fixed-since fetch) — a deterministic
+  // render bug will simply re-throw and trip the boundary again.
   handleRetry = () => {
     this.setState({ hasError: false, error: undefined });
   };

@@ -1,6 +1,30 @@
+/*
+ * Unit tests for resolveSender() (packages/email/index.ts).
+ *
+ * WHAT: pins the per-send sender-resolution contract — given optional tenant
+ * email settings, which `from` address and which `adminEmail` an outgoing mail
+ * gets.
+ *
+ * WHY: senders are reused across every email type, so a regression here silently
+ * affects all outbound mail. The central invariant is R8 (anti-spoofing): a
+ * tenant's own from-address is honored ONLY when senderVerified === true;
+ * otherwise we emit `from: undefined` so the provider falls back to its verified
+ * platform default rather than spoofing an unverified domain.
+ *
+ * Behaviors asserted:
+ *   - no tenant settings  -> from is undefined, adminEmail = platform EMAIL_ADMIN
+ *   - R8 unverified sender -> tenant fromEmail ignored (from stays undefined)
+ *   - R8 verified sender   -> tenant {email,name} used (name falls back to env)
+ *   - tenant adminEmail overrides the platform admin inbox for notifications
+ *
+ * Env is read fresh inside resolveSender on each call, so these tests drive
+ * behavior purely by mutating process.env.
+ */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { resolveSender } from "./index";
 
+// Snapshot the real env once; afterEach restores it so per-test env mutations
+// below don't leak into other test files sharing the process.
 const SAVED = { ...process.env };
 
 beforeEach(() => {

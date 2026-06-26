@@ -1,3 +1,18 @@
+/*
+ * Unit tests for tenant-guard — the primitives that enforce multi-tenancy in app code.
+ *
+ * WHY: We have NO Postgres RLS (SQLite/Turso); tenant isolation is the responsibility of
+ * every query, so these helpers are the single most security-critical surface in the DB
+ * package. A regression here leaks one tenant's data into another.
+ *
+ * Covers the three contracts a newcomer must trust:
+ *   - tenantWhere: always injects tenantId, applies it LAST so a caller cannot spoof/override
+ *     it via the extra filter, and refuses an empty tenantId (a scoped read with no tenant
+ *     is a bug, not "match all").
+ *   - assertTenantOwned: a deny-by-default ownership check — returns the row only for the
+ *     owning tenant, else null; never throws-and-leaks.
+ *   - TENANT_SCOPED_MODELS: the registry of per-tenant models (job/application/candidate/page).
+ */
 import { describe, it, expect } from "vitest";
 import { tenantWhere, assertTenantOwned, TENANT_SCOPED_MODELS } from "./tenant-guard";
 

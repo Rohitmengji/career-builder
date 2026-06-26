@@ -1,3 +1,19 @@
+/*
+ * Footer.tsx — site-wide footer for the public marketing/landing page (apps/web).
+ *
+ * WHAT: Renders the HireBase brand blurb, three columns of navigation links
+ * (Product / Resources / Company), a copyright line, and social icon buttons.
+ * Pure presentation — no tenant data, no DB, no client state; safe to render on
+ * the server.
+ *
+ * WHY: Standard marketing-site footer. Link targets and social icons are kept as
+ * static config (LINKS / SOCIAL) so copy changes don't require touching JSX.
+ *
+ * HOW: LINKS drives the column markup via Object.entries; SOCIAL holds raw SVG
+ * path strings rendered into identical icon buttons. Links flagged `soon: true`
+ * are rendered as a non-clickable label + "Soon" badge instead of an anchor.
+ * In-page links use `#anchor` hrefs that scroll to landing-page sections.
+ */
 import React from "react";
 import Link from "next/link";
 import { Container, Badge } from "@/components/ui";

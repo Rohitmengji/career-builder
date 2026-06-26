@@ -1,3 +1,17 @@
+/*
+ * Forgot-password request page (client component).
+ *
+ * WHAT: A single-email form that asks the server to send a password-reset link,
+ * then swaps to a "check your email" confirmation state.
+ *
+ * WHY: Lets candidates recover access to their account on the public career site.
+ *
+ * HOW: Posts the email to /api/auth/forgot-password. SECURITY/UX gotcha: the
+ * confirmation copy is intentionally non-committal ("If an account exists for X…")
+ * to avoid account-enumeration — we show success on any res.ok regardless of
+ * whether that email maps to a real candidate. The actual email send and existence
+ * check happen server-side.
+ */
 "use client";
 
 import { useState } from "react";
