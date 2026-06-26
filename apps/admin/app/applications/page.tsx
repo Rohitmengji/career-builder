@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useAuthGuard } from "@/lib/useAuthGuard";
 import {
   Card,
@@ -387,9 +388,14 @@ export default function AdminApplicationsPage() {
               {loading ? "Loading applications…" : `${totalApplications} total application${totalApplications !== 1 ? "s" : ""}`}
             </p>
           </div>
-          {(authUser?.role === "admin" || authUser?.role === "super_admin") && (
-            <BlindHiringToggle csrf={csrf} onChange={loadApplications} />
-          )}
+          <div className="flex items-center gap-3">
+            <Link href="/applications/board" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+              Board view
+            </Link>
+            {(authUser?.role === "admin" || authUser?.role === "super_admin") && (
+              <BlindHiringToggle csrf={csrf} onChange={loadApplications} />
+            )}
+          </div>
         </div>
 
         {/* Pipeline Stats */}
