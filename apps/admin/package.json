@@ -19,11 +19,11 @@
     "@career-builder/tenant-config": "*",
     "@career-builder/ui": "*",
     "bcrypt": "^6.0.0",
-    "grapesjs": "^0.22.14",
+    "grapesjs": "^0.23.2",
     "iron-session": "^8.0.4",
-    "next": "16.1.7",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "next": "16.2.9",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
     "stripe": "^20.4.1"
   },
   "devDependencies": {
