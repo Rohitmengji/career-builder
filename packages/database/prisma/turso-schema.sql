@@ -453,6 +453,32 @@ CREATE TABLE "SavedView" (
     CONSTRAINT "SavedView_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
+-- CreateTable
+CREATE TABLE "TalentPool" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "createdById" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "TalentPool_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "TalentPoolMember" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "poolId" TEXT NOT NULL,
+    "candidateEmail" TEXT NOT NULL,
+    "candidateName" TEXT,
+    "note" TEXT,
+    "addedById" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "TalentPoolMember_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "TalentPoolMember_poolId_fkey" FOREIGN KEY ("poolId") REFERENCES "TalentPool" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "Tenant_domain_key" ON "Tenant"("domain");
 
@@ -653,4 +679,19 @@ CREATE UNIQUE INDEX "ApplicationTagOnApplication_applicationId_tagId_key" ON "Ap
 
 -- CreateIndex
 CREATE INDEX "SavedView_tenantId_userId_idx" ON "SavedView"("tenantId", "userId");
+
+-- CreateIndex
+CREATE INDEX "TalentPool_tenantId_idx" ON "TalentPool"("tenantId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TalentPool_tenantId_name_key" ON "TalentPool"("tenantId", "name");
+
+-- CreateIndex
+CREATE INDEX "TalentPoolMember_tenantId_poolId_idx" ON "TalentPoolMember"("tenantId", "poolId");
+
+-- CreateIndex
+CREATE INDEX "TalentPoolMember_tenantId_candidateEmail_idx" ON "TalentPoolMember"("tenantId", "candidateEmail");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TalentPoolMember_poolId_candidateEmail_key" ON "TalentPoolMember"("poolId", "candidateEmail");
 

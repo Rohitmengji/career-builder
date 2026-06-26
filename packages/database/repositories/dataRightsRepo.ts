@@ -106,6 +106,10 @@ export const dataRightsRepo = {
           data: { subjectEmail: anonEmail(lc) },
         });
 
+        // 5b. Talent-pool membership holds the candidate's email + name (PII, ADR-0018)
+        // — hard-delete every pool membership for this candidate across the tenant.
+        await tx.talentPoolMember.deleteMany({ where: { tenantId, candidateEmail: lc } });
+
         // 6. Delete the Candidate account itself.
         const cand = await tx.candidate.deleteMany({ where: { tenantId, email: lc } });
 
@@ -199,6 +203,15 @@ export const dataRightsRepo = {
       await prisma.eeoSelfId.deleteMany({ where: { tenantId, applicationId: { in: anonymizedAppIds } } });
     }
 
+    // BOUNDARY (deliberate): retention is APPLICATION-data minimization. It does NOT
+    // dissolve talent-pool membership (ADR-0018) or the consent ledger — those are
+    // separate, deliberately-created records on their own legal bases (a recruiter's
+    // CRM action / a candidate's marketing opt-in) and a candidate may still have
+    // OTHER active applications. Purging them here would destroy a live relationship.
+    // The candidate's explicit "forget me" (GDPR §17, deleteCandidateData above) is
+    // what removes pool membership + pseudonymizes consent. Re-engagement stays safe
+    // regardless: it is consent-gated, so an anonymized candidate who never opted in
+    // is never emailed.
     return { anonymized, resumeKeys };
   },
 };

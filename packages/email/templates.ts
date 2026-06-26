@@ -322,3 +322,26 @@ ${btn("Open application", data.adminUrl + "/applications")}`,
   const text = `Offer ${verb}\n\n${name} has ${verb} the offer for ${data.jobTitle}.${data.note ? `\n\nCandidate note: ${data.note}` : ""}\n\nOpen: ${data.adminUrl}/applications`;
   return { subject, html, text };
 }
+
+/* ================================================================== */
+/*  7. Talent-pool re-engagement (ADR-0018, B3)                        */
+/* ================================================================== */
+
+/**
+ * A consent-gated re-engagement email to a past candidate. subject + body are
+ * recruiter free text — both are escaped; the body's newlines become <br>. Only
+ * sent to candidates who granted marketing consent (gated upstream in the route).
+ */
+export function talentPoolReengagement(data: { companyName: string; subject: string; message: string }) {
+  const subject = oneLine(data.subject);
+  const bodyHtml = escapeHtml(data.message).replace(/\n/g, "<br>");
+  const html = layout(
+    `<p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">${bodyHtml}</p>
+<p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">
+  You're receiving this because you opted in to hear about opportunities at ${escapeHtml(data.companyName)}.
+</p>`,
+    data.companyName,
+  );
+  const text = `${data.message}\n\n—\nYou're receiving this because you opted in to hear about opportunities at ${data.companyName}.`;
+  return { subject, html, text };
+}

@@ -35,6 +35,7 @@ const consentCreate = vi.fn();
 const consentFindMany = vi.fn();
 
 const eeoDeleteMany = vi.fn();
+const poolMemberDeleteMany = vi.fn();
 const tx = {
   application: { findMany: (...a: unknown[]) => appFindMany(...a), updateMany: (...a: unknown[]) => appUpdateMany(...a) },
   adverseAction: { updateMany: (...a: unknown[]) => adverseUpdateMany(...a) },
@@ -42,6 +43,7 @@ const tx = {
   eeoSelfId: { deleteMany: (...a: unknown[]) => eeoDeleteMany(...a) },
   notification: { deleteMany: (...a: unknown[]) => notifDeleteMany(...a) },
   consent: { updateMany: (...a: unknown[]) => consentUpdateMany(...a) },
+  talentPoolMember: { deleteMany: (...a: unknown[]) => poolMemberDeleteMany(...a) },
   candidate: { deleteMany: (...a: unknown[]) => candidateDeleteMany(...a) },
   auditLog: { create: (...a: unknown[]) => auditCreate(...a) },
 };
@@ -57,7 +59,7 @@ import { dataRightsRepo, anonymizedApplicationData } from "./repositories/dataRi
 import { consentRepo } from "./repositories/consentRepo";
 
 beforeEach(() => {
-  [appFindMany, appUpdateMany, adverseUpdateMany, offerUpdateMany, eeoDeleteMany, notifDeleteMany, consentUpdateMany, candidateDeleteMany, auditCreate, consentCreate, consentFindMany].forEach((f) => f.mockReset());
+  [appFindMany, appUpdateMany, adverseUpdateMany, offerUpdateMany, eeoDeleteMany, notifDeleteMany, consentUpdateMany, poolMemberDeleteMany, candidateDeleteMany, auditCreate, consentCreate, consentFindMany].forEach((f) => f.mockReset());
 });
 
 const NOW = new Date("2026-06-22T00:00:00Z");
@@ -94,6 +96,7 @@ describe("dataRightsRepo.deleteCandidateData", () => {
     offerUpdateMany.mockResolvedValueOnce({ count: 1 });
     notifDeleteMany.mockResolvedValueOnce({ count: 3 });
     consentUpdateMany.mockResolvedValueOnce({ count: 2 });
+    poolMemberDeleteMany.mockResolvedValueOnce({ count: 2 });
     candidateDeleteMany.mockResolvedValueOnce({ count: 1 });
     auditCreate.mockResolvedValueOnce({});
 
@@ -111,6 +114,8 @@ describe("dataRightsRepo.deleteCandidateData", () => {
     expect(notifDeleteMany.mock.calls[0][0].where).toEqual({ tenantId: "acme", recipientType: "candidate", recipientId: "jane@example.com" });
     // consent pseudonymized (kept)
     expect(consentUpdateMany.mock.calls[0][0].where).toEqual({ tenantId: "acme", subjectEmail: "jane@example.com" });
+    // talent-pool memberships (email + name PII) hard-deleted by email (ADR-0018)
+    expect(poolMemberDeleteMany.mock.calls[0][0].where).toEqual({ tenantId: "acme", candidateEmail: "jane@example.com" });
     // candidate hard-deleted
     expect(candidateDeleteMany.mock.calls[0][0].where).toEqual({ tenantId: "acme", email: "jane@example.com" });
     // PII-free audit (no email)

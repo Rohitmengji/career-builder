@@ -30,6 +30,7 @@
     "./kv": "./kv.ts",
     "./preview-token": "./preview-token.ts",
     "./tags": "./tags.ts",
-    "./saved-view": "./saved-view.ts"
+    "./saved-view": "./saved-view.ts",
+    "./talent-pool": "./talent-pool.ts"
   }
 }

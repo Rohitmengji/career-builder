@@ -53,3 +53,5 @@ export { tagRepo } from "./tagRepo";
 export type { CreateTagInput } from "./tagRepo";
 export { savedViewRepo } from "./savedViewRepo";
 export type { CreateSavedViewInput } from "./savedViewRepo";
+export { talentPoolRepo } from "./talentPoolRepo";
+export type { CreateTalentPoolInput } from "./talentPoolRepo";

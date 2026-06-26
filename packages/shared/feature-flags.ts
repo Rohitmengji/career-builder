@@ -208,6 +208,15 @@ const FLAG_DEFINITIONS = {
       "Saved views (ADR-0016): named, PRIVATE filter presets on the applications " +
       "list (status / job / department / search / tags), scoped per-user. Off by default.",
   },
+  talent_pool: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Talent pool / CRM (ADR-0018): per-tenant named buckets of past candidates to " +
+      "keep warm, with consent-gated re-engagement email (only candidates who granted " +
+      "marketing consent, ADR-0011). Blind-hiring-safe (member identity redacted in the " +
+      "UI; re-engage sends server-side). Off by default.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",
