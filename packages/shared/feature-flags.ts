@@ -125,6 +125,14 @@ const FLAG_DEFINITIONS = {
       "dropdown in the candidate header and the admin dashboard. Recipient-scoped " +
       "and tenant-isolated. Off by default.",
   },
+  advanced_analytics: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Hiring-velocity analytics (ADR-0017): median time-to-first-response, " +
+      "time-to-hire, and time-to-decision computed from the ApplicationEvent spine. " +
+      "Off by default.",
+  },
   ai_jd_bias_detection: {
     default: false,
     envOverrides: { development: true },
