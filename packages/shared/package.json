@@ -31,6 +31,7 @@
     "./preview-token": "./preview-token.ts",
     "./tags": "./tags.ts",
     "./saved-view": "./saved-view.ts",
-    "./talent-pool": "./talent-pool.ts"
+    "./talent-pool": "./talent-pool.ts",
+    "./requisition": "./requisition.ts"
   }
 }

@@ -217,6 +217,14 @@ const FLAG_DEFINITIONS = {
       "marketing consent, ADR-0011). Blind-hiring-safe (member identity redacted in the " +
       "UI; re-engage sends server-side). Off by default.",
   },
+  req_approval: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Requisition approval (ADR-0020): a job may be PUBLISHED only once its requisition " +
+      "is approved. State machine mirrors offers (draft → pending_approval → approved | " +
+      "rejected); approve/reject is manager+. When OFF, publishing is unchanged. Off by default.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",

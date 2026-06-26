@@ -10,7 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
-import { jobRepo } from "@career-builder/database";
+import { jobRepo, requisitionRepo } from "@career-builder/database";
 import {
   createJobSchema,
   updateJobSchema,
@@ -19,6 +19,8 @@ import {
 } from "@career-builder/security/validate";
 import { sanitizeString, sanitizeSlug, stripHtml } from "@career-builder/security/sanitize";
 import { getRateLimiter, getClientIp } from "@career-builder/security/rate-limit";
+import { isEnabled } from "@career-builder/shared/feature-flags";
+import { allowsPublish } from "@career-builder/shared/requisition";
 
 function slugify(title: string): string {
   return title
@@ -99,7 +101,11 @@ export async function POST(req: Request) {
         .map((c: string) => sanitizeString(c, 120))
         .filter(Boolean),
       isRemote: data.isRemote || false,
-      isPublished: data.isPublished || false,
+      // Requisition gate (ADR-0020): when req_approval is on, a job must reach
+      // `published` only through the gated PATCH publish action (a brand-new job
+      // can't yet have an approved requisition). Force unpublished on create so
+      // POST can't be an unguarded publish path.
+      isPublished: isEnabled("req_approval") ? false : (data.isPublished || false),
       tenantId: session.tenantId,
     });
 
@@ -140,6 +146,19 @@ export async function PUT(req: Request) {
   const existing = await jobRepo.findById(id);
   if (!existing || existing.tenantId !== session.tenantId) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+
+  // Requisition gate (ADR-0020): PUT is an alternate publish path — block flipping a
+  // job to published here too, unless its requisition is approved. Only the
+  // unpublished→published transition is gated (editing an already-live job is fine).
+  if (data.isPublished === true && !existing.isPublished && isEnabled("req_approval")) {
+    const reqn = await requisitionRepo.findByJob(id, session.tenantId);
+    if (!allowsPublish(reqn?.status)) {
+      return NextResponse.json(
+        { error: "This role needs an approved requisition before it can be published." },
+        { status: 409 },
+      );
+    }
   }
 
   // Sanitize mutable string fields
@@ -235,6 +254,17 @@ export async function PATCH(req: Request) {
     const existing = await jobRepo.findById(parsed.data.id);
     if (!existing || existing.tenantId !== session.tenantId) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+    // Requisition gate (ADR-0020): when req_approval is on, a job may only be
+    // published once it has an APPROVED requisition. Off → publishing unchanged.
+    if (isEnabled("req_approval")) {
+      const req = await requisitionRepo.findByJob(parsed.data.id, session.tenantId);
+      if (!allowsPublish(req?.status)) {
+        return NextResponse.json(
+          { error: "This role needs an approved requisition before it can be published." },
+          { status: 409 },
+        );
+      }
     }
     const job = await jobRepo.publish(parsed.data.id, session.tenantId);
     await writeAuditLog(session.userId, session.email, "job_publish", `${job.title} (${job.id})`);

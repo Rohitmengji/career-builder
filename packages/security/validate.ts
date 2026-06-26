@@ -393,6 +393,38 @@ export const reengagePoolSchema = z.object({
 }).strict();
 
 /* ================================================================== */
+/*  Requisition approval (ADR-0020, B6a)                                */
+/* ================================================================== */
+
+export const createRequisitionSchema = z.object({
+  jobId: cuid.optional(),
+  title: z.string().min(1).max(200).transform((v) => v.trim()),
+  department: z.string().max(100).transform((v) => v.trim()).optional(),
+  headcount: z.number().int().min(1).max(1000).optional(),
+  justification: z.string().max(2000).transform((v) => v.trim()).optional(),
+}).strict();
+
+export const updateRequisitionSchema = z.object({
+  id: cuid,
+  title: z.string().min(1).max(200).transform((v) => v.trim()).optional(),
+  department: z.string().max(100).transform((v) => v.trim()).optional(),
+  headcount: z.number().int().min(1).max(1000).optional(),
+  justification: z.string().max(2000).transform((v) => v.trim()).optional(),
+}).strict().refine(
+  (d) => d.title !== undefined || d.department !== undefined || d.headcount !== undefined || d.justification !== undefined,
+  { message: "Provide at least one field to update" },
+);
+
+// Drive the state machine: submit (recruiter+) / approve | reject (manager+) / reopen.
+export const requisitionActionSchema = z.object({
+  id: cuid,
+  action: z.enum(["submit", "approve", "reject", "reopen"]),
+  decisionNote: z.string().max(2000).transform((v) => v.trim()).optional(),
+}).strict();
+
+export const deleteRequisitionSchema = z.object({ id: cuid }).strict();
+
+/* ================================================================== */
 /*  Helpers                                                            */
 /* ================================================================== */
 

@@ -479,6 +479,26 @@ CREATE TABLE "TalentPoolMember" (
     CONSTRAINT "TalentPoolMember_poolId_fkey" FOREIGN KEY ("poolId") REFERENCES "TalentPool" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
+-- CreateTable
+CREATE TABLE "Requisition" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "jobId" TEXT,
+    "title" TEXT NOT NULL,
+    "department" TEXT,
+    "headcount" INTEGER NOT NULL DEFAULT 1,
+    "justification" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'draft',
+    "createdById" TEXT,
+    "approverId" TEXT,
+    "decisionNote" TEXT,
+    "decidedAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Requisition_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Requisition_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "Job" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "Tenant_domain_key" ON "Tenant"("domain");
 
@@ -694,4 +714,13 @@ CREATE INDEX "TalentPoolMember_tenantId_candidateEmail_idx" ON "TalentPoolMember
 
 -- CreateIndex
 CREATE UNIQUE INDEX "TalentPoolMember_poolId_candidateEmail_key" ON "TalentPoolMember"("poolId", "candidateEmail");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Requisition_jobId_key" ON "Requisition"("jobId");
+
+-- CreateIndex
+CREATE INDEX "Requisition_tenantId_idx" ON "Requisition"("tenantId");
+
+-- CreateIndex
+CREATE INDEX "Requisition_tenantId_status_idx" ON "Requisition"("tenantId", "status");
 
