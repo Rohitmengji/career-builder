@@ -265,6 +265,9 @@ export default function AnalyticsDashboardPage() {
           </div>
         </header>
 
+        {/* ── Hiring velocity (ADR-0017, flag advanced_analytics) ── */}
+        <HiringVelocity />
+
         {/* ── Funnel ── */}
         <Card className="mb-6">
           <h2 className="mb-5 text-lg font-semibold text-gray-900">Conversion Funnel</h2>
@@ -507,5 +510,62 @@ export default function AnalyticsDashboardPage() {
         })()}
       </div>
     </main>
+  );
+}
+
+/* ================================================================== */
+/*  Hiring velocity — medians from the ApplicationEvent spine (ADR-0017) */
+/* ================================================================== */
+
+interface VelocityMetrics {
+  timeToFirstResponseDays: number | null;
+  timeToHireDays: number | null;
+  timeToDecisionDays: number | null;
+  samples: { firstResponse: number; hire: number; decision: number };
+  total: number;
+}
+
+function HiringVelocity() {
+  const [metrics, setMetrics] = useState<VelocityMetrics | null>(null);
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      try {
+        const res = await fetch("/api/admin/analytics/hiring", { cache: "no-store" });
+        if (!res.ok) return; // 404 = flag off → render nothing
+        const d = await res.json();
+        if (active) { setMetrics(d.metrics); setShown(true); }
+      } catch { /* ignore */ }
+    };
+    void run();
+    return () => { active = false; };
+  }, []);
+
+  if (!shown || !metrics) return null;
+
+  const cards: { label: string; value: number | null; sample: number }[] = [
+    { label: "Median time to first response", value: metrics.timeToFirstResponseDays, sample: metrics.samples.firstResponse },
+    { label: "Median time to hire", value: metrics.timeToHireDays, sample: metrics.samples.hire },
+    { label: "Median time to decision", value: metrics.timeToDecisionDays, sample: metrics.samples.decision },
+  ];
+
+  return (
+    <Card className="mb-6">
+      <h2 className="mb-1 text-lg font-semibold text-gray-900">Hiring velocity</h2>
+      <p className="mb-5 text-sm text-gray-600">Medians across {metrics.total} application{metrics.total === 1 ? "" : "s"}, from the application timeline.</p>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {cards.map((c) => (
+          <div key={c.label} className="rounded-xl border border-gray-200 p-4">
+            <p className="text-xs font-medium text-gray-500">{c.label}</p>
+            <p className="mt-2 text-2xl font-semibold text-gray-900">
+              {c.value === null ? "—" : `${c.value} ${c.value === 1 ? "day" : "days"}`}
+            </p>
+            <p className="mt-1 text-xs text-gray-400">{c.sample} sampled</p>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }

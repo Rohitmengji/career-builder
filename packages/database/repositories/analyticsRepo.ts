@@ -282,4 +282,28 @@ export const analyticsRepo = {
       .map(([date, counts]) => ({ date, ...counts }))
       .sort((a, b) => a.date.localeCompare(b.date));
   },
+
+  /**
+   * Per-application timelines for hiring-velocity metrics (ADR-0017): each
+   * application's submittedAt ("applied" anchor) + its status_change events. Fed to
+   * the pure shared/hiring-metrics.computeHiringMetrics. Tenant-scoped, bounded.
+   */
+  async getApplicationTimelines(tenantId: string, cap = 5000) {
+    const [apps, events] = await Promise.all([
+      prisma.application.findMany({ where: { tenantId }, select: { id: true, submittedAt: true }, take: cap }),
+      prisma.applicationEvent.findMany({
+        where: { tenantId, type: "status_change" },
+        select: { applicationId: true, toStatus: true, createdAt: true },
+        orderBy: { createdAt: "asc" },
+      }),
+    ]);
+    const byApp = new Map<string, { toStatus: string; at: Date }[]>();
+    for (const e of events) {
+      if (!e.toStatus) continue;
+      const list = byApp.get(e.applicationId);
+      if (list) list.push({ toStatus: e.toStatus, at: e.createdAt });
+      else byApp.set(e.applicationId, [{ toStatus: e.toStatus, at: e.createdAt }]);
+    }
+    return apps.map((a) => ({ submittedAt: a.submittedAt, events: byApp.get(a.id) ?? [] }));
+  },
 };

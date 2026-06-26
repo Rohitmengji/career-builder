@@ -24,6 +24,7 @@
     "./data-export": "./data-export.ts",
     "./retention": "./retention.ts",
     "./eeo-aggregate": "./eeo-aggregate.ts",
+    "./hiring-metrics": "./hiring-metrics.ts",
     "./ics": "./ics.ts",
     "./storage": "./storage.ts",
     "./kv": "./kv.ts",
