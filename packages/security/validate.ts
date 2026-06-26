@@ -436,6 +436,35 @@ export const addTeamMemberSchema = z.object({
 export const removeTeamMemberSchema = z.object({ userId: cuid }).strict();
 
 /* ================================================================== */
+/*  Nurture / email campaigns (ADR-0019, B4)                            */
+/* ================================================================== */
+
+export const createCampaignSchema = z.object({
+  name: z.string().min(1).max(120).transform((v) => v.trim()),
+}).strict();
+
+export const updateCampaignSchema = z.object({
+  id: cuid,
+  name: z.string().min(1).max(120).transform((v) => v.trim()).optional(),
+  status: z.enum(["draft", "active", "paused"]).optional(),
+}).strict().refine((d) => d.name !== undefined || d.status !== undefined, {
+  message: "Provide name or status",
+});
+
+export const deleteCampaignSchema = z.object({ id: cuid }).strict();
+
+export const addCampaignStepSchema = z.object({
+  offsetDays: z.number().int().min(0).max(365),
+  subject: z.string().min(1).max(200).transform((v) => v.trim()),
+  body: z.string().min(1).max(5000).transform((v) => v.trim()),
+}).strict();
+
+export const deleteCampaignStepSchema = z.object({ stepId: cuid }).strict();
+
+// Enroll a campaign's audience from a talent pool (reuses B3 pools as the source).
+export const enrollCampaignSchema = z.object({ poolId: cuid }).strict();
+
+/* ================================================================== */
 /*  Helpers                                                            */
 /* ================================================================== */
 

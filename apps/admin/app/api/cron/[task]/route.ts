@@ -13,9 +13,11 @@ import path from "path";
 import { NextResponse } from "next/server";
 import { assertCron } from "@/lib/cron";
 import { getKV } from "@career-builder/shared/kv";
-import { tenantRepo, dataRightsRepo } from "@career-builder/database";
+import { tenantRepo, dataRightsRepo, campaignRepo, consentRepo } from "@career-builder/database";
 import { parseRetention, cutoffFor } from "@career-builder/shared/retention";
 import { createStorage } from "@career-builder/shared/storage";
+import { nextDueStep, allStepsSent } from "@career-builder/shared/nurture";
+import { emailService } from "@career-builder/email";
 
 const NO_STORE = { "Cache-Control": "no-store" } as const;
 const LOCK_TTL_SECONDS = 290; // under Vercel's max function duration; auto-frees a crashed task
@@ -53,11 +55,63 @@ const retentionSweep: CronTask = async (now) => {
   return { processed };
 };
 
+/**
+ * Nurture dispatch (ADR-0019, B4): send the next-due step of each active campaign's
+ * active enrollments. CONSENT-GATED (marketing consent, ADR-0011) and idempotent — the
+ * send is recorded BEFORE emailing (recordSend dedupes via @@unique), so a re-run never
+ * double-sends. One step per enrollment per run (anti-spam). Per-campaign failures are
+ * isolated. Capped per run to stay under the function budget.
+ */
+const NURTURE_MAX_SENDS = 300;
+const nurtureDispatch: CronTask = async (now) => {
+  const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME || "Our Company";
+  const campaigns = await campaignRepo.listActiveCampaignsForDispatch();
+  let processed = 0;
+  let skippedNoConsent = 0;
+
+  for (const campaign of campaigns) {
+    if (processed >= NURTURE_MAX_SENDS) break;
+    try {
+      const steps = campaign.steps;
+      if (steps.length === 0) continue;
+      const enrollments = await campaignRepo.listActiveEnrollmentsForDispatch(campaign.tenantId, campaign.id);
+
+      for (const enr of enrollments) {
+        if (processed >= NURTURE_MAX_SENDS) break;
+        const sent = enr.sends.map((s) => s.stepIndex);
+        const due = nextDueStep({ enrolledAt: enr.enrolledAt, now, steps, sent });
+        if (due === null) {
+          if (allStepsSent(steps, sent)) await campaignRepo.setEnrollmentStatus(enr.id, campaign.tenantId, "done");
+          continue;
+        }
+
+        // Consent gate (default-deny): only marketing-consented candidates are emailed.
+        const consent = await consentRepo.currentFor(campaign.tenantId, enr.candidateEmail);
+        if (consent.marketing !== true) { skippedNoConsent += 1; continue; }
+
+        // Record FIRST (idempotent dedupe). If another run already recorded it, skip.
+        const fresh = await campaignRepo.recordSend(campaign.tenantId, campaign.id, enr.id, due, enr.candidateEmail);
+        if (!fresh) continue;
+
+        const step = steps.find((s) => s.stepIndex === due)!;
+        await emailService.sendTalentPoolReengagement({ to: enr.candidateEmail, companyName, subject: step.subject, message: step.body }).catch((e) => console.error("[cron:nurture] send failed:", e));
+        processed += 1;
+
+        if (allStepsSent(steps, [...sent, due])) await campaignRepo.setEnrollmentStatus(enr.id, campaign.tenantId, "done");
+      }
+    } catch (err) {
+      console.error(`[cron:nurture-dispatch] campaign ${campaign.id} failed (continuing):`, err);
+    }
+  }
+  return { processed, skippedNoConsent };
+};
+
 /** Task registry. Slices add their task here (e.g. "offer-expiry": expireOffers). */
 const TASKS: Record<string, CronTask> = {
   // Trivial liveness task — proves the cron wiring end-to-end.
   health: async () => ({ processed: 0, ok: true }),
   "retention-sweep": retentionSweep,
+  "nurture-dispatch": nurtureDispatch,
 };
 
 export async function GET(req: Request, { params }: { params: Promise<{ task: string }> }) {

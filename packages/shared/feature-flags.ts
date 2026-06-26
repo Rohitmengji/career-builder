@@ -234,6 +234,15 @@ const FLAG_DEFINITIONS = {
       "org-wide. Enforced on EVERY application-access path. When OFF, visibility is " +
       "unchanged (everyone sees the tenant's applications). Off by default.",
   },
+  nurture_email: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Nurture sequences (ADR-0019, B4): scheduled multi-step candidate re-engagement " +
+      "campaigns, dispatched by the C1 cron. Every send is CONSENT-GATED (marketing " +
+      "consent, ADR-0011) and idempotent (DB send log). Audience enrolled from talent " +
+      "pools (B3). Off by default.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",

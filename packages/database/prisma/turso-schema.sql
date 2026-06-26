@@ -512,6 +512,54 @@ CREATE TABLE "HiringTeamMember" (
     CONSTRAINT "HiringTeamMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
+-- CreateTable
+CREATE TABLE "EmailCampaign" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'draft',
+    "createdById" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "EmailCampaign_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "CampaignStep" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "campaignId" TEXT NOT NULL,
+    "stepIndex" INTEGER NOT NULL,
+    "offsetDays" INTEGER NOT NULL DEFAULT 0,
+    "subject" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    CONSTRAINT "CampaignStep_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "EmailCampaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "CampaignEnrollment" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "campaignId" TEXT NOT NULL,
+    "candidateEmail" TEXT NOT NULL,
+    "candidateName" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'active',
+    "enrolledAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "CampaignEnrollment_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "EmailCampaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "CampaignSend" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "campaignId" TEXT NOT NULL,
+    "enrollmentId" TEXT NOT NULL,
+    "stepIndex" INTEGER NOT NULL,
+    "candidateEmail" TEXT NOT NULL,
+    "sentAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "CampaignSend_enrollmentId_fkey" FOREIGN KEY ("enrollmentId") REFERENCES "CampaignEnrollment" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "Tenant_domain_key" ON "Tenant"("domain");
 
@@ -745,4 +793,31 @@ CREATE INDEX "HiringTeamMember_tenantId_userId_idx" ON "HiringTeamMember"("tenan
 
 -- CreateIndex
 CREATE UNIQUE INDEX "HiringTeamMember_jobId_userId_key" ON "HiringTeamMember"("jobId", "userId");
+
+-- CreateIndex
+CREATE INDEX "EmailCampaign_tenantId_status_idx" ON "EmailCampaign"("tenantId", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "EmailCampaign_tenantId_name_key" ON "EmailCampaign"("tenantId", "name");
+
+-- CreateIndex
+CREATE INDEX "CampaignStep_tenantId_campaignId_idx" ON "CampaignStep"("tenantId", "campaignId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CampaignStep_campaignId_stepIndex_key" ON "CampaignStep"("campaignId", "stepIndex");
+
+-- CreateIndex
+CREATE INDEX "CampaignEnrollment_tenantId_campaignId_idx" ON "CampaignEnrollment"("tenantId", "campaignId");
+
+-- CreateIndex
+CREATE INDEX "CampaignEnrollment_tenantId_candidateEmail_idx" ON "CampaignEnrollment"("tenantId", "candidateEmail");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CampaignEnrollment_campaignId_candidateEmail_key" ON "CampaignEnrollment"("campaignId", "candidateEmail");
+
+-- CreateIndex
+CREATE INDEX "CampaignSend_tenantId_campaignId_idx" ON "CampaignSend"("tenantId", "campaignId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CampaignSend_enrollmentId_stepIndex_key" ON "CampaignSend"("enrollmentId", "stepIndex");
 

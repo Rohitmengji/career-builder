@@ -49,6 +49,7 @@ model Tenant {
   talentPoolMembers  TalentPoolMember[]
   requisitions       Requisition[]
   hiringTeamMembers  HiringTeamMember[]
+  emailCampaigns     EmailCampaign[]
 }
 
 // --- DOMAIN (custom domains per tenant) ---
@@ -783,4 +784,73 @@ model HiringTeamMember {
   @@unique([jobId, userId]) // a user is on a job's team at most once
   @@index([tenantId, jobId])
   @@index([tenantId, userId]) // fast "jobs this user is on"
+}
+
+// --- NURTURE / EMAIL CAMPAIGNS (ADR-0019, B4) ---
+// Scheduled, multi-step candidate re-engagement built on the C1 cron (ADR-0021) + a
+// DB-backed send log (no Redis needed). Every send is CONSENT-GATED (marketing
+// consent, ADR-0011) and DB-state-authoritative: CampaignSend @@unique([enrollmentId,
+// stepIndex]) makes the dispatcher idempotent (a step is sent to an enrollment once).
+// Children carry tenantId (indexed) for scoping; cascade flows tenant → campaign → *.
+
+model EmailCampaign {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  status      String   @default("draft") // draft | active | paused
+  createdById String?  // no FK — survives user deletion
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  steps       CampaignStep[]
+  enrollments CampaignEnrollment[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+}
+
+model CampaignStep {
+  id         String   @id @default(cuid())
+  tenantId   String
+  campaignId String
+  campaign   EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  stepIndex  Int      // 0-based order
+  offsetDays Int      @default(0) // days after enrollment this step sends
+  subject    String
+  body       String
+
+  @@unique([campaignId, stepIndex])
+  @@index([tenantId, campaignId])
+}
+
+model CampaignEnrollment {
+  id             String   @id @default(cuid())
+  tenantId       String
+  campaignId     String
+  campaign       EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  candidateEmail String   // lowercased (PII — erased on GDPR §17)
+  candidateName  String?  // snapshot (PII — erased on §17)
+  status         String   @default("active") // active | done | unsubscribed
+  enrolledAt     DateTime @default(now())
+
+  sends CampaignSend[]
+
+  @@unique([campaignId, candidateEmail]) // a candidate is enrolled once per campaign
+  @@index([tenantId, campaignId])
+  @@index([tenantId, candidateEmail]) // fast erasure delete-by-email
+}
+
+model CampaignSend {
+  id             String   @id @default(cuid())
+  tenantId       String
+  campaignId     String
+  enrollmentId   String
+  enrollment     CampaignEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  stepIndex      Int
+  candidateEmail String
+  sentAt         DateTime @default(now())
+
+  @@unique([enrollmentId, stepIndex]) // DEDUPE: one send per step per enrollment (idempotent dispatch)
+  @@index([tenantId, campaignId])
 }

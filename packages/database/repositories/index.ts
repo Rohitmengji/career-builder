@@ -58,3 +58,5 @@ export type { CreateTalentPoolInput } from "./talentPoolRepo";
 export { requisitionRepo } from "./requisitionRepo";
 export type { CreateRequisitionInput } from "./requisitionRepo";
 export { hiringTeamRepo } from "./hiringTeamRepo";
+export { campaignRepo } from "./campaignRepo";
+export type { CreateCampaignInput } from "./campaignRepo";

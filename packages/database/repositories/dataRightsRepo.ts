@@ -110,6 +110,10 @@ export const dataRightsRepo = {
         // — hard-delete every pool membership for this candidate across the tenant.
         await tx.talentPoolMember.deleteMany({ where: { tenantId, candidateEmail: lc } });
 
+        // 5c. Nurture-campaign enrollments hold email + name (PII, ADR-0019) and drive
+        // future marketing sends — hard-delete them (cascades their send log).
+        await tx.campaignEnrollment.deleteMany({ where: { tenantId, candidateEmail: lc } });
+
         // 6. Delete the Candidate account itself.
         const cand = await tx.candidate.deleteMany({ where: { tenantId, email: lc } });
 
