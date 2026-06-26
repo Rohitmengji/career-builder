@@ -36,6 +36,7 @@ const consentFindMany = vi.fn();
 
 const eeoDeleteMany = vi.fn();
 const poolMemberDeleteMany = vi.fn();
+const enrollmentDeleteMany = vi.fn();
 const tx = {
   application: { findMany: (...a: unknown[]) => appFindMany(...a), updateMany: (...a: unknown[]) => appUpdateMany(...a) },
   adverseAction: { updateMany: (...a: unknown[]) => adverseUpdateMany(...a) },
@@ -44,6 +45,7 @@ const tx = {
   notification: { deleteMany: (...a: unknown[]) => notifDeleteMany(...a) },
   consent: { updateMany: (...a: unknown[]) => consentUpdateMany(...a) },
   talentPoolMember: { deleteMany: (...a: unknown[]) => poolMemberDeleteMany(...a) },
+  campaignEnrollment: { deleteMany: (...a: unknown[]) => enrollmentDeleteMany(...a) },
   candidate: { deleteMany: (...a: unknown[]) => candidateDeleteMany(...a) },
   auditLog: { create: (...a: unknown[]) => auditCreate(...a) },
 };
@@ -59,7 +61,7 @@ import { dataRightsRepo, anonymizedApplicationData } from "./repositories/dataRi
 import { consentRepo } from "./repositories/consentRepo";
 
 beforeEach(() => {
-  [appFindMany, appUpdateMany, adverseUpdateMany, offerUpdateMany, eeoDeleteMany, notifDeleteMany, consentUpdateMany, poolMemberDeleteMany, candidateDeleteMany, auditCreate, consentCreate, consentFindMany].forEach((f) => f.mockReset());
+  [appFindMany, appUpdateMany, adverseUpdateMany, offerUpdateMany, eeoDeleteMany, notifDeleteMany, consentUpdateMany, poolMemberDeleteMany, enrollmentDeleteMany, candidateDeleteMany, auditCreate, consentCreate, consentFindMany].forEach((f) => f.mockReset());
 });
 
 const NOW = new Date("2026-06-22T00:00:00Z");
@@ -97,6 +99,7 @@ describe("dataRightsRepo.deleteCandidateData", () => {
     notifDeleteMany.mockResolvedValueOnce({ count: 3 });
     consentUpdateMany.mockResolvedValueOnce({ count: 2 });
     poolMemberDeleteMany.mockResolvedValueOnce({ count: 2 });
+    enrollmentDeleteMany.mockResolvedValueOnce({ count: 1 });
     candidateDeleteMany.mockResolvedValueOnce({ count: 1 });
     auditCreate.mockResolvedValueOnce({});
 
@@ -116,6 +119,8 @@ describe("dataRightsRepo.deleteCandidateData", () => {
     expect(consentUpdateMany.mock.calls[0][0].where).toEqual({ tenantId: "acme", subjectEmail: "jane@example.com" });
     // talent-pool memberships (email + name PII) hard-deleted by email (ADR-0018)
     expect(poolMemberDeleteMany.mock.calls[0][0].where).toEqual({ tenantId: "acme", candidateEmail: "jane@example.com" });
+    // nurture-campaign enrollments (email + name PII) hard-deleted by email (ADR-0019)
+    expect(enrollmentDeleteMany.mock.calls[0][0].where).toEqual({ tenantId: "acme", candidateEmail: "jane@example.com" });
     // candidate hard-deleted
     expect(candidateDeleteMany.mock.calls[0][0].where).toEqual({ tenantId: "acme", email: "jane@example.com" });
     // PII-free audit (no email)

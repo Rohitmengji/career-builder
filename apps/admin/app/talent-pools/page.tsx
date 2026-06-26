@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuthGuard } from "@/lib/useAuthGuard";
 import { Card, Button, Skeleton, Alert, EmptyState } from "@/components/ui";
+import { isEnabled } from "@career-builder/shared/feature-flags";
 
 interface Pool { id: string; name: string; description: string | null; count: number; }
 interface Member { id: string; name: string | null; email: string | null; note: string | null; createdAt: string; }
@@ -123,7 +124,12 @@ export default function TalentPoolsPage() {
             <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Talent pools</h1>
             <p className="mt-1 text-sm text-gray-600">Keep promising past candidates warm. Re-engagement only reaches candidates who opted in.</p>
           </div>
-          <Link href="/applications" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">← Applications</Link>
+          <div className="flex items-center gap-2">
+            {isEnabled("nurture_email") && (
+              <Link href="/campaigns" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">Campaigns</Link>
+            )}
+            <Link href="/applications" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">← Applications</Link>
+          </div>
         </div>
 
         {error && <Alert tone="error" className="mb-4">{error}</Alert>}

@@ -40,6 +40,7 @@ export {
   talentPoolRepo,
   requisitionRepo,
   hiringTeamRepo,
+  campaignRepo,
 } from "./repositories";
 export type {
   CreateDomainInput,
@@ -67,6 +68,7 @@ export type {
   CreateSavedViewInput,
   CreateTalentPoolInput,
   CreateRequisitionInput,
+  CreateCampaignInput,
 } from "./repositories";
 
 // Re-export all domain types and constants

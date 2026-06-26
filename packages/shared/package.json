@@ -32,6 +32,7 @@
     "./tags": "./tags.ts",
     "./saved-view": "./saved-view.ts",
     "./talent-pool": "./talent-pool.ts",
-    "./requisition": "./requisition.ts"
+    "./requisition": "./requisition.ts",
+    "./nurture": "./nurture.ts"
   }
 }
