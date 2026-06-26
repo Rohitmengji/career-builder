@@ -15,6 +15,7 @@ const USES = [
   { title: "Job-match explanation", body: "When you view a role, we can show why your background may or may not match it — grounded only in the role's stated requirements. It's informational and never makes an automated decision about your application." },
   { title: "Résumé structuring", body: "We may extract a structured summary (skills, titles, education) from your résumé to help recruiters scan it. The model is instructed to use only what's in your résumé and not to invent anything." },
   { title: "Inclusive job descriptions", body: "We help employers flag potentially exclusionary wording in their job postings before publishing. This runs on the job description, not on candidates." },
+  { title: "Fairer interview evaluations", body: "We help interviewers spot biased wording or unsupported judgments in their own written scorecards, so evaluations stay evidence-based and fair. This runs on the interviewer's notes — never on your personal data — and is advisory only." },
 ];
 
 export default function AiUsagePage() {
