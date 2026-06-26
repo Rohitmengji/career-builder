@@ -39,6 +39,7 @@ export {
   savedViewRepo,
   talentPoolRepo,
   requisitionRepo,
+  hiringTeamRepo,
 } from "./repositories";
 export type {
   CreateDomainInput,

@@ -35,6 +35,10 @@ export interface ApplicationFilters {
    *  ALL of these tags to match (narrowing filter). Ids are tenant-scoped via the
    *  join, so a foreign tagId simply matches nothing. */
   tags?: string[];
+  /** Hiring-team visibility allow-list (ADR-0020, B6b). When set, results are
+   *  restricted to these jobIds. An EMPTY array means "no access to any job" and
+   *  MUST yield zero rows — never treat empty as "no filter". */
+  jobIds?: string[];
 }
 
 export const applicationRepo = {
@@ -64,6 +68,14 @@ export const applicationRepo = {
     };
 
     if (filters.jobId) where.jobId = filters.jobId;
+    // Hiring-team scope (ADR-0020): restrict to the allow-list. Applied even when
+    // empty — `{ in: [] }` matches nothing, so a user on no teams sees nothing. If a
+    // single jobId is also set, intersect (the jobId must be in the allow-list).
+    if (filters.jobIds !== undefined) {
+      where.jobId = filters.jobId
+        ? (filters.jobIds.includes(filters.jobId) ? filters.jobId : { in: [] })
+        : { in: filters.jobIds };
+    }
     if (filters.status) where.status = filters.status;
     if (filters.email) where.email = { contains: filters.email };
     if (filters.department) {
@@ -227,9 +239,12 @@ export const applicationRepo = {
     );
   },
 
-  async getRecentByTenant(tenantId: string, limit = 10) {
+  async getRecentByTenant(tenantId: string, limit = 10, jobIds?: string[]) {
     return prisma.application.findMany({
-      where: { tenantId },
+      // Hiring-team scope (ADR-0020): when jobIds is provided, restrict the
+      // dashboard "recent applications" widget (which carries candidate identity) to
+      // those jobs. Empty array → `{ in: [] }` → nothing (a user on no teams sees none).
+      where: { tenantId, ...(jobIds !== undefined ? { jobId: { in: jobIds } } : {}) },
       omit: { resumeText: true }, // recent/list path — exclude large resume text
       include: {
         job: { select: { id: true, title: true, department: true } },

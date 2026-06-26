@@ -10,6 +10,7 @@ import { analyticsRepo, applicationRepo, tenantRepo } from "@career-builder/data
 import { withRequestLogging } from "@career-builder/observability/request-logger";
 import { logger } from "@career-builder/observability/logger";
 import { getBlindHiringConfig, redactApplicants } from "@/lib/blindHiring";
+import { visibleJobIds } from "@/lib/hiringTeams";
 
 const log = logger.api;
 
@@ -23,6 +24,10 @@ export const GET = withRequestLogging(async () => {
   const tenantId = session.tenantId;
 
   try {
+    // Hiring-team scope (ADR-0020): the "recent applications" widget carries candidate
+    // identity, so restrict it to the user's team jobs (null = no restriction). The
+    // remaining aggregates are non-PII org-level counts and stay org-wide by design.
+    const vis = await visibleJobIds(session);
     const [
       tenantStats,
       pipelineStats,
@@ -38,7 +43,7 @@ export const GET = withRequestLogging(async () => {
     ] = await Promise.all([
       tenantRepo.getStats(tenantId),
       applicationRepo.countByStatus(tenantId),
-      applicationRepo.getRecentByTenant(tenantId, 10),
+      applicationRepo.getRecentByTenant(tenantId, 10, vis ?? undefined),
       analyticsRepo.getJobViews(tenantId, 30),
       analyticsRepo.getSearchTerms(tenantId, 30),
       analyticsRepo.getDailyApplications(tenantId, 30),

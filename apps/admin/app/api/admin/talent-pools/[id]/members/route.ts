@@ -20,6 +20,7 @@ import { talentPoolRepo, applicationRepo } from "@career-builder/database";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import { getBlindHiringConfig } from "@/lib/blindHiring";
 import { safeParse, addPoolMemberSchema, removePoolMemberSchema } from "@career-builder/security/validate";
+import { canAccessJob } from "@/lib/hiringTeams";
 
 const NO_STORE = { "Cache-Control": "no-store" } as const;
 const WRITE_ROLES = ["super_admin", "admin", "hiring_manager", "recruiter"];
@@ -76,7 +77,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   // Resolve the candidate from the tenant-scoped application (never trust client email).
   const app = await applicationRepo.findByIdScoped(parsed.data.applicationId, session.tenantId);
-  if (!app) return NextResponse.json({ error: "Application not found." }, { status: 404, headers: NO_STORE });
+  if (!app || !(await canAccessJob(session, app.jobId))) return NextResponse.json({ error: "Application not found." }, { status: 404, headers: NO_STORE });
 
   const added = await talentPoolRepo.addMember(session.tenantId, id, app.email, {
     candidateName: `${app.firstName} ${app.lastName}`.trim() || null,

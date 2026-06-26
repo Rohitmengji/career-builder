@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { getSession, getSessionReadOnly, validateCsrf, writeAuditLog } from "@/lib/auth";
 import { applicationRepo, commentRepo, userRepo, auditRepo } from "@career-builder/database";
 import { createCommentSchema, safeParse } from "@career-builder/security/validate";
+import { canAccessJob } from "@/lib/hiringTeams";
 import { emailService } from "@career-builder/email";
 import { extractMentionIds } from "@/lib/mentions";
 import { getBlindHiringConfig } from "@/lib/blindHiring";
@@ -38,7 +39,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
   const app = await applicationRepo.findByIdScoped(id, session.tenantId);
-  if (!app) {
+  if (!app || !(await canAccessJob(session, app.jobId))) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 
@@ -64,7 +65,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
   const app = await applicationRepo.findByIdScoped(id, session.tenantId);
-  if (!app) {
+  if (!app || !(await canAccessJob(session, app.jobId))) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 

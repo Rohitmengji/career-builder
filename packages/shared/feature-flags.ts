@@ -225,6 +225,15 @@ const FLAG_DEFINITIONS = {
       "is approved. State machine mirrors offers (draft → pending_approval → approved | " +
       "rejected); approve/reject is manager+. When OFF, publishing is unchanged. Off by default.",
   },
+  hiring_teams: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Hiring teams (ADR-0020, B6b): scope application visibility — non-admin roles see " +
+      "only applications for jobs they are a team member of; super_admin/admin stay " +
+      "org-wide. Enforced on EVERY application-access path. When OFF, visibility is " +
+      "unchanged (everyone sees the tenant's applications). Off by default.",
+  },
   stripe_billing: {
     default: true,
     description: "Stripe subscription billing",

@@ -15,6 +15,7 @@ import { getSession, validateCsrf, writeAuditLog } from "@/lib/auth";
 import { applicationRepo, tagRepo } from "@career-builder/database";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import { safeParse, applicationTagMutationSchema } from "@career-builder/security/validate";
+import { canAccessJob } from "@/lib/hiringTeams";
 
 const NO_STORE = { "Cache-Control": "no-store" } as const;
 const WRITE_ROLES = ["super_admin", "admin", "hiring_manager", "recruiter"];
@@ -32,7 +33,7 @@ async function authorize(req: Request, applicationId: string, body: unknown) {
   if (!parsed.success) return { error: NextResponse.json({ error: parsed.error }, { status: 400, headers: NO_STORE }) };
 
   const app = await applicationRepo.findByIdScoped(applicationId, session.tenantId);
-  if (!app) return { error: NextResponse.json({ error: "Application not found." }, { status: 404, headers: NO_STORE }) };
+  if (!app || !(await canAccessJob(session, app.jobId))) return { error: NextResponse.json({ error: "Application not found." }, { status: 404, headers: NO_STORE }) };
   const tag = await tagRepo.findByIdScoped(parsed.data.tagId, session.tenantId);
   if (!tag) return { error: NextResponse.json({ error: "Tag not found." }, { status: 404, headers: NO_STORE }) };
 

@@ -19,6 +19,7 @@ import { getBlindHiringConfig } from "@/lib/blindHiring";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import { getKV } from "@career-builder/shared/kv";
 import { structureResume, RESUME_PROMPT_VERSION, type ResumeInsights } from "@career-builder/ai-client/resume";
+import { canAccessJob } from "@/lib/hiringTeams";
 
 const NO_STORE = { "Cache-Control": "no-store" } as const;
 const CACHE_TTL_SECONDS = 60 * 60 * 24 * 30;
@@ -37,7 +38,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
   const app = await applicationRepo.findByIdScoped(id, session.tenantId);
-  if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
+  if (!app || !(await canAccessJob(session, app.jobId))) return NextResponse.json({ error: "Application not found" }, { status: 404, headers: NO_STORE });
 
   // Recruiter viewed this candidate → candidate-visible "who viewed me" log.
   auditRepo.logProfileView(session.tenantId, id, session.userId).catch(() => {});

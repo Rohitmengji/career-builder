@@ -425,6 +425,17 @@ export const requisitionActionSchema = z.object({
 export const deleteRequisitionSchema = z.object({ id: cuid }).strict();
 
 /* ================================================================== */
+/*  Hiring teams (ADR-0020, B6b)                                        */
+/* ================================================================== */
+
+export const addTeamMemberSchema = z.object({
+  userId: cuid,
+  role: z.enum(["lead", "member"]).optional(),
+}).strict();
+
+export const removeTeamMemberSchema = z.object({ userId: cuid }).strict();
+
+/* ================================================================== */
 /*  Helpers                                                            */
 /* ================================================================== */
 
