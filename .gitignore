@@ -13,9 +13,10 @@ out/
 .env.local
 .env.*.local
 
-# Database
+# Database (incl. timestamped backups like dev.db.bak-20260622-0419)
 *.db
 *.db-journal
+*.db.bak*
 
 # Prisma generated client (regenerated on install)
 node_modules/.prisma/
