@@ -228,6 +228,11 @@ model Application {
   @@index([tenantId, status])
   @@index([tenantId, stageId])
   @@index([email, tenantId])
+  // status-leading index for the cross-tenant trust-index aggregates (ADR-0029):
+  // the responded `status IN (...)` and ghost `status="applied" AND submittedAt < cutoff`
+  // groupBys filter tenantId with an inequality, so a status-leading composite (not a
+  // tenantId-leading one) is what prunes the scan.
+  @@index([status, submittedAt])
   // One application per candidate per job (email is stored lowercased). The
   // ATOMIC backstop for duplicate prevention: a concurrent double-submit that
   // races past the app-level check hits this constraint (Prisma P2002).

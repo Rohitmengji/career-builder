@@ -42,6 +42,7 @@ export {
   hiringTeamRepo,
   campaignRepo,
   decisionLedgerRepo,
+  trustIndexRepo,
 } from "./repositories";
 export type {
   CreateDomainInput,
