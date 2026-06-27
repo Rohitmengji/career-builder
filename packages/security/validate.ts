@@ -465,6 +465,13 @@ export const deleteCampaignStepSchema = z.object({ stepId: cuid }).strict();
 export const enrollCampaignSchema = z.object({ poolId: cuid }).strict();
 
 /* ================================================================== */
+/*  Portable verified record (ADR-0030)                                 */
+/* ================================================================== */
+
+/** Candidate opts in/out of sharing their verified cross-platform track record. */
+export const portableShareSchema = z.object({ share: z.boolean() }).strict();
+
+/* ================================================================== */
 /*  Helpers                                                            */
 /* ================================================================== */
 
