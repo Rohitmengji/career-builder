@@ -268,6 +268,9 @@ export default function AnalyticsDashboardPage() {
         {/* ── Hiring velocity (ADR-0017, flag advanced_analytics) ── */}
         <HiringVelocity />
 
+        {/* ── Interviewer calibration (ADR-0028, flag rater_calibration; manager+) ── */}
+        <RaterCalibration />
+
         {/* ── Funnel ── */}
         <Card className="mb-6">
           <h2 className="mb-5 text-lg font-semibold text-gray-900">Conversion Funnel</h2>
@@ -566,6 +569,90 @@ function HiringVelocity() {
           </div>
         ))}
       </div>
+    </Card>
+  );
+}
+
+/* ================================================================== */
+/*  Interviewer calibration — rater psychometrics (ADR-0028)           */
+/* ================================================================== */
+
+interface RaterRow {
+  interviewerId: string;
+  interviewerName: string;
+  meanScore: number | null;
+  scored: number;
+  sampleSize: number;
+  leniency: number | null;
+  label: "lenient" | "harsh" | "balanced" | "insufficient_data";
+  suppressed: boolean;
+}
+interface Calibration { raters: RaterRow[]; panelAgreement: number | null; comparableApplications: number }
+
+const LABEL_META: Record<string, { text: string; cls: string }> = {
+  lenient: { text: "Lenient", cls: "bg-amber-100 text-amber-800" },
+  harsh: { text: "Harsh", cls: "bg-blue-100 text-blue-800" },
+  balanced: { text: "Balanced", cls: "bg-emerald-100 text-emerald-700" },
+  insufficient_data: { text: "Not enough data", cls: "bg-gray-100 text-gray-500" },
+};
+
+function RaterCalibration() {
+  const [data, setData] = useState<Calibration | null>(null);
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      try {
+        const res = await fetch("/api/admin/analytics/calibration", { cache: "no-store" });
+        if (!res.ok) return; // 404 = flag off / not a manager → render nothing
+        const d = await res.json();
+        if (active) { setData(d.calibration); setShown(true); }
+      } catch { /* ignore */ }
+    };
+    void run();
+    return () => { active = false; };
+  }, []);
+
+  if (!shown || !data || data.raters.length === 0) return null;
+
+  return (
+    <Card className="mb-6">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold text-gray-900">Interviewer calibration</h2>
+        {data.panelAgreement !== null && (
+          <span className="text-xs text-gray-500">Avg panel spread: <span className="font-medium tabular-nums">{data.panelAgreement}</span> pts</span>
+        )}
+      </div>
+      <p className="mb-5 text-sm text-gray-600">
+        How each interviewer scores vs. the panel on the same candidates ({data.comparableApplications} multi-interviewer application{data.comparableApplications === 1 ? "" : "s"}). Positive = more lenient, negative = harsher. A fairness check, not a performance score.
+      </p>
+      <ul className="space-y-2.5">
+        {data.raters.map((r) => {
+          const meta = LABEL_META[r.label];
+          const pct = r.leniency === null ? 0 : Math.min(100, (Math.abs(r.leniency) / 2) * 100); // 2pts = full bar
+          const lenient = (r.leniency ?? 0) > 0;
+          return (
+            <li key={r.interviewerId} className="flex items-center gap-3">
+              <span className="w-40 shrink-0 truncate text-sm text-gray-800">{r.interviewerName}</span>
+              {/* Diverging bar around a centre line */}
+              <div className="relative h-2 flex-1 rounded-full bg-gray-100" aria-hidden="true">
+                <span className="absolute left-1/2 top-0 h-2 w-px bg-gray-300" />
+                {!r.suppressed && (
+                  <span
+                    className={`absolute top-0 h-2 rounded-full ${lenient ? "bg-amber-400" : "bg-blue-400"}`}
+                    style={{ width: `${pct / 2}%`, [lenient ? "left" : "right"]: "50%" } as React.CSSProperties}
+                  />
+                )}
+              </div>
+              <span className="w-14 shrink-0 text-right text-xs tabular-nums text-gray-600">
+                {r.leniency === null ? "—" : `${r.leniency > 0 ? "+" : ""}${r.leniency}`}
+              </span>
+              <span className={`w-32 shrink-0 rounded-full px-2 py-0.5 text-center text-[11px] font-medium ${meta.cls}`}>{meta.text}</span>
+            </li>
+          );
+        })}
+      </ul>
     </Card>
   );
 }

@@ -84,6 +84,31 @@ describe("scorecardRepo — tenant scoping", () => {
     expect(findMany.mock.calls[0][0].where).toEqual({ tenantId: "acme", applicationId: "app1" });
   });
 
+  it("getCalibrationRows is tenant-scoped + ordered + maps score = mean(ratings)", async () => {
+    findMany.mockResolvedValueOnce([
+      { applicationId: "a1", interviewerId: "u1", interviewer: { name: "Ann" }, ratings: [{ score: 4 }, { score: 2 }] },
+      { applicationId: "a1", interviewerId: "u2", interviewer: { name: "Bo" }, ratings: [] }, // no ratings → skipped
+    ]);
+    const rows = await scorecardRepo.getCalibrationRows("acme");
+    const call = findMany.mock.calls[0][0];
+    expect(call.where).toEqual({ tenantId: "acme" });
+    expect(call.orderBy).toEqual([{ applicationId: "asc" }, { interviewerId: "asc" }]);
+    expect(rows).toEqual([{ interviewerId: "u1", interviewerName: "Ann", applicationId: "a1", score: 3 }]);
+  });
+
+  it("getCalibrationRows drops the trailing (possibly partial) application group when truncated", async () => {
+    // cap+1 rows returned → truncated; the last applicationId's rows must be dropped
+    // so a half-included panel never corrupts the per-application mean.
+    const many = [
+      { applicationId: "a1", interviewerId: "u1", interviewer: { name: "A" }, ratings: [{ score: 5 }] },
+      { applicationId: "a2", interviewerId: "u2", interviewer: { name: "B" }, ratings: [{ score: 3 }] },
+    ];
+    findMany.mockResolvedValueOnce(many);
+    const rows = await scorecardRepo.getCalibrationRows("acme", 1); // cap=1 → fetch 2 → truncated
+    // a2 is the trailing group → dropped; only a1 survives
+    expect(rows.map((r) => r.applicationId)).toEqual(["a1"]);
+  });
+
   it("findForInterviewer scopes by tenant + application + interviewer", async () => {
     findFirst.mockResolvedValueOnce(null);
     await scorecardRepo.findForInterviewer("acme", "app1", "u1");

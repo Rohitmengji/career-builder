@@ -86,4 +86,38 @@ export const scorecardRepo = {
       include: { ratings: true },
     });
   },
+
+  /**
+   * Rater-calibration rows (ADR-0028): one row per scorecard that has >=1 rating —
+   * { interviewerId, interviewerName, applicationId, score = mean of its 1-5 ratings }.
+   * Tenant-scoped + bounded. Internal-only (about evaluators; no candidate PII). Fed to
+   * the pure shared/rater-calibration engine.
+   */
+  async getCalibrationRows(tenantId: string, cap = 5000) {
+    // Order by applicationId so a tenant's scorecards for one application are
+    // contiguous — calibration compares raters WITHIN an application, so a partial
+    // panel (some of an app's raters truncated by the cap) would corrupt the mean and
+    // mislabel raters. We fetch cap+1 to detect truncation, then DROP the trailing
+    // application group, guaranteeing every returned application has its full panel.
+    const cards = await prisma.scorecard.findMany({
+      where: { tenantId },
+      select: { applicationId: true, interviewerId: true, interviewer: INTERVIEWER_SELECT, ratings: { select: { score: true } } },
+      orderBy: [{ applicationId: "asc" }, { interviewerId: "asc" }],
+      take: cap + 1,
+    });
+    // If we got more than `cap`, the fetch was truncated and the LAST application in
+    // the set straddles the cut (rows beyond it were dropped) → drop that whole group
+    // so every returned application keeps its full panel.
+    const truncated = cards.length > cap;
+    const lastAppId = truncated && cards.length > 0 ? cards[cards.length - 1].applicationId : null;
+
+    const rows: { interviewerId: string; interviewerName: string; applicationId: string; score: number }[] = [];
+    for (const c of cards) {
+      if (lastAppId !== null && c.applicationId === lastAppId) continue; // possibly-partial panel
+      if (c.ratings.length === 0) continue; // no numeric signal to calibrate on
+      const score = c.ratings.reduce((a, r) => a + r.score, 0) / c.ratings.length;
+      rows.push({ interviewerId: c.interviewerId, interviewerName: c.interviewer?.name ?? "Unknown", applicationId: c.applicationId, score });
+    }
+    return rows;
+  },
 };
