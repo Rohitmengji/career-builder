@@ -143,6 +143,15 @@ const FLAG_DEFINITIONS = {
       "record is edited after the fact. Candidate-facing transparency; per-tenant " +
       "opt-in. Off by default.",
   },
+  rater_calibration: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Interviewer Calibration (ADR-0028): measures each interviewer's systematic " +
+      "leniency/harshness vs the panel on shared candidates (pure psychometrics from " +
+      "scorecard ratings), with min-sample suppression. Manager-only, internal, " +
+      "advisory — corrects rater bias. Off by default.",
+  },
   ai_jd_bias_detection: {
     default: false,
     envOverrides: { development: true },
