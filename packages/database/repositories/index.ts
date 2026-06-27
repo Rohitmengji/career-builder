@@ -62,3 +62,4 @@ export { campaignRepo } from "./campaignRepo";
 export type { CreateCampaignInput } from "./campaignRepo";
 export { decisionLedgerRepo } from "./decisionLedgerRepo";
 export { trustIndexRepo } from "./trustIndexRepo";
+export { portableRepo } from "./portableRepo";

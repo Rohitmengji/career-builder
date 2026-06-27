@@ -139,11 +139,28 @@ describe("consentRepo", () => {
 
   it("currentFor returns the latest granted per type", async () => {
     consentFindMany.mockResolvedValueOnce([
-      { type: "marketing", granted: false },
-      { type: "marketing", granted: true },
-      { type: "privacy_policy", granted: true },
+      { type: "marketing", granted: false, createdAt: new Date(3000) },
+      { type: "marketing", granted: true, createdAt: new Date(2000) },
+      { type: "privacy_policy", granted: true, createdAt: new Date(1000) },
     ]);
     const cur = await consentRepo.currentFor("acme", "jane@example.com");
     expect(cur).toEqual({ marketing: false, privacy_policy: true });
+  });
+
+  it("currentFor FAILS CLOSED on a same-millisecond grant+revoke tie (revoke wins, either DB order)", async () => {
+    const T = new Date(5000);
+    // grant returned first, revoke second (same ms) → must resolve to false
+    consentFindMany.mockResolvedValueOnce([
+      { type: "portable_profile_share", granted: true, createdAt: T },
+      { type: "portable_profile_share", granted: false, createdAt: T },
+    ]);
+    expect((await consentRepo.currentFor("acme", "jane@example.com")).portable_profile_share).toBe(false);
+
+    // revoke returned first, grant second (same ms) → still false
+    consentFindMany.mockResolvedValueOnce([
+      { type: "portable_profile_share", granted: false, createdAt: T },
+      { type: "portable_profile_share", granted: true, createdAt: T },
+    ]);
+    expect((await consentRepo.currentFor("acme", "jane@example.com")).portable_profile_share).toBe(false);
   });
 });

@@ -43,6 +43,7 @@ export {
   campaignRepo,
   decisionLedgerRepo,
   trustIndexRepo,
+  portableRepo,
 } from "./repositories";
 export type {
   CreateDomainInput,

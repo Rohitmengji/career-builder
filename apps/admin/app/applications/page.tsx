@@ -39,6 +39,7 @@ import TagChips, { type Tag } from "./TagChips";
 import ManageTagsDialog, { type LibTag } from "./ManageTagsDialog";
 import SavedViews from "./SavedViews";
 import AddToPoolButton from "./AddToPoolButton";
+import PortableRecordButton from "./PortableRecordButton";
 import { chipClass } from "./tagColors";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 
@@ -151,6 +152,7 @@ export default function AdminApplicationsPage() {
   const tagsEnabled = isEnabled("application_tags");
   const savedViewsEnabled = isEnabled("saved_views");
   const talentPoolEnabled = isEnabled("talent_pool");
+  const portableRecordEnabled = isEnabled("portable_record");
   const [tagLibrary, setTagLibrary] = useState<LibTag[]>([]);
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [manageTagsOpen, setManageTagsOpen] = useState(false);
@@ -763,6 +765,7 @@ export default function AdminApplicationsPage() {
                             Comments
                           </button>
                           {talentPoolEnabled && <AddToPoolButton applicationId={app.id} csrf={csrf} />}
+                          {portableRecordEnabled && <PortableRecordButton applicationId={app.id} />}
                         </div>
                       </td>
                     </tr>
@@ -837,6 +840,7 @@ export default function AdminApplicationsPage() {
                         Comments
                       </Button>
                       {talentPoolEnabled && <AddToPoolButton applicationId={app.id} csrf={csrf} />}
+                      {portableRecordEnabled && <PortableRecordButton applicationId={app.id} />}
                     </div>
                   </div>
                 </li>

@@ -13,6 +13,7 @@ import SiteHeader from "@/components/SiteHeader";
 import { Alert, EmptyState, ButtonLink, Button } from "@/components/ui";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import DecisionLedgerPanel from "./DecisionLedgerPanel";
+import PortableShareToggle from "./PortableShareToggle";
 
 interface TimelineEvent {
   type: string;
@@ -217,6 +218,8 @@ export default function MyApplicationsPage() {
             Track the status of your job applications.
           </p>
         </div>
+
+        {!loading && <PortableShareToggle />}
 
         {!loading && offers.filter((o) => o.status !== "rescinded").length > 0 && (
           <section className="mb-8" aria-label="Your offers">

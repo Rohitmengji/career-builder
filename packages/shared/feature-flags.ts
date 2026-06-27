@@ -161,6 +161,16 @@ const FLAG_DEFINITIONS = {
       "(k-anonymous: >=10 contributing tenants; no tenant identity ever exposed). The " +
       "second deliberate cross-tenant aggregate after salary-benchmark. Off by default.",
   },
+  portable_record: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Portable Verified Application Record (ADR-0030): a candidate opts in (revocable) " +
+      "to reveal their VERIFIED cross-platform track record — COUNTS only (applications / " +
+      "interviews / offers / hires across N employers, never which) — to an employer " +
+      "they're applying to. Candidate-owned data, candidate-initiated, consent-gated. " +
+      "Off by default.",
+  },
   ai_jd_bias_detection: {
     default: false,
     envOverrides: { development: true },

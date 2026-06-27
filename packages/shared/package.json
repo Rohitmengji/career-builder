@@ -36,6 +36,7 @@
     "./nurture": "./nurture.ts",
     "./decision-ledger": "./decision-ledger.ts",
     "./rater-calibration": "./rater-calibration.ts",
-    "./trust-index": "./trust-index.ts"
+    "./trust-index": "./trust-index.ts",
+    "./portable-record": "./portable-record.ts"
   }
 }
