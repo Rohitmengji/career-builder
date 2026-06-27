@@ -271,6 +271,9 @@ export default function AnalyticsDashboardPage() {
         {/* ── Interviewer calibration (ADR-0028, flag rater_calibration; manager+) ── */}
         <RaterCalibration />
 
+        {/* ── Employer trust index (ADR-0029, flag employer_trust_index) ── */}
+        <EmployerTrustIndex />
+
         {/* ── Funnel ── */}
         <Card className="mb-6">
           <h2 className="mb-5 text-lg font-semibold text-gray-900">Conversion Funnel</h2>
@@ -653,6 +656,62 @@ function RaterCalibration() {
           );
         })}
       </ul>
+    </Card>
+  );
+}
+
+/* ================================================================== */
+/*  Employer Trust Index — k-anon cross-tenant benchmark (ADR-0029)    */
+/* ================================================================== */
+
+interface TrustBenchmark { available: boolean; contributors: string | null; median: number | null; p25: number | null; p75: number | null; percentile: number | null }
+interface TrustData { own: { responseRate: number | null; grade: string | null; sampleSize: number } | null; benchmark: TrustBenchmark }
+
+function EmployerTrustIndex() {
+  const [data, setData] = useState<TrustData | null>(null);
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      try {
+        const res = await fetch("/api/admin/analytics/trust-index", { cache: "no-store" });
+        if (!res.ok) return; // 404 = flag off / viewer → render nothing
+        const d = await res.json();
+        if (active) { setData(d.responsiveness); setShown(true); }
+      } catch { /* ignore */ }
+    };
+    void run();
+    return () => { active = false; };
+  }, []);
+
+  if (!shown || !data) return null;
+  const { own, benchmark } = data;
+
+  return (
+    <Card className="mb-6">
+      <h2 className="mb-1 text-lg font-semibold text-gray-900">Employer trust index</h2>
+      <p className="mb-5 text-sm text-gray-600">How your responsiveness (the share of applicants who hear back) compares to the anonymized market of other employers. A privacy-safe benchmark — no other company&apos;s numbers are ever shown.</p>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-gray-200 p-4">
+          <p className="text-xs font-medium text-gray-500">Your responsiveness</p>
+          <p className="mt-2 text-2xl font-semibold text-gray-900">{own?.responseRate !== null && own ? `${own.responseRate}%` : "—"}</p>
+          <p className="mt-1 text-xs text-gray-400">{own ? `${own.grade ?? ""} · ${own.sampleSize} settled` : "Not enough data yet"}</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 p-4">
+          <p className="text-xs font-medium text-gray-500">Market median</p>
+          <p className="mt-2 text-2xl font-semibold text-gray-900">{benchmark.available && benchmark.median !== null ? `${benchmark.median}%` : "—"}</p>
+          <p className="mt-1 text-xs text-gray-400">
+            {benchmark.available ? `p25 ${benchmark.p25}% · p75 ${benchmark.p75}% · ${benchmark.contributors} employers` : "Market hidden until ≥10 employers contribute"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-200 p-4">
+          <p className="text-xs font-medium text-gray-500">Your percentile</p>
+          <p className="mt-2 text-2xl font-semibold text-gray-900">{benchmark.percentile !== null ? `${benchmark.percentile}th` : "—"}</p>
+          <p className="mt-1 text-xs text-gray-400">{benchmark.percentile !== null ? (benchmark.percentile >= 75 ? "Top quartile — you respond more than most" : benchmark.percentile >= 50 ? "Above the median" : "Room to improve vs the market") : "Needs your data + the market"}</p>
+        </div>
+      </div>
     </Card>
   );
 }

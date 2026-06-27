@@ -42,6 +42,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * decision-time data (slice 2's structured status events) — out of scope for v1.
  */
 const RESPONDED_STATUSES = new Set(["screening", "interview", "offer", "hired", "rejected"]);
+/** The canonical statuses that count as "the candidate heard back" — exported so the
+ *  cross-tenant trust index (ADR-0029) uses the EXACT same definition (apples-to-apples). */
+export const RESPONDED_STATUS_LIST: readonly string[] = ["screening", "interview", "offer", "hired", "rejected"];
 
 export type ResponsivenessGrade = "excellent" | "good" | "fair" | "low";
 
@@ -71,7 +74,9 @@ function toMs(d: Date | string | number): number {
   return Number.isNaN(t) ? NaN : t;
 }
 
-function gradeFor(responseRate: number): ResponsivenessGrade {
+/** Map a 0–100 response rate to a grade. Exported so other surfaces (the trust index,
+ *  ADR-0029) grade a rate computed by a different path with the SAME thresholds. */
+export function gradeFor(responseRate: number): ResponsivenessGrade {
   if (responseRate >= 90) return "excellent";
   if (responseRate >= 75) return "good";
   if (responseRate >= 50) return "fair";

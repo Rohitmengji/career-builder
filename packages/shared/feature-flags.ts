@@ -152,6 +152,15 @@ const FLAG_DEFINITIONS = {
       "scorecard ratings), with min-sample suppression. Manager-only, internal, " +
       "advisory — corrects rater bias. Off by default.",
   },
+  employer_trust_index: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Employer Trust Index (ADR-0029): shows how this tenant's responsiveness (the " +
+      "'we don't ghost' rate) compares to the ANONYMIZED market of other employers " +
+      "(k-anonymous: >=10 contributing tenants; no tenant identity ever exposed). The " +
+      "second deliberate cross-tenant aggregate after salary-benchmark. Off by default.",
+  },
   ai_jd_bias_detection: {
     default: false,
     envOverrides: { development: true },
