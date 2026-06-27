@@ -188,6 +188,14 @@ const FLAG_DEFINITIONS = {
       "mismatch, and vague/unsubstantiated judgments — extending JD-bias detection to " +
       "the EVALUATION itself. Internal-only, advisory, fail-closed. Off by default.",
   },
+  evidence_coverage: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Evidence-Coverage Gate (ADR-0031): shows how much of a scorecard's ratings carry " +
+      "written justification, and flags EXTREME scores (1/5) given with no evidence — a " +
+      "fairness nudge toward evidence-based evaluation. Pure, internal, advisory. Off by default.",
+  },
   eeo_self_id: {
     default: false,
     envOverrides: { development: true },

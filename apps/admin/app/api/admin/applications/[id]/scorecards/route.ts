@@ -19,6 +19,7 @@ import { submitScorecardSchema, safeParse } from "@career-builder/security/valid
 import { sanitizeString } from "@career-builder/security/sanitize";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import { aggregateScorecards, parseScorecardCriteria, type ScorecardInput } from "@career-builder/shared/scorecard";
+import { computeEvidenceCoverage } from "@career-builder/shared/evidence-coverage";
 import { canAccessJob } from "@/lib/hiringTeams";
 
 const WRITE_ROLES = ["super_admin", "admin", "hiring_manager", "recruiter"];
@@ -37,6 +38,8 @@ function serialize(sc: ScorecardRow) {
     overallNotes: sc.overallNotes,
     submittedAt: sc.submittedAt,
     ratings: sc.ratings.map((r) => ({ criterion: r.criterion, score: r.score, comment: r.comment })),
+    // Evidence-Coverage Gate (ADR-0031) — null when the flag is off (no behavior change).
+    coverage: isEnabled("evidence_coverage") ? computeEvidenceCoverage(sc.ratings) : null,
   };
 }
 

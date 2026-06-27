@@ -26,6 +26,7 @@ interface Scorecard {
   overallNotes: string | null;
   submittedAt: string;
   ratings: Rating[];
+  coverage?: { total: number; withEvidence: number; missing: number; extremesMissing: number; adequate: boolean } | null;
 }
 interface Aggregate {
   total: number;
@@ -277,6 +278,12 @@ export default function ScorecardsDialog({ applicationId, candidateName, csrf, o
                         </ul>
                       )}
                       {sc.overallNotes && <p className="mt-2 whitespace-pre-wrap text-xs text-gray-600">{sc.overallNotes}</p>}
+                      {sc.coverage && sc.coverage.total > 0 && (
+                        <p className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${sc.coverage.adequate ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>
+                          {sc.coverage.adequate ? "✓" : "⚠"} Evidence: {sc.coverage.withEvidence}/{sc.coverage.total} criteria
+                          {sc.coverage.extremesMissing > 0 && <span> · {sc.coverage.extremesMissing} extreme score{sc.coverage.extremesMissing === 1 ? "" : "s"} unjustified</span>}
+                        </p>
+                      )}
                       {isEnabled("ai_scorecard_audit") && (
                         <ScorecardAuditButton applicationId={applicationId} scorecardId={sc.id} csrf={csrf} />
                       )}
