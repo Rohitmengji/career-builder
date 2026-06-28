@@ -133,6 +133,15 @@ const FLAG_DEFINITIONS = {
       "time-to-hire, and time-to-decision computed from the ApplicationEvent spine. " +
       "Off by default.",
   },
+  search_relevance: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Relevance-ranked job search (ADR-0024): when a query is present, a tenant-scoped " +
+      "per-term prefilter feeds the pure shared/search-rank engine (exact > word-prefix > " +
+      "substring, weighted, multi-term AND-bias) so the most relevant role is first instead " +
+      "of newest-first whole-string LIKE. Off by default falls back to the legacy search.",
+  },
   decision_ledger: {
     default: false,
     envOverrides: { development: true },

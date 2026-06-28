@@ -94,6 +94,52 @@ export const jobRepo = {
     };
   },
 
+  /**
+   * Relevance-search prefilter (ADR-0024). Returns up to `cap` candidate rows for a
+   * tenant that match ANY query TERM (broader recall than `search`'s whole-string LIKE),
+   * which the pure shared/search-rank engine then ranks + paginates in the app layer.
+   * Tenant-scoped exactly like `search`; the same hard filters apply. Also returns the
+   * TRUE match `total` (a DB count over the same WHERE) so pagination stays accurate even
+   * when the candidate set is `cap`-truncated. `cap` bounds memory; the term cap (16) MUST
+   * match shared/search-rank.MAX_QUERY_TERMS so candidates are a superset of what the
+   * engine scores. Used only when the search_relevance flag is on.
+   *
+   * NOTE: when more than `cap` rows match in one tenant, only the most RECENT `cap` are
+   * ranked (the rest are unreachable) — a documented large-tenant bound; true inverted-index
+   * search is deferred (ADR-0024). At realistic per-tenant volumes the cap never engages.
+   */
+  async searchAllForRanking(filters: JobSearchFilters, cap = 1000) {
+    const where: Prisma.JobWhereInput = { tenantId: filters.tenantId };
+
+    if (filters.isPublished !== undefined) where.isPublished = filters.isPublished;
+    if (filters.department) where.department = filters.department;
+    if (filters.location) where.location = { contains: filters.location };
+    if (filters.employmentType) where.employmentType = filters.employmentType;
+    if (filters.experienceLevel) where.experienceLevel = filters.experienceLevel;
+    if (filters.isRemote !== undefined) where.isRemote = filters.isRemote;
+
+    const q = filters.q?.trim();
+    if (q) {
+      // Keep this cap in sync with shared/search-rank.MAX_QUERY_TERMS (16).
+      const terms = Array.from(new Set(q.toLowerCase().split(/\s+/).filter(Boolean))).slice(0, 16);
+      if (terms.length > 0) {
+        where.OR = terms.flatMap((t) => [
+          { title: { contains: t } },
+          { description: { contains: t } },
+          { tags: { contains: t } },
+          { department: { contains: t } },
+          { location: { contains: t } },
+        ]);
+      }
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.job.findMany({ where, orderBy: { postedAt: "desc" }, take: Math.max(1, cap) }),
+      prisma.job.count({ where }),
+    ]);
+    return { data, total };
+  },
+
   async findByTenant(tenantId: string, includeUnpublished = false) {
     return prisma.job.findMany({
       where: {
