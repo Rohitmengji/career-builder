@@ -23,6 +23,7 @@ import { visibleJobIds } from "@/lib/hiringTeams";
 import { decisionLedgerRepo } from "@career-builder/database";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import { entriesFromRaw, seal as sealLedgerEntries } from "@career-builder/shared/decision-ledger";
+import { isRecruiterLocked } from "@career-builder/shared/application-status";
 
 const WRITE_ROLES = ["super_admin", "admin", "hiring_manager", "recruiter"];
 
@@ -56,7 +57,6 @@ export async function POST(req: Request) {
   if (owned.length === 0) {
     return NextResponse.json({ error: "No matching applications." }, { status: 404 });
   }
-  const ownedIds = owned.map((a) => a.id);
 
   /* ---- Export → CSV ---- */
   if (action === "export") {
@@ -81,7 +81,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "A target status is required." }, { status: 400 });
   }
 
-  const updated = await applicationRepo.bulkUpdateStatus(ownedIds, session.tenantId, targetStatus);
+  // Candidate-withdrawn applications are terminal + candidate-owned (ADR-0035): exclude
+  // them from the bulk mutation AND all its side effects (events / ledger seal / emails),
+  // so a recruiter can't re-activate a withdrawal by selecting it in a bulk action. The
+  // repo CAS also excludes "withdrawn" as a backstop against a stale-load race.
+  const mutable = owned.filter((a) => !isRecruiterLocked(a.status));
+  const mutableIds = mutable.map((a) => a.id);
+  if (mutableIds.length === 0) {
+    return NextResponse.json({ error: "No matching applications." }, { status: 404 });
+  }
+
+  const updated = await applicationRepo.bulkUpdateStatus(mutableIds, session.tenantId, targetStatus);
   await writeAuditLog(
     session.userId,
     session.email,
@@ -90,7 +100,7 @@ export async function POST(req: Request) {
   );
 
   // Structured candidate-visible events (ADR-0005) for the rows that changed.
-  const changed = owned.filter((a) => a.status !== targetStatus);
+  const changed = mutable.filter((a) => a.status !== targetStatus);
   const eventsRecorded = Promise.allSettled(
     changed.map((a) =>
       eventRepo.record({
@@ -134,7 +144,7 @@ export async function POST(req: Request) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:3000";
     const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME || "Our Company";
     Promise.allSettled(
-      owned.map((a) =>
+      mutable.map((a) =>
         emailService.sendStatusUpdate({
           candidateFirstName: a.firstName,
           candidateEmail: a.email,

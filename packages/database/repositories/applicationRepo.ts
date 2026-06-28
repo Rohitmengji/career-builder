@@ -187,7 +187,9 @@ export const applicationRepo = {
   async bulkUpdateStatus(ids: string[], tenantId: string, status: string) {
     if (ids.length === 0) return 0;
     const res = await prisma.application.updateMany({
-      where: { id: { in: ids }, tenantId },
+      // Never reverse a candidate-owned "withdrawn" terminal (ADR-0035) — must match
+      // shared/application-status.RECRUITER_LOCKED_STATUSES. The route also pre-filters.
+      where: { id: { in: ids }, tenantId, status: { notIn: ["withdrawn"] } },
       data: { status },
     });
     return res.count;
@@ -198,6 +200,36 @@ export const applicationRepo = {
       where: { id },
       data: { status, ...(notes !== undefined ? { notes } : {}) },
     });
+  },
+
+  /**
+   * Atomic, status-guarded advance (ADR-0035 race fix). Only flips `id` to `toStatus`
+   * when its CURRENT status is one of `fromStatuses` — folded into the WHERE so a
+   * concurrent candidate withdrawal (or any other transition) can't be clobbered by a
+   * stale-snapshot blind write. Tenant-scoped. Returns rows changed (0 = not advanced).
+   */
+  async advanceStatusIfIn(id: string, tenantId: string, fromStatuses: string[], toStatus: string) {
+    const res = await prisma.application.updateMany({
+      where: { id, tenantId, status: { in: fromStatuses } },
+      data: { status: toStatus },
+    });
+    return res.count;
+  },
+
+  /**
+   * Candidate withdrawal (ADR-0035). Atomic CAS: flips an application to "withdrawn"
+   * ONLY if it is still in-play and pre-offer (applied/screening/interview) — never an
+   * offer-stage or already-terminal app. Tenant-scoped; the caller verifies candidate
+   * ownership (email+tenant) first. Returns the affected count (0 = not eligible /
+   * already decided → the route returns 409). The status list MUST match
+   * shared/application-status.WITHDRAWABLE_STATUSES.
+   */
+  async withdrawByIdIfActive(id: string, tenantId: string) {
+    const res = await prisma.application.updateMany({
+      where: { id, tenantId, status: { in: ["applied", "screening", "interview"] } },
+      data: { status: "withdrawn" },
+    });
+    return res.count;
   },
 
   /** Assign a pipeline stage (ADR-0015) + the derived canonical status, tenant-scoped. Returns rows changed. */

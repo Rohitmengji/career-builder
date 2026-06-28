@@ -49,6 +49,7 @@ const STATUS_LABELS: Record<string, string> = {
   offer: "Offer",
   hired: "Hired",
   rejected: "Not selected",
+  withdrawn: "Withdrawn",
 };
 
 /** Map a candidate-visible event to notification copy, or null if it shouldn't notify. */

@@ -96,6 +96,15 @@ const FLAG_DEFINITIONS = {
       "with timestamps, from the ApplicationEvent spine (ADR-0005). Replaces the " +
       "old simulated status block.",
   },
+  candidate_withdrawal: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Candidate-initiated application withdrawal (ADR-0035): a candidate can withdraw " +
+      "their own application while it's in play and pre-offer (applied/screening/interview) " +
+      "— atomic CAS, own-only (email+tenant), emits a candidate-visible 'withdrawn' event. " +
+      "Candidate-control / transparency. Off by default.",
+  },
   interview_scheduling: {
     default: false,
     envOverrides: { development: true },

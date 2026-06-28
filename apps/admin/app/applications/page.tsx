@@ -90,6 +90,13 @@ const STATUS_OPTIONS: { value: string; label: string; tone: BadgeTone }[] = [
   { value: "rejected", label: "Rejected", tone: "danger" },
 ];
 
+/* Display-only statuses set by other flows (not recruiter-selectable; e.g. a candidate
+ * withdrawing their own application, ADR-0035). Kept out of STATUS_OPTIONS so they can't
+ * be picked from the status dropdown (the admin PATCH enum would reject them anyway). */
+const EXTRA_STATUS_META: Record<string, { value: string; label: string; tone: BadgeTone }> = {
+  withdrawn: { value: "withdrawn", label: "Withdrawn", tone: "neutral" },
+};
+
 /* dot color per status — paired with a label so state is never color-only */
 const STATUS_DOT: Record<string, string> = {
   applied: "bg-gray-400",
@@ -98,10 +105,11 @@ const STATUS_DOT: Record<string, string> = {
   offer: "bg-amber-500",
   hired: "bg-emerald-500",
   rejected: "bg-red-500",
+  withdrawn: "bg-gray-500",
 };
 
 function statusMeta(value: string) {
-  return STATUS_OPTIONS.find((s) => s.value === value) ?? STATUS_OPTIONS[0];
+  return STATUS_OPTIONS.find((s) => s.value === value) ?? EXTRA_STATUS_META[value] ?? STATUS_OPTIONS[0];
 }
 
 /** True when the applicant failed one or more knockout screening questions. */
@@ -263,7 +271,10 @@ export default function AdminApplicationsPage() {
     }
   }
 
-  const totalApplications = Object.values(stats).reduce((sum, n) => sum + (n || 0), 0);
+  // Sum only the canonical pipeline statuses (the six tiles) so the header total
+  // reconciles with the visible tiles — display-only statuses like "withdrawn" (ADR-0035)
+  // have no tile/filter and would otherwise make the total exceed the sum of the tiles.
+  const totalApplications = STATUS_OPTIONS.reduce((sum, o) => sum + (stats[o.value as keyof PipelineStats] ?? 0), 0);
 
   /* ─── Bulk selection + actions ─────────────────────────────── */
 
