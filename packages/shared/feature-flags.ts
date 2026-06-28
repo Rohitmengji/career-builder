@@ -68,6 +68,16 @@ const FLAG_DEFINITIONS = {
       "minimum-sample guard (ADR-0003). Opt-in per tenant — a 'we don't ghost' " +
       "recruiting signal no other ATS exposes.",
   },
+  ghosting_risk_nudges: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Recruiter-facing Ghosting-Risk Nudges (ADR-0033): flags applications still " +
+      "awaiting a first response that are approaching or past the 14-day responsiveness " +
+      "SLA — so recruiters act BEFORE they ghost. Operationalizes the 'we don't ghost' " +
+      "wedge (proactive, vs the after-the-fact badge/index). Tenant + hiring-team scoped, " +
+      "blind-hiring-aware, advisory. Off by default.",
+  },
   ai_resume_insights: {
     default: false,
     envOverrides: { development: true },

@@ -255,6 +255,33 @@ export const applicationRepo = {
   },
 
   /**
+   * Still-unanswered applications (status "applied") for the ghosting-risk nudge
+   * (ADR-0033). Tenant-scoped + hiring-team-scoped (jobIds: undefined = all jobs,
+   * [] = none). Selects only what the nudge shows: id, submittedAt, status, and the
+   * candidate name + job title (the route REDACTS the name under blind hiring). Bounded
+   * by `cap`, oldest first so the most-at-risk surface even if the cap truncates.
+   */
+  async findPendingForGhostingRisk(tenantId: string, jobIds?: string[], cap = 500) {
+    return prisma.application.findMany({
+      where: {
+        tenantId,
+        status: "applied",
+        ...(jobIds !== undefined ? { jobId: { in: jobIds } } : {}),
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        status: true,
+        submittedAt: true,
+        job: { select: { id: true, title: true } },
+      },
+      orderBy: { submittedAt: "asc" },
+      take: cap,
+    });
+  },
+
+  /**
    * Lean per-application status + submission time for a tenant, for computing
    * the Employer Responsiveness Score. Tenant-scoped; bounded by `cap`; selects
    * only the two fields the metric needs (no PII). Most-recent first so the cap

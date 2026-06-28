@@ -39,6 +39,7 @@
     "./trust-index": "./trust-index.ts",
     "./portable-record": "./portable-record.ts",
     "./evidence-coverage": "./evidence-coverage.ts",
-    "./search-rank": "./search-rank.ts"
+    "./search-rank": "./search-rank.ts,
+    "./ghosting-risk": "./ghosting-risk.ts"
   }
 }
