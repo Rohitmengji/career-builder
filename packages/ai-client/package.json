@@ -10,7 +10,8 @@
     "./resume": "./resume.ts",
     "./jd-bias": "./jd-bias.ts",
     "./scorecard-audit": "./scorecard-audit.ts",
-    "./devils-advocate": "./devils-advocate.ts"
+    "./devils-advocate": "./devils-advocate.ts",
+    "./interview-questions": "./interview-questions.ts",
   },
   "dependencies": {
     "zod": "^4.3.6"

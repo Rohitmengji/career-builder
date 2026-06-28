@@ -198,6 +198,16 @@ const FLAG_DEFINITIONS = {
       "potentially exclusionary language (gendered/age/ableist) in the job editor " +
       "before publish. Advisory + non-blocking; fail-closed. Off by default.",
   },
+  ai_interview_questions: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "AI interview-question generator (ADR-0034): generates structured, job-related " +
+      "interview questions aligned to a job's scorecard rubric (each with what a strong " +
+      "evidence-based answer shows) so interviewers ask consistent, fair questions — the " +
+      "most reliable debiasing move in hiring. Job-level input only (no candidate PII); " +
+      "fairness-scoped (forbids protected attributes); fail-closed. Off by default.",
+  },
   ai_scorecard_audit: {
     default: false,
     envOverrides: { development: true },

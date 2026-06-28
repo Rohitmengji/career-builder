@@ -132,6 +132,8 @@ export default function AdminJobsPage() {
   const [form, setForm] = useState<JobFormData>(EMPTY_FORM);
   const [biasBusy, setBiasBusy] = useState(false);
   const [biasFindings, setBiasFindings] = useState<{ phrase: string; category: string; suggestion: string }[] | null>(null);
+  const [qBusy, setQBusy] = useState(false);
+  const [questions, setQuestions] = useState<{ criterion: string; question: string; lookFor: string }[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const { user: authUser } = useAuthGuard();
@@ -235,6 +237,31 @@ export default function AdminJobsPage() {
       setBiasFindings([]);
     } finally {
       setBiasBusy(false);
+    }
+  }
+
+  async function generateQuestions() {
+    if (qBusy) return;
+    setQBusy(true);
+    setQuestions(null);
+    try {
+      const res = await fetch("/api/admin/jobs/interview-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-csrf-token": csrf },
+        body: JSON.stringify({
+          jobTitle: form.title,
+          requirements: parseJsonArray(form.requirements),
+          rubricCriteria: parseJsonArray(form.scorecardCriteria),
+          level: form.experienceLevel,
+        }),
+      });
+      if (!res.ok) { setQuestions([]); return; } // unavailable/off → empty
+      const data = await res.json();
+      setQuestions(data.available ? data.items : []);
+    } catch {
+      setQuestions([]);
+    } finally {
+      setQBusy(false);
     }
   }
 
@@ -864,6 +891,36 @@ export default function AdminJobsPage() {
                 onChange={(e) => setForm({ ...form, scorecardCriteria: e.target.value })}
                 placeholder={"Technical depth\nProblem solving\nCommunication\nCulture add"}
               />
+
+              {/* AI interview-question generator (ADR-0034) — rubric-grounded, fair, advisory */}
+              {isEnabled("ai_interview_questions") && (
+                <div className="-mt-2">
+                  <button
+                    type="button"
+                    onClick={generateQuestions}
+                    disabled={qBusy}
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded"
+                  >
+                    {qBusy ? "Generating suggested questions…" : "✨ Suggest interview questions for this rubric"}
+                  </button>
+                  {questions !== null && (
+                    questions.length === 0 ? (
+                      <p className="mt-2 text-xs text-gray-400">Couldn&apos;t generate questions right now.</p>
+                    ) : (
+                      <ul className="mt-3 space-y-2">
+                        {questions.map((q, i) => (
+                          <li key={i} className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-xs">
+                            <p className="font-semibold uppercase tracking-wide text-indigo-500">{q.criterion}</p>
+                            <p className="mt-1 text-gray-900">{q.question}</p>
+                            <p className="mt-1 italic text-gray-600">Look for: {q.lookFor}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    )
+                  )}
+                  <p className="mt-2 text-[10px] text-gray-400">Advisory, job-related suggestions — review before use. Generated from the rubric + requirements, never candidate data.</p>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="flex flex-col gap-3 border-t border-gray-200 pt-5 sm:flex-row">
