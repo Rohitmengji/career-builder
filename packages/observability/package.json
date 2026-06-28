@@ -8,6 +8,7 @@
     ".": "./index.ts",
     "./logger": "./logger.ts",
     "./metrics": "./metrics.ts",
+    "./prometheus": "./prometheus.ts",
     "./alerts": "./alerts.ts",
     "./bot-detection": "./bot-detection.ts",
     "./anomaly": "./anomaly.ts",

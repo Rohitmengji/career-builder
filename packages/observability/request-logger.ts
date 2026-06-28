@@ -130,6 +130,11 @@ export function withRequestLogging(
   return async (req: Request, routeCtx?: unknown): Promise<Response> => {
     const url = new URL(req.url);
     const path = url.pathname;
+    // Normalized path for METRIC LABELS only (collapses ids/uuids/cuids → :id). Using
+    // the raw path as a label is an unbounded-cardinality + potential-PII channel —
+    // and these labels are externally scrapable via /api/metrics (ADR-0025). The raw
+    // `path` is kept for skip-path matching and structured logs (not metric labels).
+    const normalizedPath = normalizePath(path);
 
     // Skip logging for static assets, health checks, etc.
     if (config.skipPaths?.some((prefix) => path.startsWith(prefix))) {
@@ -146,7 +151,7 @@ export function withRequestLogging(
     // ── IP blocklist check ───────────────────────────────────
     const blockCheck = loopback ? { blocked: false } : isIpBlocked(clientIp);
     if (blockCheck.blocked) {
-      metrics.increment(METRIC.HTTP_REQUESTS_TOTAL, { method: req.method, path, status: "403" });
+      metrics.increment(METRIC.HTTP_REQUESTS_TOTAL, { method: req.method, path: normalizedPath, status: "403" });
       logger.warn("blocked_ip_request", { ip: clientIp, reason: blockCheck.reason, route: path });
       return NextResponse.json(
         { error: "Access denied" },
@@ -159,7 +164,7 @@ export function withRequestLogging(
       const botResult = detectBot(req, clientIp);
       if (botResult.action === "block") {
         blockIp(clientIp, `Bot score: ${botResult.score} (${botResult.signals.join(", ")})`, 3_600_000, botResult.score);
-        metrics.increment(METRIC.HTTP_REQUESTS_TOTAL, { method: req.method, path, status: "403" });
+        metrics.increment(METRIC.HTTP_REQUESTS_TOTAL, { method: req.method, path: normalizedPath, status: "403" });
         return NextResponse.json(
           { error: "Access denied" },
           { status: 403 },
@@ -174,7 +179,7 @@ export function withRequestLogging(
     });
 
     // Track active requests
-    metrics.gaugeInc(METRIC.HTTP_ACTIVE_REQUESTS, { path });
+    metrics.gaugeInc(METRIC.HTTP_ACTIVE_REQUESTS, { path: normalizedPath });
 
     return withRequestContext(reqCtx, async () => {
       const startTime = Date.now();
@@ -206,19 +211,19 @@ export function withRequestLogging(
       // ── Record metrics ─────────────────────────────────────
       metrics.increment(METRIC.HTTP_REQUESTS_TOTAL, {
         method: req.method,
-        path: normalizePath(path),
+        path: normalizedPath,
         status: String(status),
       });
       metrics.observe(METRIC.HTTP_REQUEST_DURATION_MS, duration, {
         method: req.method,
-        path: normalizePath(path),
+        path: normalizedPath,
       });
-      metrics.gaugeDec(METRIC.HTTP_ACTIVE_REQUESTS, { path });
+      metrics.gaugeDec(METRIC.HTTP_ACTIVE_REQUESTS, { path: normalizedPath });
 
       if (status >= 500) {
         metrics.increment(METRIC.HTTP_ERRORS_TOTAL, {
           method: req.method,
-          path: normalizePath(path),
+          path: normalizedPath,
         });
         errorCountThisMinute++;
       }
