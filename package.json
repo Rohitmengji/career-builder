@@ -43,12 +43,12 @@
     "db:studio": "cd packages/database && npx prisma studio"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.11.1",
-    "@playwright/test": "^1.58.2",
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.61.1",
     "@types/dompurify": "^3.0.5",
     "axe-core": "^4.11.1",
-    "tsx": "^4.21.0",
-    "turbo": "^2.8.17",
+    "tsx": "^4.22.4",
+    "turbo": "^2.10.0",
     "typescript": "^5.9.3",
     "vitest": "^2.1.9"
   },
