@@ -15,6 +15,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useAuthGuard } from "@/lib/useAuthGuard";
+import { GHOST_WARN_DAYS } from "@career-builder/shared/ghosting-risk";
 import {
   Card,
   Badge,
@@ -273,6 +274,9 @@ export default function AnalyticsDashboardPage() {
 
         {/* ── Employer trust index (ADR-0029, flag employer_trust_index) ── */}
         <EmployerTrustIndex />
+
+        {/* ── Ghosting-risk nudges (ADR-0033, flag ghosting_risk_nudges) ── */}
+        <GhostingRisk />
 
         {/* ── Funnel ── */}
         <Card className="mb-6">
@@ -712,6 +716,84 @@ function EmployerTrustIndex() {
           <p className="mt-1 text-xs text-gray-400">{benchmark.percentile !== null ? (benchmark.percentile >= 75 ? "Top quartile — you respond more than most" : benchmark.percentile >= 50 ? "Above the median" : "Room to improve vs the market") : "Needs your data + the market"}</p>
         </div>
       </div>
+    </Card>
+  );
+}
+
+/* ================================================================== */
+/*  Ghosting-risk nudges — act before the response SLA breaches (ADR-0033) */
+/* ================================================================== */
+
+interface GhostingItem {
+  id: string;
+  risk: "at_risk" | "overdue";
+  daysWaiting: number;
+  daysUntilSla: number;
+  candidateName: string | null;
+  jobTitle: string | null;
+}
+
+function GhostingRisk() {
+  const [data, setData] = useState<{ atRisk: number; overdue: number; items: GhostingItem[] } | null>(null);
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      try {
+        const res = await fetch("/api/admin/analytics/ghosting-risk", { cache: "no-store" });
+        if (!res.ok) return; // 404 = flag off → render nothing
+        const d = await res.json();
+        if (active) { setData(d); setShown(true); }
+      } catch { /* ignore */ }
+    };
+    void run();
+    return () => { active = false; };
+  }, []);
+
+  if (!shown || !data) return null;
+
+  // Nothing at risk — affirm the promise is being kept rather than show an empty card.
+  if (data.atRisk === 0 && data.overdue === 0) {
+    return (
+      <Card className="mb-6">
+        <h2 className="mb-1 text-lg font-semibold text-gray-900">Ghosting risk</h2>
+        <p className="text-sm text-emerald-700">✓ No applicants are waiting past the response window. You&apos;re keeping the promise.</p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mb-6">
+      <h2 className="mb-1 text-lg font-semibold text-gray-900">Ghosting risk</h2>
+      <p className="mb-4 text-sm text-gray-600">Applicants still awaiting a first response, approaching or past the 14-day window. Respond now to keep the promise.</p>
+      <div className="mb-4 grid grid-cols-2 gap-4">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-xs font-medium text-red-700">Overdue</p>
+          <p className="mt-1 text-2xl font-semibold text-red-800">{data.overdue}</p>
+          <p className="mt-1 text-xs text-red-600/80">Past the {14}-day window</p>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-xs font-medium text-amber-700">At risk</p>
+          <p className="mt-1 text-2xl font-semibold text-amber-800">{data.atRisk}</p>
+          <p className="mt-1 text-xs text-amber-600/80">Within {GHOST_WARN_DAYS} days of the window</p>
+        </div>
+      </div>
+      {data.items.length > 0 && (
+        <ul className="divide-y divide-gray-100">
+          {data.items.map((it) => (
+            <li key={it.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+              <span className="min-w-0 truncate text-gray-800">
+                {it.candidateName || "Candidate"}
+                {it.jobTitle && <span className="text-gray-400"> · {it.jobTitle}</span>}
+              </span>
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${it.risk === "overdue" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"}`}>
+                {it.daysWaiting}d waiting{it.risk === "overdue" ? " · overdue" : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }
