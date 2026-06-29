@@ -17,6 +17,7 @@ import { getBlindHiringConfig, redactApplicants, redactApplicant } from "@/lib/b
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import { candidateLabel, type AdverseCategory } from "@career-builder/shared/adverse-action";
 import { statusForStage } from "@career-builder/shared/pipeline";
+import { isRecruiterLocked } from "@career-builder/shared/application-status";
 import { visibleJobIds, canAccessJob } from "@/lib/hiringTeams";
 import { decisionLedgerRepo } from "@career-builder/database";
 import { entriesFromRaw, seal as sealLedgerEntries } from "@career-builder/shared/decision-ledger";
@@ -152,6 +153,13 @@ export async function PATCH(req: Request) {
   // Hiring-team scope (ADR-0020): mutating an application requires access to its job.
   if (!(await canAccessJob(session, existing.jobId))) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
+  }
+
+  // A candidate-withdrawn application is terminal + candidate-owned (ADR-0035): a recruiter
+  // must not re-activate it via a status/stage change (which would fire emails + seal a
+  // ledger over a sequence the candidate opted out of). Annotations (rating/notes) are fine.
+  if ((status || stageId) && isRecruiterLocked(existing.status)) {
+    return NextResponse.json({ error: "This application was withdrawn by the candidate and can't be changed." }, { status: 409 });
   }
 
   // Blind hiring: redact the response, and keep candidate names OUT of the

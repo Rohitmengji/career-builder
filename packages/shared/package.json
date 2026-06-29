@@ -40,6 +40,7 @@
     "./portable-record": "./portable-record.ts",
     "./evidence-coverage": "./evidence-coverage.ts",
     "./search-rank": "./search-rank.ts,
-    "./ghosting-risk": "./ghosting-risk.ts"
+    "./ghosting-risk": "./ghosting-risk.ts",
+    "./application-status": "./application-status.ts",
   }
 }

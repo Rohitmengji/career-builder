@@ -12,6 +12,7 @@ import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import { Alert, EmptyState, ButtonLink, Button } from "@/components/ui";
 import { isEnabled } from "@career-builder/shared/feature-flags";
+import { isWithdrawable } from "@career-builder/shared/application-status";
 import DecisionLedgerPanel from "./DecisionLedgerPanel";
 import PortableShareToggle from "./PortableShareToggle";
 
@@ -44,6 +45,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   offer: { label: "Offer", color: "text-amber-700", bg: "bg-amber-50", icon: "🎉" },
   hired: { label: "Hired", color: "text-emerald-700", bg: "bg-emerald-50", icon: "✅" },
   rejected: { label: "Not Selected", color: "text-red-700", bg: "bg-red-50", icon: "—" },
+  withdrawn: { label: "Withdrawn", color: "text-gray-600", bg: "bg-gray-100", icon: "🚪" },
 };
 
 function getStatusConfig(status: string) {
@@ -60,6 +62,7 @@ const EVENT_LABELS: Record<string, string> = {
   offer_accepted: "Offer accepted",
   offer_declined: "Offer declined",
   offer_rescinded: "Offer withdrawn",
+  application_withdrawn: "Application withdrawn",
 };
 
 function timelineLabel(ev: TimelineEvent): string {
@@ -132,6 +135,7 @@ export default function MyApplicationsPage() {
   const [interviews, setInterviews] = useState<CandidateInterview[]>([]);
   const [offers, setOffers] = useState<CandidateOffer[]>([]);
   const [offerBusy, setOfferBusy] = useState<string | null>(null);
+  const [withdrawBusy, setWithdrawBusy] = useState<string | null>(null);
   const [eeoEnabled, setEeoEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -179,6 +183,20 @@ export default function MyApplicationsPage() {
       /* keep as-is */
     }
   }, []);
+
+  const withdrawApplication = useCallback(async (id: string) => {
+    if (withdrawBusy) return;
+    if (!confirm("Withdraw this application? This can't be undone.")) return;
+    setWithdrawBusy(id);
+    try {
+      const res = await fetch(`/api/applications/${encodeURIComponent(id)}/withdraw`, { method: "POST" });
+      if (res.ok) void load(); // refresh so status + timeline reflect the withdrawal
+    } catch {
+      /* keep as-is */
+    } finally {
+      setWithdrawBusy(null);
+    }
+  }, [withdrawBusy, load]);
 
   const decideOffer = useCallback(async (id: string, action: "accept" | "decline") => {
     if (offerBusy) return;
@@ -407,6 +425,18 @@ export default function MyApplicationsPage() {
                         </li>
                       ))}
                     </ol>
+                  )}
+                  {isEnabled("candidate_withdrawal") && isWithdrawable(app.status) && (
+                    <div className="mt-3 border-t border-gray-100 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => withdrawApplication(app.id)}
+                        disabled={withdrawBusy === app.id}
+                        className="text-xs font-medium text-gray-500 hover:text-red-600 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 rounded"
+                      >
+                        {withdrawBusy === app.id ? "Withdrawing…" : "Withdraw application"}
+                      </button>
+                    </div>
                   )}
                 </article>
               );

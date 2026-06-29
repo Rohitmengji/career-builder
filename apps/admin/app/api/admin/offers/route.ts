@@ -173,11 +173,15 @@ export async function PATCH(req: Request) {
       .catch((err) => console.error("[offers] event failed:", err));
 
   // Advance the application + record a candidate-visible status_change (timeline + responsiveness).
-  const syncApplicationStatus = async (fromStatus: string, toStatus: string) => {
-    await applicationRepo.updateStatus(offer.applicationId, toStatus);
-    await writeAuditLog(session.userId, session.email, "application_status_change", `application ${offer.applicationId.slice(-6)}: ${fromStatus} → ${toStatus}`);
+  // The advance is an ATOMIC, status-guarded CAS (only from `fromSet`) so a concurrent
+  // candidate withdrawal can't be silently clobbered by a stale-snapshot write (ADR-0035).
+  // If the app already left the valid source state (count 0), skip the sync/event/seal.
+  const syncApplicationStatus = async (fromSet: Set<string>, snapshotFrom: string, toStatus: string) => {
+    const advanced = await applicationRepo.advanceStatusIfIn(offer.applicationId, session.tenantId, [...fromSet], toStatus);
+    if (advanced === 0) return;
+    await writeAuditLog(session.userId, session.email, "application_status_change", `application ${offer.applicationId.slice(-6)}: ${snapshotFrom} → ${toStatus}`);
     const evRecorded = eventRepo
-      .record({ tenantId: session.tenantId, applicationId: offer.applicationId, type: "status_change", fromStatus, toStatus, actorId: session.userId, actorType: "recruiter", visibility: "candidate" })
+      .record({ tenantId: session.tenantId, applicationId: offer.applicationId, type: "status_change", fromStatus: snapshotFrom, toStatus, actorId: session.userId, actorType: "recruiter", visibility: "candidate" })
       .catch(() => {});
     // Decision Ledger (ADR-0027): seal terminal decisions reached via the offer flow
     // (accept → hired), mirroring the applications PATCH. Await the event first.
@@ -193,8 +197,8 @@ export async function PATCH(req: Request) {
 
   if (action === "send") {
     void recordEvent("offer_extended", "candidate", { salaryPeriod: offer.salaryPeriod });
-    if (offer.application && PRE_OFFER.has(offer.application.status)) {
-      await syncApplicationStatus(offer.application.status, "offer");
+    if (offer.application) {
+      await syncApplicationStatus(PRE_OFFER, offer.application.status, "offer");
     }
     // Email the candidate (best-effort).
     if (offer.application) {
@@ -216,9 +220,10 @@ export async function PATCH(req: Request) {
     }
   } else if (action === "accept") {
     void recordEvent("offer_accepted", "candidate");
-    // Only advance from a pre-hire status — never regress a terminal (rejected/hired) application.
-    if (offer.application && PRE_HIRE.has(offer.application.status)) {
-      await syncApplicationStatus(offer.application.status, "hired");
+    // Only advance from a pre-hire status — never regress a terminal (rejected/hired/
+    // withdrawn) application. Atomic CAS guards against a concurrent transition.
+    if (offer.application) {
+      await syncApplicationStatus(PRE_HIRE, offer.application.status, "hired");
     }
   } else if (action === "decline") {
     // Decline does NOT auto-reject the application — recruiter triages (ADR-0008 decision).
