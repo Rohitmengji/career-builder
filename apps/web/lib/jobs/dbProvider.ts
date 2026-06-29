@@ -19,6 +19,8 @@ import type {
 } from "./types";
 import { jobRepo, applicationRepo } from "@career-builder/database";
 import { parseScreeningQuestions } from "@career-builder/shared/screening";
+import { isEnabled } from "@career-builder/shared/feature-flags";
+import { rankByRelevance, type RankField } from "@career-builder/shared/search-rank";
 
 const DEFAULT_TENANT_ID = process.env.TENANT_ID || "default";
 
@@ -72,24 +74,19 @@ function dbJobToJob(row: any): Job {
 class DatabaseJobProvider implements JobDataProvider {
   async search(params: JobSearchParams): Promise<JobSearchResponse> {
     const tenantId = params.tenantId || DEFAULT_TENANT_ID;
-
-    const result = await jobRepo.search(
-      {
-        tenantId,
-        q: params.q,
-        department: params.department,
-        location: params.location,
-        employmentType: params.employmentType,
-        experienceLevel: params.experienceLevel,
-        isRemote: params.isRemote,
-        isPublished: true,
-      },
-      params.page || 1,
-      params.perPage || 10,
-    );
-
+    const filters = {
+      tenantId,
+      q: params.q,
+      department: params.department,
+      location: params.location,
+      employmentType: params.employmentType,
+      experienceLevel: params.experienceLevel,
+      isRemote: params.isRemote,
+      isPublished: true,
+    };
+    // Facets stay tenant-wide (over the full published set), independent of the query —
+    // unchanged from the legacy path so the filter UI counts don't shift under search.
     const facetsRaw = await jobRepo.getFacets(tenantId);
-
     const facets: JobFacets = {
       location: facetsRaw.location,
       department: facetsRaw.department,
@@ -98,6 +95,38 @@ class DatabaseJobProvider implements JobDataProvider {
       isRemote: facetsRaw.isRemote,
     };
 
+    // Relevance path (ADR-0024): tenant-scoped term prefilter → pure rank → app paginate.
+    // Only when there's an actual query AND the flag is on; otherwise the legacy
+    // whole-string-LIKE + postedAt path runs exactly as before.
+    const hasQuery = Boolean(params.q && params.q.trim());
+    if (hasQuery && isEnabled("search_relevance")) {
+      const page = Math.max(1, params.page || 1);
+      const perPage = Math.min(50, Math.max(1, params.perPage || 10));
+      const { data: candidates, total } = await jobRepo.searchAllForRanking(filters);
+      const ranked = rankByRelevance(
+        candidates,
+        params.q!,
+        (j): RankField[] => [
+          { text: j.title, weight: 5 },
+          { text: j.department, weight: 3 },
+          { text: j.location, weight: 3 },
+          { text: safeJsonParse<string[]>(j.tags, []).join(" "), weight: 2 },
+          { text: j.employmentType || "", weight: 2 },
+          { text: j.description, weight: 1 },
+        ],
+        (j) => (j.postedAt instanceof Date ? j.postedAt.getTime() : 0),
+      );
+      // `total` is the TRUE DB match count (not ranked.length), so pagination matches the
+      // legacy path's accuracy; ranking is over the cap-bounded, recency-selected candidates.
+      const start = (page - 1) * perPage;
+      return {
+        jobs: ranked.slice(start, start + perPage).map(dbJobToJob),
+        facets,
+        pagination: { page, perPage, total, totalPages: Math.max(1, Math.ceil(total / perPage)) },
+      };
+    }
+
+    const result = await jobRepo.search(filters, params.page || 1, params.perPage || 10);
     return {
       jobs: result.data.map(dbJobToJob),
       facets,
