@@ -196,6 +196,15 @@ const FLAG_DEFINITIONS = {
       "written justification, and flags EXTREME scores (1/5) given with no evidence — a " +
       "fairness nudge toward evidence-based evaluation. Pure, internal, advisory. Off by default.",
   },
+  ai_devils_advocate: {
+    default: false,
+    envOverrides: { development: true },
+    description:
+      "Devil's Advocate Decision Gate (ADR-0032, EU AI-Act §14 oversight aid): before a " +
+      "recruiter rejects or hires, an AI argues the STRONGEST evidence-based case for the " +
+      "OPPOSITE decision — grounded only in job requirements + structured scores (no PII) — " +
+      "to counter confirmation bias. Advisory, never blocks; fail-closed. Off by default.",
+  },
   eeo_self_id: {
     default: false,
     envOverrides: { development: true },

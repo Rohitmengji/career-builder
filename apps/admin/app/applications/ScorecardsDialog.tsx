@@ -10,6 +10,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button, Spinner, XIcon } from "@/components/ui";
 import { isEnabled } from "@career-builder/shared/feature-flags";
 import ScorecardAuditButton from "./ScorecardAuditButton";
+import DevilsAdvocateButton from "./DevilsAdvocateButton";
 
 type Recommendation = "strong_yes" | "yes" | "no" | "strong_no";
 
@@ -235,6 +236,9 @@ export default function ScorecardsDialog({ applicationId, candidateName, csrf, o
                         </li>
                       ))}
                     </ul>
+                  )}
+                  {isEnabled("ai_devils_advocate") && (
+                    <DevilsAdvocateButton applicationId={applicationId} csrf={csrf} />
                   )}
                   {data.feedbackEnabled && (
                     <div className="mt-3 border-t border-gray-200 pt-3">
